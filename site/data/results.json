@@ -1,0 +1,14 @@
+[
+  {
+    "framework": "example-go",
+    "rps": 450000,
+    "avg_latency": "210us",
+    "p50_latency": "130us",
+    "p99_latency": "1.50ms",
+    "connections": 512,
+    "threads": 12,
+    "duration": "30s",
+    "pipeline": 1,
+    "req_per_conn": 100
+  }
+]

@@ -1,0 +1,58 @@
+name: Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      framework:
+        description: 'Framework to benchmark (leave empty for all)'
+        required: false
+        default: ''
+
+jobs:
+  benchmark:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine frameworks
+        id: frameworks
+        run: |
+          if [ -n "${{ inputs.framework }}" ]; then
+            echo "list=${{ inputs.framework }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "list=$(ls -d frameworks/*/ | xargs -n1 basename | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run benchmarks
+        run: |
+          for fw in ${{ steps.frameworks.outputs.list }}; do
+            echo ">>> Benchmarking: $fw"
+            ./scripts/benchmark.sh "$fw" || echo "WARN: $fw benchmark failed"
+          done
+
+      - name: Update leaderboard
+        run: |
+          # Merge all result JSONs into site data
+          mkdir -p site/data
+          echo '[' > site/data/results.json
+          first=true
+          for f in results/*.json; do
+            [ -f "$f" ] || continue
+            $first || echo ',' >> site/data/results.json
+            cat "$f" >> site/data/results.json
+            first=false
+          done
+          echo ']' >> site/data/results.json
+
+      - name: Build and deploy site
+        run: |
+          cd site
+          hugo --minify
+          # Deploy to gh-pages branch
+          cd public
+          git init
+          git config user.name "HttpArena Bot"
+          git config user.email "bot@httparena"
+          git add -A
+          git commit -m "Update leaderboard"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:gh-pages

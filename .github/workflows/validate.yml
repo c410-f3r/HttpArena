@@ -1,0 +1,34 @@
+name: Validate Framework
+
+on:
+  pull_request:
+    paths:
+      - 'frameworks/**'
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      frameworks: ${{ steps.find.outputs.frameworks }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: find
+        run: |
+          frameworks=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            | grep '^frameworks/' \
+            | cut -d'/' -f2 \
+            | sort -u \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "frameworks=$frameworks" >> "$GITHUB_OUTPUT"
+
+  validate:
+    needs: detect
+    if: needs.detect.outputs.frameworks != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        framework: ${{ fromJson(needs.detect.outputs.frameworks) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate ${{ matrix.framework }}
+        run: ./scripts/validate.sh "${{ matrix.framework }}"

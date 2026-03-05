@@ -1,0 +1,80 @@
+<style>
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.95rem;
+}
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.leaderboard-table th {
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.leaderboard-table th:hover {
+  opacity: 0.7;
+}
+.leaderboard-table tr:hover td {
+  background: var(--hover-bg, #f9fafb);
+}
+.leaderboard-table .rank {
+  font-weight: 700;
+  color: var(--primary-color, #3b82f6);
+}
+.sort-arrow { font-size: 0.7em; margin-left: 4px; }
+</style>
+
+<table class="leaderboard-table" id="leaderboard">
+  <thead>
+    <tr>
+      <th onclick="sortTable(0)">#<span class="sort-arrow" id="arrow-0"></span></th>
+      <th onclick="sortTable(1)">Framework<span class="sort-arrow" id="arrow-1"></span></th>
+      <th onclick="sortTable(2)">RPS<span class="sort-arrow" id="arrow-2"></span></th>
+      <th onclick="sortTable(3)">Avg Latency<span class="sort-arrow" id="arrow-3"></span></th>
+      <th onclick="sortTable(4)">P50<span class="sort-arrow" id="arrow-4"></span></th>
+      <th onclick="sortTable(5)">P99<span class="sort-arrow" id="arrow-5"></span></th>
+    </tr>
+  </thead>
+  <tbody>
+    {{ $results := sort (index .Site.Data "results") "rps" "desc" }}
+    {{ range $i, $r := $results }}
+    <tr>
+      <td class="rank">{{ add $i 1 }}</td>
+      <td>{{ $r.framework }}</td>
+      <td data-sort="{{ $r.rps }}">{{ lang.FormatNumber 0 $r.rps }}</td>
+      <td>{{ $r.avg_latency }}</td>
+      <td>{{ $r.p50_latency }}</td>
+      <td>{{ $r.p99_latency }}</td>
+    </tr>
+    {{ end }}
+  </tbody>
+</table>
+
+<script>
+let sortCol = 2, sortAsc = false;
+function sortTable(col) {
+  const table = document.getElementById('leaderboard');
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  if (col === sortCol) sortAsc = !sortAsc;
+  else { sortCol = col; sortAsc = col <= 1; }
+  rows.sort((a, b) => {
+    let av = a.cells[col].dataset.sort || a.cells[col].textContent.trim();
+    let bv = b.cells[col].dataset.sort || b.cells[col].textContent.trim();
+    let an = parseFloat(av.replace(/,/g, '')), bn = parseFloat(bv.replace(/,/g, ''));
+    if (!isNaN(an) && !isNaN(bn)) { av = an; bv = bn; }
+    let cmp = av < bv ? -1 : av > bv ? 1 : 0;
+    return sortAsc ? cmp : -cmp;
+  });
+  rows.forEach((r, i) => { r.cells[0].textContent = i + 1; tbody.appendChild(r); });
+  document.querySelectorAll('.sort-arrow').forEach(e => e.textContent = '');
+  document.getElementById('arrow-' + col).textContent = sortAsc ? ' ▲' : ' ▼';
+}
+document.getElementById('arrow-2').textContent = ' ▼';
+</script>
