@@ -95,15 +95,10 @@ for run in $(seq 1 $RUNS); do
     echo "$output"
     echo "  CPU usage: $avg_cpu"
 
-    # Extract RPS (handle K/M suffix)
-    rps_raw=$(echo "$output" | grep "Throughput:" | grep -oP '[\d.]+[KMB]?' | head -1 || echo "0")
-    rps_num=${rps_raw%[KMB]}
-    rps_suffix=${rps_raw##*[0-9.]}
-    case "$rps_suffix" in
-        K) rps_int=$(echo "$rps_num * 1000" | bc | cut -d. -f1) ;;
-        M) rps_int=$(echo "$rps_num * 1000000" | bc | cut -d. -f1) ;;
-        *) rps_int=${rps_num%%.*} ;;
-    esac
+    # Extract RPS from exact request count: "17250904 requests in 5.00s"
+    req_count=$(echo "$output" | grep -oP '(\d+) requests in' | grep -oP '\d+' || echo "0")
+    duration_secs=$(echo "$output" | grep -oP 'requests in ([\d.]+)s' | grep -oP '[\d.]+' || echo "1")
+    rps_int=$(echo "$req_count / $duration_secs" | bc | cut -d. -f1)
     rps_int=${rps_int:-0}
 
     if [ "$rps_int" -gt "$best_rps" ]; then
