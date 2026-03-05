@@ -17,7 +17,11 @@ echo "=== Validating: $FRAMEWORK ==="
 
 # Build
 echo "[build] Building Docker image..."
-docker build -t "$IMAGE_NAME" "frameworks/$FRAMEWORK" || { echo "FAIL: Docker build failed"; exit 1; }
+if [ -x "frameworks/$FRAMEWORK/build.sh" ]; then
+    "frameworks/$FRAMEWORK/build.sh" || { echo "FAIL: Docker build failed"; exit 1; }
+else
+    docker build -t "$IMAGE_NAME" "frameworks/$FRAMEWORK" || { echo "FAIL: Docker build failed"; exit 1; }
+fi
 
 # Run
 docker run -d --name "$CONTAINER_NAME" -p "$PORT:8080" "$IMAGE_NAME"

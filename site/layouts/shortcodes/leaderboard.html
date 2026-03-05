@@ -36,9 +36,10 @@
       <th onclick="sortTable(0)">#<span class="sort-arrow" id="arrow-0"></span></th>
       <th onclick="sortTable(1)">Framework<span class="sort-arrow" id="arrow-1"></span></th>
       <th onclick="sortTable(2)">RPS<span class="sort-arrow" id="arrow-2"></span></th>
-      <th onclick="sortTable(3)">Avg Latency<span class="sort-arrow" id="arrow-3"></span></th>
-      <th onclick="sortTable(4)">P50<span class="sort-arrow" id="arrow-4"></span></th>
-      <th onclick="sortTable(5)">P99<span class="sort-arrow" id="arrow-5"></span></th>
+      <th onclick="sortTable(3)">CPU<span class="sort-arrow" id="arrow-3"></span></th>
+      <th onclick="sortTable(4)">Avg Latency<span class="sort-arrow" id="arrow-4"></span></th>
+      <th onclick="sortTable(5)">P50<span class="sort-arrow" id="arrow-5"></span></th>
+      <th onclick="sortTable(6)">P99<span class="sort-arrow" id="arrow-6"></span></th>
     </tr>
   </thead>
   <tbody>
@@ -48,6 +49,7 @@
       <td class="rank">{{ add $i 1 }}</td>
       <td>{{ $r.framework }}</td>
       <td data-sort="{{ $r.rps }}">{{ lang.FormatNumber 0 $r.rps }}</td>
+      <td>{{ $r.cpu | default "—" }}</td>
       <td>{{ $r.avg_latency }}</td>
       <td>{{ $r.p50_latency }}</td>
       <td>{{ $r.p99_latency }}</td>
@@ -67,7 +69,7 @@ function sortTable(col) {
   rows.sort((a, b) => {
     let av = a.cells[col].dataset.sort || a.cells[col].textContent.trim();
     let bv = b.cells[col].dataset.sort || b.cells[col].textContent.trim();
-    let an = parseFloat(av.replace(/,/g, '')), bn = parseFloat(bv.replace(/,/g, ''));
+    let an = parseFloat(av.replace(/[,%]/g, '')), bn = parseFloat(bv.replace(/[,%]/g, ''));
     if (!isNaN(an) && !isNaN(bn)) { av = an; bv = bn; }
     let cmp = av < bv ? -1 : av > bv ? 1 : 0;
     return sortAsc ? cmp : -cmp;

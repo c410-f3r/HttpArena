@@ -1,3 +1,10 @@
 results/
 site/public/
 site/resources/
+
+# Build artifacts
+*.o
+*.exe
+.idea/
+obj/
+bin/
