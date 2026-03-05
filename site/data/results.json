@@ -1,14 +1,35 @@
 [
   {
-    "framework": "example-go",
-    "rps": 450000,
-    "avg_latency": "210us",
-    "p50_latency": "130us",
-    "p99_latency": "1.50ms",
+    "framework": "ringzero",
+    "rps": 3510000,
+    "avg_latency": "145us",
+    "p50_latency": "146us",
+    "p99_latency": "290us",
     "connections": 512,
     "threads": 12,
-    "duration": "30s",
-    "pipeline": 1,
-    "req_per_conn": 100
+    "duration": "5s",
+    "pipeline": 1
+  },
+  {
+    "framework": "aspnet-minimal",
+    "rps": 1400000,
+    "avg_latency": "363us",
+    "p50_latency": "255us",
+    "p99_latency": "2.07ms",
+    "connections": 512,
+    "threads": 12,
+    "duration": "5s",
+    "pipeline": 1
+  },
+  {
+    "framework": "go-fasthttp",
+    "rps": 1110000,
+    "avg_latency": "460us",
+    "p50_latency": "27us",
+    "p99_latency": "6.45ms",
+    "connections": 512,
+    "threads": 12,
+    "duration": "5s",
+    "pipeline": 1
   }
 ]
