@@ -48,6 +48,7 @@ fi
 
 # Run (host networking for best performance, seccomp/memlock for io_uring)
 docker run -d --name "$CONTAINER_NAME" --network host \
+    --cpus=12 \
     --security-opt seccomp=unconfined \
     --ulimit memlock=-1:-1 \
     "$IMAGE_NAME"
