@@ -334,7 +334,13 @@ html.dark .lb-conn-tab { color: #64748b; border-color: #334155; }
 html.dark .lb-conn-tab:hover { color: #94a3b8; border-color: #475569; background: rgba(255, 255, 255, 0.03); }
 html.dark .lb-conn-tab.active { color: #a78bfa; border-color: #8b5cf6; background: rgba(139, 92, 246, 0.12); }
 .lb-card-title { font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 0.75rem; }
+.lb-toggle-icon { font-size: 1rem; color: #94a3b8; margin-left: 0.35rem; transition: color 0.15s ease; }
+.lb-filters-toggle:hover .lb-toggle-icon { color: #3b82f6; }
+.lb-filters-toggle { margin-bottom: 0; }
+.lb-filters-body { margin-top: 0.75rem; }
 html.dark .lb-card-title { color: #ffffff; }
+html.dark .lb-toggle-icon { color: #64748b; }
+html.dark .lb-filters-toggle:hover .lb-toggle-icon { color: #60a5fa; }
 
 /* Mobile */
 @media (max-width: 768px) {
@@ -377,24 +383,26 @@ html.dark .lb-card-title { color: #ffffff; }
 {{ $langs = sort $langs }}
 
 <div class="lb-card">
-  <div class="lb-card-title">Filters</div>
-  <div class="lb-filters" style="margin-top:0;">
-    <span class="lb-filters-label">Lang</span>
-    <span class="lb-filters-hint">(Toggle)</span>
-    <div class="lb-lang-filter active" data-lang="all">All</div>
-    {{ range $langs }}
-    <div class="lb-lang-filter active" data-lang="{{ . }}">{{ . }}</div>
-    {{ end }}
-  </div>
-  <div class="lb-filters" style="margin-top:0.5rem;">
-    <span class="lb-filters-label">Type</span>
-    <span class="lb-filters-hint">(Toggle)</span>
-    <div class="lb-type-filter lb-type-realistic active" data-type="realistic">Realistic</div>
-    <div class="lb-type-filter lb-type-stripped active" data-type="stripped">Stripped</div>
-  </div>
-  <div class="lb-search">
-    <span class="lb-filters-label">Filter</span>
-    <input type="text" class="lb-search-input" placeholder="e.g. ringzero, fasthttp, C, C#" />
+  <div class="lb-card-title lb-filters-toggle" style="cursor:pointer;">Filters <span class="lb-toggle-icon">+</span></div>
+  <div class="lb-filters-body" style="display:none;">
+    <div class="lb-filters" style="margin-top:0;">
+      <span class="lb-filters-label">Lang</span>
+      <span class="lb-filters-hint">(Toggle)</span>
+      <div class="lb-lang-filter active" data-lang="all">All</div>
+      {{ range $langs }}
+      <div class="lb-lang-filter active" data-lang="{{ . }}">{{ . }}</div>
+      {{ end }}
+    </div>
+    <div class="lb-filters" style="margin-top:0.5rem;">
+      <span class="lb-filters-label">Type</span>
+      <span class="lb-filters-hint">(Toggle)</span>
+      <div class="lb-type-filter lb-type-realistic active" data-type="realistic">Realistic</div>
+      <div class="lb-type-filter lb-type-stripped active" data-type="stripped">Stripped</div>
+    </div>
+    <div class="lb-search">
+      <span class="lb-filters-label">Filter</span>
+      <input type="text" class="lb-search-input" placeholder="e.g. ringzero, fasthttp, C, C#" />
+    </div>
   </div>
 </div>
 
@@ -536,6 +544,19 @@ function buildBestPanels() {
   });
 }
 buildBestPanels();
+
+/* Filters card toggle */
+document.querySelector('.lb-filters-toggle').addEventListener('click', function() {
+  var body = document.querySelector('.lb-filters-body');
+  var icon = this.querySelector('.lb-toggle-icon');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    icon.textContent = '\u2212';
+  } else {
+    body.style.display = 'none';
+    icon.textContent = '+';
+  }
+});
 
 /* Profile tabs — each panel has its own set; clicking switches panels */
 document.querySelectorAll('.lb-tab').forEach(function(tab) {
