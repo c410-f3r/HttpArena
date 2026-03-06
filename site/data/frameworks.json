@@ -1,0 +1,14 @@
+{
+  "aspnet-minimal": {
+    "description": "Minimal ASP.NET Core server using .NET 10 preview with Kestrel and minimal API routing.",
+    "repo": "https://github.com/dotnet/aspnetcore"
+  },
+  "go-fasthttp": {
+    "description": "High-performance Go HTTP server using fasthttp with zero-allocation design and buffer reuse.",
+    "repo": "https://github.com/valyala/fasthttp"
+  },
+  "ringzero": {
+    "description": "Custom C HTTP server built on io_uring with a multi-reactor architecture. No epoll, no thread-per-connection.",
+    "repo": "https://github.com/MDA2AV/ringzero"
+  }
+}

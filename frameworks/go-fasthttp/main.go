@@ -27,9 +27,23 @@ func benchHandler(ctx *fasthttp.RequestCtx) {
 	ctx.SetBodyString(strconv.Itoa(sum))
 }
 
+func pipelineHandler(ctx *fasthttp.RequestCtx) {
+	ctx.Response.Header.Set("Server", "go-fasthttp")
+	ctx.SetContentType("text/plain")
+	ctx.SetBodyString("ok")
+}
+
 func main() {
+	handler := func(ctx *fasthttp.RequestCtx) {
+		switch string(ctx.Path()) {
+		case "/pipeline":
+			pipelineHandler(ctx)
+		default:
+			benchHandler(ctx)
+		}
+	}
 	server := &fasthttp.Server{
-		Handler: benchHandler,
+		Handler: handler,
 	}
 	server.ListenAndServe(":8080")
 }

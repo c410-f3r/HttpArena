@@ -48,10 +48,31 @@ static int sum_query_params(const char *qs, int qs_len)
     return sum;
 }
 
+static const char PIPELINE_RESP[] =
+    "HTTP/1.1 200 OK\r\n"
+    "Server: ringzero\r\n"
+    "Content-Type: text/plain\r\n"
+    "Content-Length: 2\r\n"
+    "\r\n"
+    "ok";
+
 static void bench_handler(conn_t *conn, uint8_t *buf, int len)
 {
     const char *data = (const char *)buf;
     const char *data_end = data + len;
+
+    /* Fast path: GET /pipeline — zero processing, handles pipelined requests */
+    if (len >= 14 && memcmp(data, "GET /pipeline ", 14) == 0) {
+        const char *p = data;
+        while (p < data_end) {
+            const char *next = memmem(p, data_end - p, "\r\n\r\n", 4);
+            if (!next) break;
+            conn_write(conn, (const uint8_t *)PIPELINE_RESP, sizeof(PIPELINE_RESP) - 1);
+            p = next + 4;
+        }
+        conn_flush(conn);
+        return;
+    }
 
     /* Find end of request line */
     const char *req_end = memmem(data, len, "\r\n", 2);

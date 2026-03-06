@@ -9,6 +9,8 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
+app.MapGet("/pipeline", () => Results.Text("ok"));
+
 app.MapGet("/bench", (HttpRequest req) =>
 {
     int sum = SumQuery(req);

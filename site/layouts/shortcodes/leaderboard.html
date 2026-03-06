@@ -1,82 +1,579 @@
 <style>
-.leaderboard-table {
+/* Card container */
+.lb-card {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 0.5rem;
+  padding: 1.5rem 2rem;
   width: 100%;
-  border-collapse: collapse;
-  margin: 1.5rem 0;
-  font-size: 0.95rem;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+
 }
-.leaderboard-table th,
-.leaderboard-table td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
+
+/* Tabs */
+.lb-tabs {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  margin-bottom: 0.25rem;
 }
-.leaderboard-table th {
+.lb-tab {
+  flex: 1;
+  text-align: center;
+  padding: 0.65rem 1.2rem;
+  font-size: 0.9rem;
   font-weight: 600;
+  color: #64748b;
   cursor: pointer;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  transition: all 0.2s ease;
   user-select: none;
-  white-space: nowrap;
+  letter-spacing: -0.01em;
 }
-.leaderboard-table th:hover {
-  opacity: 0.7;
+.lb-tab:hover {
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.5);
 }
-.leaderboard-table tr:hover td {
-  background: var(--hover-bg, #f9fafb);
-}
-.leaderboard-table .rank {
+.lb-tab.active {
+  color: #1e40af;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
   font-weight: 700;
-  color: var(--primary-color, #3b82f6);
 }
-.sort-arrow { font-size: 0.7em; margin-left: 4px; }
+.lb-desc {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0.75rem 0 1.25rem;
+  line-height: 1.6;
+  max-width: 54rem;
+}
+.lb-panel { display: none; }
+.lb-panel.active { display: block; }
+.lb-conn-panel { display: none; }
+.lb-conn-panel.active { display: block; }
+
+/* Connection count tabs */
+.lb-conn-tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.lb-conn-tab {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1.5px solid #e2e8f0;
+  background: transparent;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.lb-conn-tab:hover {
+  color: #475569;
+  border-color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.02);
+}
+.lb-conn-tab.active {
+  color: #8b5cf6;
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.06);
+  font-weight: 600;
+}
+
+/* Language filters */
+.lb-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.lb-filters-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-right: 0.25rem;
+}
+.lb-lang-filter {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1.5px solid #e2e8f0;
+  background: transparent;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.lb-lang-filter:hover {
+  color: #475569;
+  border-color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.02);
+}
+.lb-lang-filter.active {
+  color: #3b82f6;
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.06);
+  font-weight: 600;
+}
+
+/* Search */
+.lb-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.lb-search-input {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: #334155;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 6px;
+  background: transparent;
+  outline: none;
+  width: 18rem;
+  transition: border-color 0.15s ease;
+}
+.lb-search-input::placeholder { color: #94a3b8; }
+.lb-search-input:focus { border-color: #3b82f6; }
+
+/* Table */
+.lb { width: 100%; font-family: inherit; }
+.lb-row {
+  display: grid;
+  grid-template-columns: 2.5rem 11rem 3rem 4rem 7rem 1fr 5.5rem 5rem 6.5rem 5.5rem;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0.75rem;
+  border-radius: 0;
+  transition: background 0.15s ease;
+}
+.lb-row:not(.lb-header) { cursor: pointer; }
+.lb-row:not(.lb-header):hover { background: rgba(59, 130, 246, 0.04); }
+.lb-row.lb-hidden { display: none; }
+
+/* Popup */
+.lb-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.lb-popup {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  max-width: 520px; width: 90vw;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+.lb-popup-close {
+  position: absolute; top: 1rem; right: 1.25rem;
+  background: none; border: none; font-size: 1.4rem;
+  color: #94a3b8; cursor: pointer; line-height: 1;
+}
+.lb-popup-close:hover { color: #334155; }
+.lb-popup-name { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.25rem; }
+.lb-popup-lang { font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; }
+.lb-popup-desc { font-size: 0.9rem; color: #475569; line-height: 1.6; margin-bottom: 1.25rem; }
+.lb-popup-stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem;
+  font-size: 0.85rem; margin-bottom: 1.25rem;
+}
+.lb-popup-stat-label { color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.lb-popup-stat-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.lb-popup-link {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.85rem; font-weight: 600; color: #3b82f6;
+  text-decoration: none;
+}
+.lb-popup-link:hover { text-decoration: underline; }
+
+html.dark .lb-popup { background: #1e293b; color: #e2e8f0; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4); }
+html.dark .lb-popup-close { color: #64748b; }
+html.dark .lb-popup-close:hover { color: #e2e8f0; }
+html.dark .lb-popup-lang { color: #94a3b8; }
+html.dark .lb-popup-desc { color: #cbd5e1; }
+html.dark .lb-popup-stat-label { color: #64748b; }
+html.dark .lb-popup-link { color: #60a5fa; }
+.lb-header {
+  font-weight: 600; font-size: 0.75rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: #9ca3af;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.4rem; border-radius: 0;
+}
+.lb-rank { font-weight: 800; font-size: 1.1rem; color: #3b82f6; }
+.lb-name { font-weight: 600; font-size: 1rem; }
+.lb-lang { font-size: 0.8rem; color: #9ca3af; }
+.lb-conns { font-size: 0.8rem; color: #9ca3af; text-align: right; font-variant-numeric: tabular-nums; }
+.lb-rps { font-weight: 700; font-size: 0.95rem; text-align: right; font-variant-numeric: tabular-nums; }
+.lb-bar-cell { position: relative; height: 1.1rem; background: rgba(0,0,0,0.03); border-radius: 0; overflow: hidden; }
+.lb-bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0; transition: width 0.6s cubic-bezier(0.25,0.46,0.45,0.94); }
+.lb-stat { font-size: 0.85rem; text-align: right; color: #6b7280; font-variant-numeric: tabular-nums; }
+.lb-bar-1 { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+.lb-bar-2 { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.lb-bar-3 { background: linear-gradient(90deg, #60a5fa, #93c5fd); }
+.lb-bar-4 { background: linear-gradient(90deg, #93c5fd, #bfdbfe); }
+.lb-bar-5 { background: linear-gradient(90deg, #bfdbfe, #dbeafe); }
+
+/* Dark mode */
+html.dark .lb-card { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(96, 165, 250, 0.15); box-shadow: 0 4px 16px rgba(96, 165, 250, 0.08), 0 1px 3px rgba(0, 0, 0, 0.3); }
+html.dark .lb-card:hover { box-shadow: 0 4px 16px rgba(96, 165, 250, 0.08), 0 1px 3px rgba(0, 0, 0, 0.3); }
+html.dark .lb-tabs { background: rgba(255, 255, 255, 0.08); }
+html.dark .lb-tab { color: #94a3b8; }
+html.dark .lb-tab:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.06); }
+html.dark .lb-tab.active { color: #93c5fd; background: rgba(59, 130, 246, 0.15); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3); font-weight: 700; }
+html.dark .lb-desc { color: #94a3b8; }
+html.dark .lb-lang-filter { color: #64748b; border-color: #334155; }
+html.dark .lb-lang-filter:hover { color: #94a3b8; border-color: #475569; background: rgba(255, 255, 255, 0.03); }
+html.dark .lb-lang-filter.active { color: #60a5fa; border-color: #3b82f6; background: rgba(59, 130, 246, 0.12); }
+html.dark .lb-filters-label { color: #64748b; }
+html.dark .lb-search-input { color: #e2e8f0; border-color: #334155; }
+html.dark .lb-search-input::placeholder { color: #64748b; }
+html.dark .lb-search-input:focus { border-color: #3b82f6; }
+html.dark .lb-header { color: #6b7280; border-bottom-color: #1e293b; }
+html.dark .lb-row:not(.lb-header):hover { background: rgba(255, 255, 255, 0.03); }
+html.dark .lb-stat { color: #94a3b8; }
+html.dark .lb-bar-cell { background: rgba(255, 255, 255, 0.04); }
+html.dark .lb-conn-tab { color: #64748b; border-color: #334155; }
+html.dark .lb-conn-tab:hover { color: #94a3b8; border-color: #475569; background: rgba(255, 255, 255, 0.03); }
+html.dark .lb-conn-tab.active { color: #a78bfa; border-color: #8b5cf6; background: rgba(139, 92, 246, 0.12); }
 </style>
 
-<table class="leaderboard-table" id="leaderboard">
-  <thead>
-    <tr>
-      <th onclick="sortTable(0)">#<span class="sort-arrow" id="arrow-0"></span></th>
-      <th onclick="sortTable(1)">Framework<span class="sort-arrow" id="arrow-1"></span></th>
-      <th onclick="sortTable(2)">RPS<span class="sort-arrow" id="arrow-2"></span></th>
-      <th onclick="sortTable(3)">CPU<span class="sort-arrow" id="arrow-3"></span></th>
-      <th onclick="sortTable(4)">Avg Latency<span class="sort-arrow" id="arrow-4"></span></th>
-      <th onclick="sortTable(5)">P50<span class="sort-arrow" id="arrow-5"></span></th>
-      <th onclick="sortTable(6)">P99<span class="sort-arrow" id="arrow-6"></span></th>
-    </tr>
-  </thead>
-  <tbody>
-    {{ $results := sort (index .Site.Data "results") "rps" "desc" }}
-    {{ range $i, $r := $results }}
-    <tr>
-      <td class="rank">{{ add $i 1 }}</td>
-      <td>{{ $r.framework }}</td>
-      <td data-sort="{{ $r.rps }}">{{ lang.FormatNumber 0 $r.rps }}</td>
-      <td>{{ $r.cpu | default "—" }}</td>
-      <td>{{ $r.avg_latency }}</td>
-      <td>{{ $r.p50_latency }}</td>
-      <td>{{ $r.p99_latency }}</td>
-    </tr>
+{{ $profiles := slice
+  (dict "id" "baseline"     "label" "Baseline"              "conns" (slice 512 4096 16384) "desc" "Each connection sends one request at a time over persistent keep-alive connections with no CPU restrictions. Mixed GET and POST requests to <code>/bench</code> with query parameter parsing, Content-Length bodies, and chunked Transfer-Encoding. Best of 3 runs, 12 threads.")
+  (dict "id" "limited-conn" "label" "Short-lived (10r)"     "conns" (slice 512 4096)       "desc" "Each connection is closed and re-established after 10 requests, forcing repeated TCP handshakes. Same mixed GET/POST workload as baseline. Measures how efficiently a framework handles connection setup and teardown — important for real-world scenarios where clients don't maintain long-lived connections.")
+  (dict "id" "cpu-limited"  "label" "CPU Limited (12 vCPU)" "conns" (slice 512 4096)       "desc" "Same workload as baseline, but the server container is restricted to 12 vCPUs via Docker's <code>--cpus</code> flag. Reveals how efficiently a framework uses limited CPU resources — frameworks with lower overhead per request will maintain higher throughput under constrained conditions.")
+  (dict "id" "pipelined"    "label" "Pipelined (16)"        "conns" (slice 512 4096 16384) "desc" "16 HTTP requests are sent back-to-back on each connection before waiting for responses. Uses a lightweight <code>GET /pipeline</code> endpoint that returns a fixed response, isolating raw I/O and pipeline handling from application logic. Frameworks that batch pipelined requests from the read buffer gain a significant advantage.")
+}}
+
+{{/* Collect all unique languages across all data files */}}
+{{ $langs := slice }}
+{{ range $profiles }}
+  {{ $pid := .id }}
+  {{ range .conns }}
+    {{ $key := printf "%s-%d" $pid . }}
+    {{ $data := index site.Data $key }}
+    {{ if $data }}
+      {{ range $data }}
+        {{ $l := .language | default "" }}
+        {{ if and $l (not (in $langs $l)) }}
+          {{ $langs = $langs | append $l }}
+        {{ end }}
+      {{ end }}
     {{ end }}
-  </tbody>
-</table>
+  {{ end }}
+{{ end }}
+{{ $langs = sort $langs }}
+
+<div class="lb-card">
+  <div class="lb-tabs">
+{{ range $i, $p := $profiles }}
+  <div class="lb-tab{{ if eq $i 0 }} active{{ end }}" data-tab="{{ $p.id }}">{{ $p.label }}</div>
+{{ end }}
+</div>
+
+<div class="lb-filters">
+  <span class="lb-filters-label">Lang</span>
+  <div class="lb-lang-filter active" data-lang="all">All</div>
+  {{ range $langs }}
+  <div class="lb-lang-filter active" data-lang="{{ . }}">{{ . }}</div>
+  {{ end }}
+</div>
+
+<div class="lb-search">
+  <span class="lb-filters-label">Filter</span>
+  <input type="text" class="lb-search-input" placeholder="e.g. ringzero, fasthttp, C, C#" />
+</div>
+</div><!-- /lb-card controls -->
+
+{{ range $i, $p := $profiles }}
+<div class="lb-panel{{ if eq $i 0 }} active{{ end }}" data-panel="{{ $p.id }}" data-conns="{{ delimit $p.conns "," }}">
+  <div class="lb-desc">{{ $p.desc | safeHTML }}</div>
+
+  <div class="lb-card">
+  <div class="lb-filters" style="margin:0 0 1rem 0;">
+    <span class="lb-filters-label">Conn</span>
+    <div class="lb-conn-tabs" data-for="{{ $p.id }}">
+      <div class="lb-conn-tab active" data-conns="best">Best</div>
+    {{ range $ci, $c := $p.conns }}
+      <div class="lb-conn-tab" data-conns="{{ $c }}">{{ $c }}</div>
+    {{ end }}
+    </div>
+  </div>
+
+  <div class="lb-conn-panel active" data-profile="{{ $p.id }}" data-conns="best">
+    <div class="lb">
+      <div class="lb-row lb-header">
+        <div>#</div>
+        <div>Framework</div>
+        <div>Lang</div>
+        <div style="text-align:right">Conn</div>
+        <div style="text-align:right">Req/s</div>
+        <div></div>
+        <div style="text-align:right">CPU</div>
+        <div style="text-align:right">Mem</div>
+        <div style="text-align:right">Avg Latency</div>
+        <div style="text-align:right">P99</div>
+      </div>
+    </div>
+  </div>
+
+  {{ range $ci, $c := $p.conns }}
+  {{ $key := printf "%s-%d" $p.id $c }}
+  {{ $data := index site.Data $key }}
+  <div class="lb-conn-panel" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
+  {{ if $data }}
+  <div class="lb">
+    <div class="lb-row lb-header">
+      <div>#</div>
+      <div>Framework</div>
+      <div>Lang</div>
+      <div style="text-align:right">Conn</div>
+      <div style="text-align:right">Req/s</div>
+      <div></div>
+      <div style="text-align:right">CPU</div>
+      <div style="text-align:right">Mem</div>
+      <div style="text-align:right">Avg Latency</div>
+      <div style="text-align:right">P99</div>
+    </div>
+    {{ $results := sort $data "rps" "desc" }}
+    {{ $maxRps := 0 }}
+    {{ range $results }}{{ if gt .rps $maxRps }}{{ $maxRps = .rps }}{{ end }}{{ end }}
+    {{ range $j, $r := $results }}
+    {{ $pct := mul (div (float $r.rps) (float $maxRps)) 100.0 }}
+    {{ $meta := index site.Data.frameworks $r.framework }}
+    <div class="lb-row" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ $r.rps }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}">
+      <div class="lb-rank">{{ if eq $j 0 }}🥇{{ else if eq $j 1 }}🥈{{ else if eq $j 2 }}🥉{{ else }}{{ add $j 1 }}{{ end }}</div>
+      <div class="lb-name">{{ $r.framework }}</div>
+      <div class="lb-lang">{{ $r.language | default "—" }}</div>
+      <div class="lb-conns">{{ lang.FormatNumber 0 $r.connections }}</div>
+      <div class="lb-rps">{{ lang.FormatNumber 0 $r.rps }}</div>
+      <div class="lb-bar-cell">
+        <div class="lb-bar lb-bar-{{ add $j 1 }}" style="width: {{ printf "%.1f" $pct }}%"></div>
+      </div>
+      <div class="lb-stat">{{ $r.cpu | default "—" }}</div>
+      <div class="lb-stat">{{ $r.memory | default "—" }}</div>
+      <div class="lb-stat">{{ $r.avg_latency }}</div>
+      <div class="lb-stat">{{ $r.p99_latency }}</div>
+    </div>
+    {{ end }}
+  </div>
+  {{ else }}
+  <p><em>No results yet for this configuration.</em></p>
+  {{ end }}
+  </div><!-- /lb-conn-panel -->
+  {{ end }}
+  </div><!-- /lb-card table -->
+
+</div>
+{{ end }}
 
 <script>
-let sortCol = 2, sortAsc = false;
-function sortTable(col) {
-  const table = document.getElementById('leaderboard');
-  const tbody = table.querySelector('tbody');
-  const rows = Array.from(tbody.querySelectorAll('tr'));
-  if (col === sortCol) sortAsc = !sortAsc;
-  else { sortCol = col; sortAsc = col <= 1; }
-  rows.sort((a, b) => {
-    let av = a.cells[col].dataset.sort || a.cells[col].textContent.trim();
-    let bv = b.cells[col].dataset.sort || b.cells[col].textContent.trim();
-    let an = parseFloat(av.replace(/[,%]/g, '')), bn = parseFloat(bv.replace(/[,%]/g, ''));
-    if (!isNaN(an) && !isNaN(bn)) { av = an; bv = bn; }
-    let cmp = av < bv ? -1 : av > bv ? 1 : 0;
-    return sortAsc ? cmp : -cmp;
+var medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
+var barClasses = ['lb-bar-1', 'lb-bar-2', 'lb-bar-3', 'lb-bar-4', 'lb-bar-5'];
+
+/* Build "Best" panels — pick best RPS per framework across all conn counts */
+function buildBestPanels() {
+  document.querySelectorAll('.lb-conn-panel[data-conns="best"]').forEach(function(bestPanel) {
+    var profile = bestPanel.dataset.profile;
+    var parentPanel = bestPanel.closest('.lb-panel');
+    var connPanels = parentPanel.querySelectorAll('.lb-conn-panel:not([data-conns="best"])');
+    var best = {};
+
+    connPanels.forEach(function(cp) {
+      cp.querySelectorAll('.lb-row:not(.lb-header)').forEach(function(row) {
+        var name = row.dataset.name;
+        var rps = parseInt(row.dataset.rps, 10);
+        if (!best[name] || rps > best[name].rps) {
+          best[name] = { rps: rps, row: row };
+        }
+      });
+    });
+
+    var lb = bestPanel.querySelector('.lb');
+    /* Remove old data rows */
+    lb.querySelectorAll('.lb-row:not(.lb-header)').forEach(function(r) { r.remove(); });
+
+    /* Sort by RPS desc */
+    var entries = Object.values(best).sort(function(a, b) { return b.rps - a.rps; });
+    entries.forEach(function(entry, idx) {
+      var clone = entry.row.cloneNode(true);
+      clone.dataset.rps = entry.rps;
+      var rankEl = clone.querySelector('.lb-rank');
+      rankEl.textContent = idx < 3 ? medals[idx] : String(idx + 1);
+      var bar = clone.querySelector('.lb-bar');
+      barClasses.forEach(function(c) { bar.classList.remove(c); });
+      bar.classList.add(barClasses[Math.min(idx, barClasses.length - 1)]);
+      var pct = entries[0].rps > 0 ? (entry.rps / entries[0].rps * 100) : 0;
+      bar.style.width = pct.toFixed(1) + '%';
+      lb.appendChild(clone);
+    });
   });
-  rows.forEach((r, i) => { r.cells[0].textContent = i + 1; tbody.appendChild(r); });
-  document.querySelectorAll('.sort-arrow').forEach(e => e.textContent = '');
-  document.getElementById('arrow-' + col).textContent = sortAsc ? ' ▲' : ' ▼';
 }
-document.getElementById('arrow-2').textContent = ' ▼';
+buildBestPanels();
+
+/* Profile tabs */
+document.querySelectorAll('.lb-tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.lb-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.lb-panel').forEach(function(p) { p.classList.remove('active'); });
+    tab.classList.add('active');
+    document.querySelector('[data-panel="' + tab.dataset.tab + '"]').classList.add('active');
+    applyFilters();
+  });
+});
+
+/* Connection tabs */
+document.querySelectorAll('.lb-conn-tab').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var panel = btn.closest('.lb-panel');
+    panel.querySelectorAll('.lb-conn-tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    panel.querySelectorAll('.lb-conn-panel').forEach(function(cp) { cp.classList.remove('active'); });
+    panel.querySelector('.lb-conn-panel[data-conns="' + btn.dataset.conns + '"]').classList.add('active');
+    applyFilters();
+  });
+});
+
+function applyFilters() {
+  var filters = document.querySelectorAll('.lb-lang-filter[data-lang]:not([data-lang="all"])');
+  var activeLangs = new Set();
+  filters.forEach(function(f) { if (f.classList.contains('active')) activeLangs.add(f.dataset.lang); });
+  var allBtn = document.querySelector('.lb-lang-filter[data-lang="all"]');
+  if (activeLangs.size === filters.length) allBtn.classList.add('active');
+  else allBtn.classList.remove('active');
+
+  var searchVal = document.querySelector('.lb-search-input').value.toLowerCase().trim();
+  var terms = searchVal ? searchVal.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+
+  /* Rebuild best panels to reflect current filters */
+  buildBestPanels();
+
+  document.querySelectorAll('.lb-conn-panel').forEach(function(connPanel) {
+    var rows = connPanel.querySelectorAll('.lb-row:not(.lb-header)');
+    var visibleIdx = 0;
+    var maxRps = 0;
+
+    rows.forEach(function(row) {
+      var lang = row.dataset.lang;
+      var name = row.dataset.name.toLowerCase();
+      var langMatch = activeLangs.has(lang);
+      var textMatch = terms.length === 0 || terms.some(function(t) {
+        return name.indexOf(t) !== -1 || lang.toLowerCase().indexOf(t) !== -1;
+      });
+      if (langMatch && textMatch) {
+        row.classList.remove('lb-hidden');
+        var rps = parseInt(row.dataset.rps, 10);
+        if (rps > maxRps) maxRps = rps;
+      } else {
+        row.classList.add('lb-hidden');
+      }
+    });
+
+    rows.forEach(function(row) {
+      if (row.classList.contains('lb-hidden')) return;
+      var rankEl = row.querySelector('.lb-rank');
+      rankEl.textContent = visibleIdx < 3 ? medals[visibleIdx] : String(visibleIdx + 1);
+      var bar = row.querySelector('.lb-bar');
+      barClasses.forEach(function(c) { bar.classList.remove(c); });
+      bar.classList.add(barClasses[Math.min(visibleIdx, barClasses.length - 1)]);
+      var rps = parseInt(row.dataset.rps, 10);
+      var pct = maxRps > 0 ? (rps / maxRps * 100) : 0;
+      bar.style.width = pct.toFixed(1) + '%';
+      visibleIdx++;
+    });
+  });
+}
+
+document.querySelectorAll('.lb-lang-filter').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var lang = btn.dataset.lang;
+    var allFilters = document.querySelectorAll('.lb-lang-filter');
+    var allBtn = document.querySelector('.lb-lang-filter[data-lang="all"]');
+
+    if (lang === 'all') {
+      allFilters.forEach(function(f) { f.classList.add('active'); });
+    } else if (btn.classList.contains('active') && allBtn.classList.contains('active')) {
+      allFilters.forEach(function(f) { f.classList.remove('active'); });
+      btn.classList.add('active');
+    } else {
+      btn.classList.toggle('active');
+      allBtn.classList.remove('active');
+      var anyLang = document.querySelector('.lb-lang-filter[data-lang]:not([data-lang="all"]).active');
+      if (!anyLang) {
+        allFilters.forEach(function(f) { f.classList.add('active'); });
+      } else {
+        var langFilters = document.querySelectorAll('.lb-lang-filter[data-lang]:not([data-lang="all"])');
+        var activeLangFilters = document.querySelectorAll('.lb-lang-filter[data-lang]:not([data-lang="all"]).active');
+        if (langFilters.length === activeLangFilters.length) allBtn.classList.add('active');
+      }
+    }
+    applyFilters();
+  });
+});
+
+document.querySelector('.lb-search-input').addEventListener('input', function() {
+  applyFilters();
+});
+
+/* Row click — popup */
+function formatNumber(n) {
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+document.addEventListener('click', function(e) {
+  var row = e.target.closest('.lb-row:not(.lb-header)');
+  if (!row) return;
+
+  var name = row.dataset.name;
+  var lang = row.dataset.lang;
+  var desc = row.dataset.desc || '';
+  var repo = row.dataset.repo || '';
+  var rps = row.querySelector('.lb-rps').textContent;
+  var conns = row.querySelector('.lb-conns').textContent;
+  var cpu = row.querySelectorAll('.lb-stat')[0].textContent;
+  var mem = row.querySelectorAll('.lb-stat')[1].textContent;
+  var avgLat = row.querySelectorAll('.lb-stat')[2].textContent;
+  var p99 = row.querySelectorAll('.lb-stat')[3].textContent;
+
+  var repoHtml = repo ? '<a class="lb-popup-link" href="' + repo + '" target="_blank" rel="noreferrer">View source &rarr;</a>' : '';
+
+  var overlay = document.createElement('div');
+  overlay.className = 'lb-overlay';
+  overlay.innerHTML =
+    '<div class="lb-popup">' +
+      '<button class="lb-popup-close" aria-label="Close">&times;</button>' +
+      '<div class="lb-popup-name">' + name + '</div>' +
+      '<div class="lb-popup-lang">' + lang + '</div>' +
+      '<div class="lb-popup-desc">' + desc + '</div>' +
+      '<div class="lb-popup-stats">' +
+        '<div><div class="lb-popup-stat-label">Req/s</div><div class="lb-popup-stat-value">' + rps + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">Connections</div><div class="lb-popup-stat-value">' + conns + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">Avg Latency</div><div class="lb-popup-stat-value">' + avgLat + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">P99 Latency</div><div class="lb-popup-stat-value">' + p99 + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">CPU</div><div class="lb-popup-stat-value">' + cpu + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">Memory</div><div class="lb-popup-stat-value">' + mem + '</div></div>' +
+      '</div>' +
+      repoHtml +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  function close() { overlay.remove(); }
+  overlay.querySelector('.lb-popup-close').addEventListener('click', close);
+  overlay.addEventListener('click', function(ev) { if (ev.target === overlay) close(); });
+  document.addEventListener('keydown', function handler(ev) {
+    if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', handler); }
+  });
+});
 </script>

@@ -1,0 +1,6 @@
+{
+  "display_name": "ringzero",
+  "language": "C",
+  "description": "Custom C HTTP server built on io_uring with a multi-reactor architecture. No epoll, no thread-per-connection.",
+  "repo": "https://github.com/MDA2AV/ringzero"
+}
