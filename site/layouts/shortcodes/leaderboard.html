@@ -228,6 +228,16 @@ html.dark .lb-pill-stripped {
   border-color: rgba(245, 158, 11, 0.3);
 }
 
+/* Sortable headers */
+.lb-sortable { cursor: pointer; user-select: none; }
+.lb-sortable:hover { color: #3b82f6 !important; }
+.lb-sortable::after { content: ' \21C5'; font-size: 0.6rem; opacity: 0.3; }
+.lb-sortable.sort-asc::after { content: ' \25B2'; opacity: 0.8; color: #3b82f6; }
+.lb-sortable.sort-desc::after { content: ' \25BC'; opacity: 0.8; color: #3b82f6; }
+html.dark .lb-sortable:hover { color: #60a5fa !important; }
+html.dark .lb-sortable.sort-asc::after { color: #60a5fa; }
+html.dark .lb-sortable.sort-desc::after { color: #60a5fa; }
+
 /* Table */
 .lb { width: 100%; font-family: inherit; }
 .lb-row {
@@ -439,12 +449,12 @@ html.dark .lb-filters-toggle:hover .lb-toggle-icon { color: #60a5fa; }
         <div title="realistic = production-ready framework, stripped = custom bare-metal implementation">Type</div>
         <div title="Number of concurrent connections maintained by the load generator" style="text-align:right">Conn</div>
         {{ if $isReconn }}<div title="Total TCP connections established during the benchmark (reconnects)" style="text-align:right">TCP Conn</div>{{ end }}
-        <div title="Requests per second — higher is better" style="text-align:right">Req/s</div>
+        <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
         <div></div>
-        <div title="Average CPU usage of the server container during the benchmark" style="text-align:right">CPU</div>
-        <div title="Peak memory usage of the server container" style="text-align:right">Mem</div>
-        <div title="Average request latency — lower is better" style="text-align:right">Avg Latency</div>
-        <div title="99th percentile latency — lower is better" style="text-align:right">P99</div>
+        <div class="lb-sortable" data-sort="cpu" title="Average CPU usage of the server container during the benchmark" style="text-align:right">CPU</div>
+        <div class="lb-sortable" data-sort="mem" title="Peak memory usage of the server container" style="text-align:right">Mem</div>
+        <div class="lb-sortable" data-sort="avglat" title="Average request latency — lower is better" style="text-align:right">Avg Lat</div>
+        <div class="lb-sortable" data-sort="p99" title="99th percentile latency — lower is better" style="text-align:right">P99</div>
       </div>
     </div>
   </div>
@@ -462,12 +472,12 @@ html.dark .lb-filters-toggle:hover .lb-toggle-icon { color: #60a5fa; }
       <div title="realistic = production-ready framework, stripped = custom bare-metal implementation">Type</div>
       <div title="Number of concurrent connections maintained by the load generator" style="text-align:right">Conn</div>
       {{ if $isReconn }}<div title="Total TCP connections established during the benchmark (reconnects)" style="text-align:right">TCP Conn</div>{{ end }}
-      <div title="Requests per second — higher is better" style="text-align:right">Req/s</div>
+      <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
       <div></div>
-      <div title="Average CPU usage of the server container during the benchmark" style="text-align:right">CPU</div>
-      <div title="Peak memory usage of the server container" style="text-align:right">Mem</div>
-      <div title="Average request latency — lower is better" style="text-align:right">Avg Latency</div>
-      <div title="99th percentile latency — lower is better" style="text-align:right">P99</div>
+      <div class="lb-sortable" data-sort="cpu" title="Average CPU usage of the server container during the benchmark" style="text-align:right">CPU</div>
+      <div class="lb-sortable" data-sort="mem" title="Peak memory usage of the server container" style="text-align:right">Mem</div>
+      <div class="lb-sortable" data-sort="avglat" title="Average request latency — lower is better" style="text-align:right">Avg Lat</div>
+      <div class="lb-sortable" data-sort="p99" title="99th percentile latency — lower is better" style="text-align:right">P99</div>
     </div>
     {{ $results := sort $data "rps" "desc" }}
     {{ $maxRps := 0 }}
@@ -674,6 +684,87 @@ document.querySelectorAll('.lb-type-filter').forEach(function(btn) {
   btn.addEventListener('click', function() {
     btn.classList.toggle('active');
     applyFilters();
+  });
+});
+
+/* Column sorting */
+function parseSortValue(row, key) {
+  var isReconn = row.classList.contains('lb-row-reconn');
+  var offset = isReconn ? 1 : 0;
+  var stats = row.querySelectorAll('.lb-stat');
+  if (key === 'rps') return Number(row.dataset.rps);
+  var text = '';
+  switch (key) {
+    case 'cpu': text = stats[offset] ? stats[offset].textContent.trim() : ''; break;
+    case 'mem': text = stats[offset + 1] ? stats[offset + 1].textContent.trim() : ''; break;
+    case 'avglat': text = stats[offset + 2] ? stats[offset + 2].textContent.trim() : ''; break;
+    case 'p99': text = stats[offset + 3] ? stats[offset + 3].textContent.trim() : ''; break;
+  }
+  if (!text || text === '\u2014') return key === 'rps' ? -Infinity : Infinity;
+  if (key === 'cpu') return parseFloat(text) || 0;
+  if (key === 'mem') {
+    var m = text.match(/([\d.]+)\s*(KiB|MiB|GiB|KB|MB|GB)/i);
+    if (!m) return 0;
+    var v = parseFloat(m[1]);
+    var u = m[2].toUpperCase();
+    if (u === 'GIB' || u === 'GB') v *= 1024;
+    if (u === 'KIB' || u === 'KB') v /= 1024;
+    return v;
+  }
+  /* latency */
+  var lm = text.match(/([\d.]+)\s*(us|ms|s)\b/i);
+  if (!lm) return Infinity;
+  var lv = parseFloat(lm[1]);
+  var lu = lm[2].toLowerCase();
+  if (lu === 'ms') lv *= 1000;
+  else if (lu === 's') lv *= 1000000;
+  return lv;
+}
+
+document.querySelectorAll('.lb-sortable').forEach(function(hdr) {
+  hdr.addEventListener('click', function() {
+    var lb = hdr.closest('.lb');
+    var key = hdr.dataset.sort;
+    var wasAsc = hdr.classList.contains('sort-asc');
+    var wasDesc = hdr.classList.contains('sort-desc');
+
+    lb.querySelectorAll('.lb-sortable').forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+
+    var dir;
+    if (!wasAsc && !wasDesc) dir = (key === 'rps') ? 'desc' : 'asc';
+    else if (wasDesc) dir = 'asc';
+    else dir = 'desc';
+    hdr.classList.add('sort-' + dir);
+
+    var rows = Array.from(lb.querySelectorAll('.lb-row:not(.lb-header)'));
+    rows.sort(function(a, b) {
+      var va = parseSortValue(a, key);
+      var vb = parseSortValue(b, key);
+      return dir === 'asc' ? va - vb : vb - va;
+    });
+    rows.forEach(function(row) { lb.appendChild(row); });
+
+    /* Re-rank visible rows */
+    var visibleIdx = 0;
+    var maxRps = 0;
+    rows.forEach(function(row) {
+      if (!row.classList.contains('lb-hidden')) {
+        var rps = Number(row.dataset.rps);
+        if (rps > maxRps) maxRps = rps;
+      }
+    });
+    rows.forEach(function(row) {
+      if (row.classList.contains('lb-hidden')) return;
+      var rankEl = row.querySelector('.lb-rank');
+      rankEl.textContent = visibleIdx < 3 ? medals[visibleIdx] : String(visibleIdx + 1);
+      var bar = row.querySelector('.lb-bar');
+      barClasses.forEach(function(c) { bar.classList.remove(c); });
+      bar.classList.add(barClasses[Math.min(visibleIdx, barClasses.length - 1)]);
+      var rps = Number(row.dataset.rps);
+      var pct = maxRps > 0 ? (rps / maxRps * 100) : 0;
+      bar.style.width = pct.toFixed(1) + '%';
+      visibleIdx++;
+    });
   });
 });
 
