@@ -1,5 +1,5 @@
 ---
-title: Load Generator
+title: gcannon
 ---
 
 gcannon is a custom HTTP load generator built specifically for HttpArena. It uses Linux's `io_uring` interface for high-performance, zero-copy networking, ensuring the benchmarking tool itself never becomes the bottleneck.

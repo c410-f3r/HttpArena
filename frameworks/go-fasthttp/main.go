@@ -56,7 +56,7 @@ func loadDataset() {
 	json.Unmarshal(data, &dataset)
 }
 
-func benchHandler(ctx *fasthttp.RequestCtx) {
+func baseline11Handler(ctx *fasthttp.RequestCtx) {
 	sum := 0
 
 	ctx.QueryArgs().VisitAll(func(key, value []byte) {
@@ -116,7 +116,7 @@ func main() {
 		case "/json":
 			processHandler(ctx)
 		default:
-			benchHandler(ctx)
+			baseline11Handler(ctx)
 		}
 	}
 	server := &fasthttp.Server{

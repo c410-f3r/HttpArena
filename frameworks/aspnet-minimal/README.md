@@ -11,8 +11,8 @@ Minimal ASP.NET Core HTTP server using .NET 10 preview. Uses the built-in Kestre
 ## Endpoints
 
 - `GET /pipeline` — returns `ok` (plain text)
-- `GET /bench?a=N&b=N` — sums query parameter values
-- `POST /bench?a=N&b=N` — sums query parameters + request body (Content-Length and chunked)
+- `GET /baseline11?a=N&b=N` — sums query parameter values
+- `POST /baseline11?a=N&b=N` — sums query parameters + request body (Content-Length and chunked)
 
 ## Notes
 

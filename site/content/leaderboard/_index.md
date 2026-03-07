@@ -15,18 +15,11 @@ article { max-width: 100% !important; }
 <div id="http-version-tabs" style="display:flex; gap:0.5rem; margin-top:0.75rem;">
 <span class="http-ver active" data-ver="h1" style="display:inline-block; padding:0.3rem 0.85rem; font-size:0.8rem; font-weight:600; border-radius:4px; background:rgba(59,130,246,0.12); color:#2563eb; border:1.5px solid #3b82f6; cursor:pointer; transition:all 0.15s ease;">HTTP/1.1</span>
 <span class="http-ver" data-ver="h2" style="display:inline-block; padding:0.3rem 0.85rem; font-size:0.8rem; font-weight:600; border-radius:4px; background:rgba(0,0,0,0.03); color:#94a3b8; border:1.5px solid #e2e8f0; cursor:pointer; transition:all 0.15s ease;">HTTP/2</span>
-<span class="http-ver" data-ver="h3" style="display:inline-block; padding:0.3rem 0.85rem; font-size:0.8rem; font-weight:600; border-radius:4px; background:rgba(0,0,0,0.03); color:#94a3b8; border:1.5px solid #e2e8f0; cursor:pointer; transition:all 0.15s ease;">HTTP/3</span>
-</div>
-<div id="http-coming-soon" style="display:none; margin-top:1rem; padding:1.25rem 1.5rem; border-radius:8px; border:1.5px solid #e2e8f0; background:rgba(255,255,255,0.85); box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-<div style="font-size:1rem; font-weight:700; color:#1e293b; margin-bottom:0.35rem;" id="http-coming-title">HTTP/2 benchmarks</div>
-<div style="font-size:0.85rem; color:#64748b; line-height:1.6;">Not yet available. We plan to add <span id="http-coming-ver">HTTP/2</span> benchmarking support in a future update. Want to help? <a href="https://github.com/MDA2AV/HttpArena" style="color:#3b82f6; font-weight:600; text-decoration:none;">Contribute on GitHub</a>.</div>
+<span class="http-ver" data-ver="composite" style="display:inline-block; padding:0.3rem 0.85rem; font-size:0.8rem; font-weight:600; border-radius:4px; background:rgba(0,0,0,0.03); color:#94a3b8; border:1.5px solid #e2e8f0; cursor:pointer; transition:all 0.15s ease;">Composite</span>
 </div>
 <script>
 (function() {
   var tabs = document.querySelectorAll('.http-ver');
-  var card = document.getElementById('http-coming-soon');
-  var leaderboard = document.querySelector('.lb-card');
-  var labels = { h2: 'HTTP/2', h3: 'HTTP/3' };
   tabs.forEach(function(tab) {
     tab.addEventListener('click', function() {
       tabs.forEach(function(t) {
@@ -40,16 +33,9 @@ article { max-width: 100% !important; }
       tab.style.borderColor = '#3b82f6';
       tab.classList.add('active');
       var ver = tab.dataset.ver;
-      var wrapper = document.getElementById('lb-wrapper');
-      if (ver === 'h1') {
-        card.style.display = 'none';
-        wrapper.style.display = '';
-      } else {
-        card.style.display = 'block';
-        document.getElementById('http-coming-title').textContent = labels[ver] + ' benchmarks';
-        document.getElementById('http-coming-ver').textContent = labels[ver];
-        wrapper.style.display = 'none';
-      }
+      document.getElementById('lb-composite-wrapper').style.display = ver === 'composite' ? '' : 'none';
+      document.getElementById('lb-wrapper').style.display = ver === 'h1' ? '' : 'none';
+      document.getElementById('lb-h2-wrapper').style.display = ver === 'h2' ? '' : 'none';
     });
   });
 })();
@@ -58,4 +44,12 @@ article { max-width: 100% !important; }
 
 <div id="lb-wrapper">
 {{< leaderboard >}}
+</div>
+
+<div id="lb-h2-wrapper" style="display:none;">
+{{< leaderboard-h2 >}}
+</div>
+
+<div id="lb-composite-wrapper" style="display:none;">
+{{< leaderboard-composite >}}
 </div>

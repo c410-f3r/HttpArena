@@ -11,8 +11,8 @@ HTTP server built with [fasthttp](https://github.com/valyala/fasthttp), a high-p
 ## Endpoints
 
 - `GET /pipeline` — returns `ok` (plain text)
-- `GET /bench?a=N&b=N` — sums query parameter values
-- `POST /bench?a=N&b=N` — sums query parameters + request body (Content-Length and chunked)
+- `GET /baseline11?a=N&b=N` — sums query parameter values
+- `POST /baseline11?a=N&b=N` — sums query parameters + request body (Content-Length and chunked)
 
 ## Notes
 

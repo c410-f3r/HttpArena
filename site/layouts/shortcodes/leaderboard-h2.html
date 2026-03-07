@@ -1,0 +1,333 @@
+{{ $profiles := slice
+  (dict "id" "baseline-h2" "label" "Baseline (HTTP/2)" "conns" (slice 64 256 1024) "desc" "Same workload as the HTTP/1.1 baseline — <code>GET /baseline2</code> with query parameter parsing — but over encrypted HTTP/2 connections using TLS + ALPN. Benchmarked with <code>h2load</code> instead of gcannon. Measures how efficiently a framework handles HTTP/2 multiplexing and TLS overhead.")
+}}
+
+{{/* Collect all unique languages across all data files */}}
+{{ $langs := slice }}
+{{ range $profiles }}
+  {{ $pid := .id }}
+  {{ range .conns }}
+    {{ $key := printf "%s-%d" $pid . }}
+    {{ $data := index site.Data $key }}
+    {{ if $data }}
+      {{ range $data }}
+        {{ $l := .language | default "" }}
+        {{ if and $l (not (in $langs $l)) }}
+          {{ $langs = $langs | append $l }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+{{ $langs = sort $langs }}
+
+<div class="lb-card">
+  <div class="lb-card-title lb-filters-toggle-h2" style="cursor:pointer;">Filters <span class="lb-toggle-icon">+</span> <span class="lb-filters-hint lb-toggle-hint">(expand)</span></div>
+  <div class="lb-filters-body-h2" style="display:none;">
+    <div class="lb-filters" style="margin-top:0;">
+      <span class="lb-filters-label">Lang</span>
+      <span class="lb-filters-hint">(Toggle)</span>
+      <div class="lb-lang-filter active" data-lang="all">All</div>
+      {{ range $langs }}
+      <div class="lb-lang-filter active" data-lang="{{ . }}">{{ . }}</div>
+      {{ end }}
+    </div>
+    <div class="lb-filters" style="margin-top:0.5rem;">
+      <span class="lb-filters-label">Type</span>
+      <span class="lb-filters-hint">(Toggle)</span>
+      <div class="lb-type-filter lb-type-realistic active" data-type="realistic">Realistic</div>
+      <div class="lb-type-filter lb-type-stripped active" data-type="stripped">Stripped</div>
+    </div>
+    <div class="lb-search">
+      <span class="lb-filters-label">Filter</span>
+      <input type="text" class="lb-search-input" placeholder="e.g. aspnet-minimal, C#" />
+    </div>
+  </div>
+</div>
+
+{{ range $i, $p := $profiles }}
+<div class="lb-panel-h2 active" data-panel="{{ $p.id }}" data-conns="{{ delimit $p.conns "," }}" style="margin-top:1rem;">
+  <div class="lb-card">
+  <div class="lb-card-title">Results</div>
+
+  <div class="lb-desc">{{ $p.desc | safeHTML }}</div>
+
+  <div class="lb-filters" style="margin:0 0 0 0;">
+    <span class="lb-filters-label">Conn</span>
+    <div class="lb-conn-tabs" data-for="{{ $p.id }}">
+      <div class="lb-conn-tab active" data-conns="best">Best</div>
+    {{ range $ci, $c := $p.conns }}
+      <div class="lb-conn-tab" data-conns="{{ $c }}">{{ $c }}</div>
+    {{ end }}
+    </div>
+  </div>
+  <div style="font-size:0.75rem; color:#94a3b8; margin:0 0 0.75rem 0;">Click a row to expand details</div>
+
+  <div class="lb-conn-panel-h2 active" data-profile="{{ $p.id }}" data-conns="best">
+    <div class="lb">
+      <div class="lb-row lb-header">
+        <div title="Rank by requests per second">#</div>
+        <div title="HTTP server framework name">Framework</div>
+        <div title="Programming language">Lang</div>
+        <div title="realistic = production-ready framework, stripped = custom bare-metal implementation">Type</div>
+        <div title="Number of concurrent connections" style="text-align:right">Conn</div>
+        <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
+        <div></div>
+        <div class="lb-sortable" data-sort="cpu" title="Average CPU usage" style="text-align:right">CPU</div>
+        <div class="lb-sortable" data-sort="mem" title="Peak memory usage" style="text-align:right">Mem</div>
+        <div class="lb-sortable" data-sort="avglat" title="Average request latency" style="text-align:right">Avg Lat</div>
+        <div class="lb-sortable" data-sort="p99" title="99th percentile latency" style="text-align:right">P99</div>
+      </div>
+    </div>
+  </div>
+
+  {{ range $ci, $c := $p.conns }}
+  {{ $key := printf "%s-%d" $p.id $c }}
+  {{ $data := index site.Data $key }}
+  <div class="lb-conn-panel-h2" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
+  {{ if $data }}
+  <div class="lb">
+    <div class="lb-row lb-header">
+      <div title="Rank by requests per second">#</div>
+      <div title="HTTP server framework name">Framework</div>
+      <div title="Programming language">Lang</div>
+      <div title="realistic = production-ready framework, stripped = custom bare-metal implementation">Type</div>
+      <div title="Number of concurrent connections" style="text-align:right">Conn</div>
+      <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
+      <div></div>
+      <div class="lb-sortable" data-sort="cpu" title="Average CPU usage" style="text-align:right">CPU</div>
+      <div class="lb-sortable" data-sort="mem" title="Peak memory usage" style="text-align:right">Mem</div>
+      <div class="lb-sortable" data-sort="avglat" title="Average request latency" style="text-align:right">Avg Lat</div>
+      <div class="lb-sortable" data-sort="p99" title="99th percentile latency" style="text-align:right">P99</div>
+    </div>
+    {{ $results := sort $data "rps" "desc" }}
+    {{ $maxRps := 0 }}
+    {{ range $results }}{{ if gt .rps $maxRps }}{{ $maxRps = .rps }}{{ end }}{{ end }}
+    {{ range $j, $r := $results }}
+    {{ $pct := mul (div (float $r.rps) (float $maxRps)) 100.0 }}
+    {{ $meta := index site.Data.frameworks $r.framework }}
+    <div class="lb-row" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-type="{{ with $meta }}{{ .type | default "realistic" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}">
+      {{ $ftype := "realistic" }}{{ with $meta }}{{ $ftype = .type | default "realistic" }}{{ end }}
+      <div class="lb-rank">{{ if eq $j 0 }}🥇{{ else if eq $j 1 }}🥈{{ else if eq $j 2 }}🥉{{ else }}{{ add $j 1 }}{{ end }}</div>
+      <div class="lb-name">{{ $r.framework }}</div>
+      <div class="lb-lang">{{ $r.language | default "—" }}</div>
+      <div><span class="lb-pill lb-pill-{{ $ftype }}">{{ $ftype }}</span></div>
+      <div class="lb-conns">{{ lang.FormatNumber 0 $r.connections }}</div>
+      <div class="lb-rps">{{ lang.FormatNumber 0 $r.rps }}</div>
+      <div class="lb-bar-cell">
+        <div class="lb-bar lb-bar-{{ add $j 1 }}" style="width: {{ printf "%.1f" $pct }}%"></div>
+      </div>
+      <div class="lb-stat">{{ $r.cpu | default "—" }}</div>
+      <div class="lb-stat">{{ $r.memory | default "—" }}</div>
+      <div class="lb-stat">{{ $r.avg_latency }}</div>
+      <div class="lb-stat">{{ $r.p99_latency }}</div>
+    </div>
+    {{ end }}
+  </div>
+  {{ else }}
+  <p><em>No results yet for this configuration.</em></p>
+  {{ end }}
+  </div>
+  {{ end }}
+  </div>
+</div>
+{{ end }}
+
+<script>
+(function() {
+var medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
+var barClasses = ['lb-bar-1', 'lb-bar-2', 'lb-bar-3', 'lb-bar-4', 'lb-bar-5'];
+var w = document.getElementById('lb-h2-wrapper');
+
+/* Build "Best" panels */
+function buildBest() {
+  w.querySelectorAll('.lb-conn-panel-h2[data-conns="best"]').forEach(function(bestPanel) {
+    var parentPanel = bestPanel.closest('.lb-panel-h2');
+    var connPanels = parentPanel.querySelectorAll('.lb-conn-panel-h2:not([data-conns="best"])');
+    var best = {};
+    connPanels.forEach(function(cp) {
+      cp.querySelectorAll('.lb-row:not(.lb-header)').forEach(function(row) {
+        var name = row.dataset.name;
+        var rps = Number(row.dataset.rps);
+        if (!best[name] || rps > best[name].rps) {
+          best[name] = { rps: rps, row: row };
+        }
+      });
+    });
+    var lb = bestPanel.querySelector('.lb');
+    lb.querySelectorAll('.lb-row:not(.lb-header)').forEach(function(r) { r.remove(); });
+    var entries = Object.values(best).sort(function(a, b) { return b.rps - a.rps; });
+    entries.forEach(function(entry, idx) {
+      var clone = entry.row.cloneNode(true);
+      clone.dataset.rps = entry.rps;
+      clone.querySelector('.lb-rank').textContent = idx < 3 ? medals[idx] : String(idx + 1);
+      var bar = clone.querySelector('.lb-bar');
+      barClasses.forEach(function(c) { bar.classList.remove(c); });
+      bar.classList.add(barClasses[Math.min(idx, barClasses.length - 1)]);
+      bar.style.width = (entries[0].rps > 0 ? (entry.rps / entries[0].rps * 100) : 0).toFixed(1) + '%';
+      lb.appendChild(clone);
+    });
+  });
+}
+buildBest();
+
+/* Filters toggle */
+w.querySelector('.lb-filters-toggle-h2').addEventListener('click', function() {
+  var body = w.querySelector('.lb-filters-body-h2');
+  var icon = this.querySelector('.lb-toggle-icon');
+  var hint = this.querySelector('.lb-toggle-hint');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    icon.textContent = '\u2212';
+    hint.textContent = '(minimize)';
+  } else {
+    body.style.display = 'none';
+    icon.textContent = '+';
+    hint.textContent = '(expand)';
+  }
+});
+
+/* Conn tabs */
+w.querySelectorAll('.lb-conn-tab').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var panel = btn.closest('.lb-panel-h2');
+    panel.querySelectorAll('.lb-conn-tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    panel.querySelectorAll('.lb-conn-panel-h2').forEach(function(cp) { cp.classList.remove('active'); });
+    panel.querySelector('.lb-conn-panel-h2[data-conns="' + btn.dataset.conns + '"]').classList.add('active');
+    applyFilters();
+  });
+});
+
+function applyFilters() {
+  var filters = w.querySelectorAll('.lb-lang-filter[data-lang]:not([data-lang="all"])');
+  var activeLangs = new Set();
+  filters.forEach(function(f) { if (f.classList.contains('active')) activeLangs.add(f.dataset.lang); });
+
+  var showStripped = w.querySelector('.lb-type-filter[data-type="stripped"]').classList.contains('active');
+  var showRealistic = w.querySelector('.lb-type-filter[data-type="realistic"]').classList.contains('active');
+
+  var searchVal = w.querySelector('.lb-search-input').value.toLowerCase().trim();
+  var terms = searchVal ? searchVal.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+
+  buildBest();
+
+  w.querySelectorAll('.lb-conn-panel-h2').forEach(function(connPanel) {
+    var rows = connPanel.querySelectorAll('.lb-row:not(.lb-header)');
+    var visibleIdx = 0;
+    var maxRps = 0;
+    rows.forEach(function(row) {
+      var lang = row.dataset.lang;
+      var name = row.dataset.name.toLowerCase();
+      var type = row.dataset.type || 'realistic';
+      var langMatch = activeLangs.has(lang);
+      var typeMatch = (type === 'stripped' && showStripped) || (type !== 'stripped' && showRealistic);
+      var textMatch = terms.length === 0 || terms.some(function(t) {
+        return name.indexOf(t) !== -1 || lang.toLowerCase().indexOf(t) !== -1;
+      });
+      if (langMatch && typeMatch && textMatch) {
+        row.classList.remove('lb-hidden');
+        var rps = Number(row.dataset.rps);
+        if (rps > maxRps) maxRps = rps;
+      } else {
+        row.classList.add('lb-hidden');
+      }
+    });
+    rows.forEach(function(row) {
+      if (row.classList.contains('lb-hidden')) return;
+      row.querySelector('.lb-rank').textContent = visibleIdx < 3 ? medals[visibleIdx] : String(visibleIdx + 1);
+      var bar = row.querySelector('.lb-bar');
+      barClasses.forEach(function(c) { bar.classList.remove(c); });
+      bar.classList.add(barClasses[Math.min(visibleIdx, barClasses.length - 1)]);
+      bar.style.width = (maxRps > 0 ? (Number(row.dataset.rps) / maxRps * 100) : 0).toFixed(1) + '%';
+      visibleIdx++;
+    });
+  });
+}
+
+/* Language filters */
+w.querySelectorAll('.lb-lang-filter').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var lang = btn.dataset.lang;
+    var allFilters = w.querySelectorAll('.lb-lang-filter');
+    var allBtn = w.querySelector('.lb-lang-filter[data-lang="all"]');
+    if (lang === 'all') {
+      allFilters.forEach(function(f) { f.classList.add('active'); });
+    } else if (btn.classList.contains('active') && allBtn.classList.contains('active')) {
+      allFilters.forEach(function(f) { f.classList.remove('active'); });
+      btn.classList.add('active');
+    } else {
+      btn.classList.toggle('active');
+      allBtn.classList.remove('active');
+      if (!w.querySelector('.lb-lang-filter[data-lang]:not([data-lang="all"]).active')) {
+        allFilters.forEach(function(f) { f.classList.add('active'); });
+      } else {
+        var total = w.querySelectorAll('.lb-lang-filter[data-lang]:not([data-lang="all"])').length;
+        var active = w.querySelectorAll('.lb-lang-filter[data-lang]:not([data-lang="all"]).active').length;
+        if (total === active) allBtn.classList.add('active');
+      }
+    }
+    applyFilters();
+  });
+});
+
+w.querySelector('.lb-search-input').addEventListener('input', function() { applyFilters(); });
+
+w.querySelectorAll('.lb-type-filter').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    btn.classList.toggle('active');
+    applyFilters();
+  });
+});
+
+/* Row click — popup */
+w.addEventListener('click', function(e) {
+  var row = e.target.closest('.lb-row:not(.lb-header)');
+  if (!row) return;
+  var name = row.dataset.name;
+  var lang = row.dataset.lang;
+  var desc = row.dataset.desc || '';
+  var repo = row.dataset.repo || '';
+  var rps = row.querySelector('.lb-rps').textContent;
+  var conns = row.querySelector('.lb-conns').textContent;
+  var stats = row.querySelectorAll('.lb-stat');
+  var cpu = stats[0].textContent;
+  var mem = stats[1].textContent;
+  var avgLat = stats[2].textContent;
+  var p99 = stats[3].textContent;
+  var connPanel = row.closest('.lb-conn-panel-h2');
+  var profile = connPanel ? connPanel.dataset.profile : '';
+  var connCount = connPanel ? connPanel.dataset.conns : '';
+  if (connCount === 'best') connCount = row.querySelector('.lb-conns').textContent.replace(/,/g, '').trim();
+  var baseUrl = '{{ "logs" | relURL }}';
+  var repoHtml = repo ? '<a class="lb-popup-link" href="' + repo + '" target="_blank" rel="noreferrer">View source &rarr;</a>' : '';
+  var benchHtml = '<a class="lb-popup-link" href="https://github.com/MDA2AV/HttpArena/tree/main/frameworks/' + encodeURIComponent(name) + '" target="_blank" rel="noreferrer">Benchmark implementation &rarr;</a>';
+  var logHtml = (profile && connCount) ? '<a class="lb-popup-link" href="' + baseUrl + '/' + profile + '/' + connCount + '/' + encodeURIComponent(name) + '.log" target="_blank" rel="noreferrer">Docker logs &rarr;</a>' : '';
+  var overlay = document.createElement('div');
+  overlay.className = 'lb-overlay';
+  overlay.innerHTML =
+    '<div class="lb-popup">' +
+      '<button class="lb-popup-close" aria-label="Close">&times;</button>' +
+      '<div class="lb-popup-name">' + name + '</div>' +
+      '<div class="lb-popup-lang">' + lang + ' (HTTP/2)</div>' +
+      '<div class="lb-popup-desc">' + desc + '</div>' +
+      '<div class="lb-popup-stats">' +
+        '<div><div class="lb-popup-stat-label">Req/s</div><div class="lb-popup-stat-value">' + rps + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">Connections</div><div class="lb-popup-stat-value">' + conns + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">Avg Latency</div><div class="lb-popup-stat-value">' + avgLat + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">P99 Latency</div><div class="lb-popup-stat-value">' + p99 + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">CPU</div><div class="lb-popup-stat-value">' + cpu + '</div></div>' +
+        '<div><div class="lb-popup-stat-label">Memory</div><div class="lb-popup-stat-value">' + mem + '</div></div>' +
+      '</div>' +
+      '<div class="lb-popup-links">' + repoHtml + benchHtml + logHtml + '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  function close() { overlay.remove(); }
+  overlay.querySelector('.lb-popup-close').addEventListener('click', close);
+  overlay.addEventListener('click', function(ev) { if (ev.target === overlay) close(); });
+  document.addEventListener('keydown', function handler(ev) {
+    if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', handler); }
+  });
+});
+})();
+</script>
