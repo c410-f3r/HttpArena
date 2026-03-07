@@ -1,8 +1,34 @@
 using System.Text.Json;
+using System.Security.Cryptography.X509Certificates;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://0.0.0.0:8080");
 builder.Logging.ClearProviders();
+
+var certPath = Environment.GetEnvironmentVariable("TLS_CERT") ?? "/certs/server.crt";
+var keyPath = Environment.GetEnvironmentVariable("TLS_KEY") ?? "/certs/server.key";
+var hasCert = File.Exists(certPath) && File.Exists(keyPath);
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    // HTTP/1.1 on port 8080
+    options.ListenAnyIP(8080, lo =>
+    {
+        lo.Protocols = HttpProtocols.Http1;
+    });
+
+    // HTTPS + HTTP/2 on port 8443
+    if (hasCert)
+    {
+        options.ListenAnyIP(8443, lo =>
+        {
+            lo.Protocols = HttpProtocols.Http2;
+            lo.UseHttps(X509Certificate2.CreateFromPemFile(certPath, keyPath));
+        });
+
+}
+});
+
 var app = builder.Build();
 
 app.Use(async (ctx, next) =>
@@ -22,13 +48,13 @@ if (File.Exists(datasetPath))
 
 app.MapGet("/pipeline", () => Results.Text("ok"));
 
-app.MapGet("/bench", (HttpRequest req) =>
+app.MapGet("/baseline11", (HttpRequest req) =>
 {
     int sum = SumQuery(req);
     return Results.Text(sum.ToString());
 });
 
-app.MapPost("/bench", async (HttpRequest req) =>
+app.MapPost("/baseline11", async (HttpRequest req) =>
 {
     int sum = SumQuery(req);
 
@@ -39,6 +65,12 @@ app.MapPost("/bench", async (HttpRequest req) =>
     if (int.TryParse(body, out int b))
         sum += b;
 
+    return Results.Text(sum.ToString());
+});
+
+app.MapGet("/baseline2", (HttpRequest req) =>
+{
+    int sum = SumQuery(req);
     return Results.Text(sum.ToString());
 });
 

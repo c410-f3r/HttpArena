@@ -11,8 +11,8 @@ Custom C HTTP server built on Linux's `io_uring` interface. Uses a multi-reactor
 ## Endpoints
 
 - `GET /pipeline` — returns `ok`, handles pipelined requests by scanning for multiple `\r\n\r\n` boundaries in a single read buffer
-- `GET /bench?a=N&b=N` — sums query parameter values
-- `POST /bench?a=N&b=N` — sums query parameters + request body (Content-Length and chunked)
+- `GET /baseline11?a=N&b=N` — sums query parameter values
+- `POST /baseline11?a=N&b=N` — sums query parameters + request body (Content-Length and chunked)
 
 ## Notes
 

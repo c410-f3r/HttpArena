@@ -57,8 +57,8 @@
 }
 .lb-panel { display: none; }
 .lb-panel.active { display: block; margin-top: 1rem; }
-.lb-conn-panel { display: none; }
-.lb-conn-panel.active { display: block; }
+.lb-conn-panel, .lb-conn-panel-h2 { display: none; }
+.lb-conn-panel.active, .lb-conn-panel-h2.active { display: block; }
 
 /* Connection count tabs */
 .lb-conn-tabs {
@@ -367,7 +367,7 @@ html.dark .lb-filters-toggle:hover .lb-toggle-icon { color: #60a5fa; }
 </style>
 
 {{ $profiles := slice
-  (dict "id" "baseline"     "label" "Baseline"              "conns" (slice 512 4096 16384) "desc" "Each connection sends one request at a time over persistent keep-alive connections with no CPU restrictions. Mixed GET and POST requests to <code>/bench</code> with query parameter parsing, Content-Length bodies, and chunked Transfer-Encoding. Best of 3 runs, 12 threads.")
+  (dict "id" "baseline"     "label" "Baseline"              "conns" (slice 512 4096 16384) "desc" "Each connection sends one request at a time over persistent keep-alive connections with no CPU restrictions. Mixed GET and POST requests to <code>/baseline11</code> with query parameter parsing, Content-Length bodies, and chunked Transfer-Encoding. Best of 3 runs, 12 threads.")
   (dict "id" "limited-conn" "label" "Short-lived Connection"     "conns" (slice 512 4096)       "desc" "Each connection is closed and re-established after 10 requests, forcing repeated TCP handshakes. Same mixed GET/POST workload as baseline. Measures how efficiently a framework handles connection setup and teardown — important for real-world scenarios where clients don't maintain long-lived connections.")
   (dict "id" "json"      "label" "JSON Processing"       "conns" (slice 4096 16384 32768)       "desc" "Each request hits <code>GET /json</code>. The server loads a 50-item dataset at startup, computes a derived <code>total</code> field per item, and returns the full result as a JSON response (~10 KB). Measures object allocation, JSON serialization performance, and framework response overhead — the typical workload of a real-world API.")
   (dict "id" "pipelined"    "label" "Pipelined (16)"        "conns" (slice 512 4096 16384) "desc" "16 HTTP requests are sent back-to-back on each connection before waiting for responses. Uses a lightweight <code>GET /pipeline</code> endpoint that returns a fixed response, isolating raw I/O and pipeline handling from application logic. Frameworks that batch pipelined requests from the read buffer gain a significant advantage.")

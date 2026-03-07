@@ -6,24 +6,28 @@ ROOT_DIR="$SCRIPT_DIR/.."
 cd "$ROOT_DIR"
 
 GCANNON="${GCANNON:-/home/diogo/Desktop/Socket/gcannon/gcannon}"
+H2LOAD="${H2LOAD:-h2load}"
 HARD_NOFILE=$(ulimit -Hn)
 ulimit -n "$HARD_NOFILE"
 THREADS=12
 DURATION=5s
 RUNS=3
 PORT=8080
+H2PORT=8443
 REQUESTS_DIR="$ROOT_DIR/requests"
 RESULTS_DIR="$ROOT_DIR/results"
+CERTS_DIR="$ROOT_DIR/certs"
 
 # Profile definitions: pipeline|req_per_conn|cpu_limit|connections|endpoint
-# endpoint: empty = /bench (raw), "json" = /json (GET), "pipeline" = /pipeline
+# endpoint: empty = /baseline11 (raw), "json" = /json (GET), "pipeline" = /pipeline, "h2" = /baseline2 (h2load)
 declare -A PROFILES=(
     [baseline]="1|0||512,4096,16384|"
     [pipelined]="16|0||512,4096,16384|pipeline"
     [limited-conn]="1|10||512,4096|"
     [json]="1|0||4096,16384,32768|json"
+    [baseline-h2]="1|0||64,256,1024|h2"
 )
-PROFILE_ORDER=(baseline pipelined limited-conn json)
+PROFILE_ORDER=(baseline pipelined limited-conn json baseline-h2)
 
 # Usage: benchmark.sh [framework] [profile]
 FRAMEWORK="${1:-}"
@@ -124,7 +128,7 @@ fi
 for profile in "${profiles_to_run[@]}"; do
     # Check if framework subscribes to this test
     if [ -n "$FRAMEWORK_TESTS" ]; then
-        if ! echo ",$FRAMEWORK_TESTS," | grep -q ",$profile,"; then
+        if ! echo ",$FRAMEWORK_TESTS," | grep -qF ",$profile,"; then
             echo "[skip] $FRAMEWORK does not subscribe to $profile"
             continue
         fi
@@ -156,16 +160,23 @@ for profile in "${profiles_to_run[@]}"; do
     if [ "$endpoint" = "json" ]; then
         docker_args+=(-v "$ROOT_DIR/data/dataset.json:/data/dataset.json:ro")
     fi
+    # Mount TLS certs for h2 profile
+    if [ "$endpoint" = "h2" ]; then
+        docker_args+=(-v "$CERTS_DIR:/certs:ro")
+    fi
     docker run "${docker_args[@]}" "$IMAGE_NAME"
 
     # Wait for server
     echo "[wait] Waiting for server..."
-    local_check_url="http://localhost:$PORT/bench?a=1&b=1"
-    if [ "$endpoint" = "json" ]; then
+    if [ "$endpoint" = "h2" ]; then
+        local_check_url="https://localhost:$H2PORT/baseline2?a=1&b=1"
+    elif [ "$endpoint" = "json" ]; then
         local_check_url="http://localhost:$PORT/json"
+    else
+        local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
     fi
     for i in $(seq 1 30); do
-        if curl -s -o /dev/null --max-time 2 "$local_check_url" 2>/dev/null; then
+        if curl -sk -o /dev/null --max-time 2 "$local_check_url" 2>/dev/null; then
             break
         fi
         if [ "$i" -eq 30 ]; then
@@ -176,8 +187,14 @@ for profile in "${profiles_to_run[@]}"; do
     done
     echo "[ready] Server is up"
 
-    # Build gcannon args based on profile endpoint
-    if [ "$endpoint" = "pipeline" ]; then
+    # Build load generator args based on profile endpoint
+    USE_H2LOAD=false
+    if [ "$endpoint" = "h2" ]; then
+        USE_H2LOAD=true
+        gc_args=("$H2LOAD"
+            "https://localhost:$H2PORT/baseline2?a=1&b=1"
+            -c "$CONNS" -m 100 -t "$THREADS" -D "$DURATION")
+    elif [ "$endpoint" = "pipeline" ]; then
         gc_args=("http://localhost:$PORT/pipeline"
             -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
     elif [ "$endpoint" = "json" ]; then
@@ -188,7 +205,7 @@ for profile in "${profiles_to_run[@]}"; do
             --raw "$REQUESTS_DIR/get.raw,$REQUESTS_DIR/post_cl.raw,$REQUESTS_DIR/post_chunked.raw"
             -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
     fi
-    if [ "$req_per_conn" -gt 0 ] 2>/dev/null; then
+    if [ "$USE_H2LOAD" = "false" ] && [ "$req_per_conn" -gt 0 ] 2>/dev/null; then
         gc_args+=(-r "$req_per_conn")
     fi
 
@@ -208,7 +225,11 @@ for profile in "${profiles_to_run[@]}"; do
         done &
         stats_pid=$!
 
-        output=$("$GCANNON" "${gc_args[@]}" 2>&1) || true
+        if [ "$USE_H2LOAD" = "true" ]; then
+            output=$("${gc_args[@]}" 2>&1) || true
+        else
+            output=$("$GCANNON" "${gc_args[@]}" 2>&1) || true
+        fi
 
         kill "$stats_pid" 2>/dev/null; wait "$stats_pid" 2>/dev/null || true
 
@@ -219,10 +240,16 @@ for profile in "${profiles_to_run[@]}"; do
         echo "$output"
         echo "  CPU: $avg_cpu | Mem: $peak_mem"
 
-        req_count=$(echo "$output" | grep -oP '(\d+) requests in' | grep -oP '\d+' || echo "0")
-        duration_secs=$(echo "$output" | grep -oP 'requests in ([\d.]+)s' | grep -oP '[\d.]+' || echo "1")
-        rps_int=$(echo "$req_count / $duration_secs" | bc | cut -d. -f1)
-        rps_int=${rps_int:-0}
+        if [ "$USE_H2LOAD" = "true" ]; then
+            # h2load: "finished in 5.00s, 123456.78 req/s, 45.67MB/s"
+            rps_int=$(echo "$output" | grep -oP 'finished in [\d.]+s, \K[\d.]+' | cut -d. -f1 || echo "0")
+            rps_int=${rps_int:-0}
+        else
+            req_count=$(echo "$output" | grep -oP '(\d+) requests in' | grep -oP '\d+' || echo "0")
+            duration_secs=$(echo "$output" | grep -oP 'requests in ([\d.]+)s' | grep -oP '[\d.]+' || echo "1")
+            rps_int=$(echo "$req_count / $duration_secs" | bc | cut -d. -f1)
+            rps_int=${rps_int:-0}
+        fi
 
         if [ "$rps_int" -gt "$best_rps" ]; then
             best_rps=$rps_int
@@ -238,9 +265,16 @@ for profile in "${profiles_to_run[@]}"; do
     echo "=== Best: ${best_rps} req/s (CPU: $best_cpu, Mem: $best_mem) ==="
 
     # Extract metrics
-    avg_lat=$(echo "$best_output" | grep "Latency" | head -1 | awk '{print $2}')
-    p99_lat=$(echo "$best_output" | grep "Latency" | head -1 | awk '{print $5}')
-    reconnects=$(echo "$best_output" | grep -oP 'Reconnects: \K\d+' || echo "0")
+    if [ "$USE_H2LOAD" = "true" ]; then
+        # h2load: "time for request:" section, line after header: min max mean sd +/-sd
+        avg_lat=$(echo "$best_output" | awk '/time for request:/{getline; getline; print $3}')
+        p99_lat="$avg_lat"  # h2load doesn't report p99; use mean as placeholder
+        reconnects="0"
+    else
+        avg_lat=$(echo "$best_output" | grep "Latency" | head -1 | awk '{print $2}')
+        p99_lat=$(echo "$best_output" | grep "Latency" | head -1 | awk '{print $5}')
+        reconnects=$(echo "$best_output" | grep -oP 'Reconnects: \K\d+' || echo "0")
+    fi
 
     # Save results — subdirectory per connection count
     mkdir -p "$RESULTS_DIR/$profile/$CONNS"
