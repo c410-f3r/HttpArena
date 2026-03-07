@@ -60,7 +60,7 @@
 }
 ,
 {
-  "framework": "rust-hyper",
+  "framework": "hyper",
   "language": "Rust",
   "rps": 767770,
   "avg_latency": "3.89ms",
@@ -75,7 +75,7 @@
 }
 ,
 {
-  "framework": "rust-ntex",
+  "framework": "ntex",
   "language": "Rust",
   "rps": 924935,
   "avg_latency": "2.73ms",

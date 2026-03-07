@@ -15,21 +15,6 @@
 }
 ,
 {
-  "framework": "go-fasthttp",
-  "language": "Go",
-  "rps": 1634739,
-  "avg_latency": "102.67ms",
-  "p99_latency": "110.00ms",
-  "cpu": "566.9%",
-  "memory": "231.0MiB",
-  "connections": 16384,
-  "threads": 12,
-  "duration": "5s",
-  "pipeline": 16,
-  "reconnects": 0
-}
-,
-{
   "framework": "h2o",
   "language": "C",
   "rps": 5415036,
@@ -75,7 +60,7 @@
 }
 ,
 {
-  "framework": "rust-hyper",
+  "framework": "hyper",
   "language": "Rust",
   "rps": 16052780,
   "avg_latency": "15.71ms",
@@ -90,7 +75,7 @@
 }
 ,
 {
-  "framework": "rust-ntex",
+  "framework": "ntex",
   "language": "Rust",
   "rps": 14816261,
   "avg_latency": "16.99ms",
