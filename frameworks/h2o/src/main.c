@@ -42,15 +42,20 @@ static int64_t sum_query_values(h2o_req_t *req)
     return sum;
 }
 
-/* GET /pipeline — return "ok" */
+/* GET /pipeline — return "ok" (zero-copy static response) */
 static int on_pipeline(h2o_handler_t *h, h2o_req_t *req)
 {
+    static h2o_iovec_t body = {H2O_STRLIT("ok")};
     (void)h;
+    h2o_generator_t gen;
+    memset(&gen, 0, sizeof(gen));
     req->res.status = 200;
     req->res.reason = "OK";
+    req->res.content_length = body.len;
     h2o_add_header(&req->pool, &req->res.headers, H2O_TOKEN_CONTENT_TYPE,
                    NULL, H2O_STRLIT("text/plain"));
-    h2o_send_inline(req, H2O_STRLIT("ok"));
+    h2o_start_response(req, &gen);
+    h2o_send(req, &body, 1, H2O_SEND_STATE_FINAL);
     return 0;
 }
 
@@ -70,11 +75,16 @@ static int on_baseline11(h2o_handler_t *h, h2o_req_t *req)
     }
     char buf[32];
     int len = snprintf(buf, sizeof(buf), "%lld", (long long)sum);
+    h2o_generator_t gen;
+    memset(&gen, 0, sizeof(gen));
+    h2o_iovec_t body = h2o_iovec_init(buf, len);
     req->res.status = 200;
     req->res.reason = "OK";
+    req->res.content_length = len;
     h2o_add_header(&req->pool, &req->res.headers, H2O_TOKEN_CONTENT_TYPE,
                    NULL, H2O_STRLIT("text/plain"));
-    h2o_send_inline(req, buf, len);
+    h2o_start_response(req, &gen);
+    h2o_send(req, &body, 1, H2O_SEND_STATE_FINAL);
     return 0;
 }
 
@@ -85,11 +95,16 @@ static int on_baseline2(h2o_handler_t *h, h2o_req_t *req)
     int64_t sum = sum_query_values(req);
     char buf[32];
     int len = snprintf(buf, sizeof(buf), "%lld", (long long)sum);
+    h2o_generator_t gen;
+    memset(&gen, 0, sizeof(gen));
+    h2o_iovec_t body = h2o_iovec_init(buf, len);
     req->res.status = 200;
     req->res.reason = "OK";
+    req->res.content_length = len;
     h2o_add_header(&req->pool, &req->res.headers, H2O_TOKEN_CONTENT_TYPE,
                    NULL, H2O_STRLIT("text/plain"));
-    h2o_send_inline(req, buf, len);
+    h2o_start_response(req, &gen);
+    h2o_send(req, &body, 1, H2O_SEND_STATE_FINAL);
     return 0;
 }
 
@@ -272,6 +287,10 @@ static int create_listener(int port)
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
     setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+    setsockopt(fd, IPPROTO_TCP, TCP_QUICKACK, &on, sizeof(on));
+
+    int defer = 10;
+    setsockopt(fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &defer, sizeof(defer));
 
     int qlen = 4096;
     setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, &qlen, sizeof(qlen));
