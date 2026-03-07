@@ -23,8 +23,11 @@ else
     docker build -t "$IMAGE_NAME" "frameworks/$FRAMEWORK" || { echo "FAIL: Docker build failed"; exit 1; }
 fi
 
-# Run
-docker run -d --name "$CONTAINER_NAME" -p "$PORT:8080" "$IMAGE_NAME"
+# Run (mount dataset for /json endpoint)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR/.."
+docker run -d --name "$CONTAINER_NAME" -p "$PORT:8080" \
+    -v "$ROOT_DIR/data/dataset.json:/data/dataset.json:ro" "$IMAGE_NAME"
 
 # Wait for server to start
 echo "[wait] Waiting for server..."
@@ -82,6 +85,23 @@ check "POST /bench?a=13&b=42 + CL body=20" "75" \
 check "POST /bench?a=13&b=42 + chunked body=20" "75" \
     -X POST -H "Content-Type: text/plain" -H "Transfer-Encoding: chunked" -d "20" \
     "http://localhost:$PORT/bench?a=13&b=42"
+
+# Test 4: GET /json (JSON processing endpoint)
+# Check if framework subscribes to the json test
+META_FILE="$ROOT_DIR/frameworks/$FRAMEWORK/meta.json"
+if [ -f "$META_FILE" ] && grep -q '"json"' "$META_FILE"; then
+    response=$(curl -s "http://localhost:$PORT/json")
+    count=$(echo "$response" | grep -oP '"count"\s*:\s*\K\d+' || echo "0")
+    has_total=$(echo "$response" | grep -q '"total"' && echo "yes" || echo "no")
+
+    if [ "$count" = "50" ] && [ "$has_total" = "yes" ]; then
+        echo "  PASS [GET /json]"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL [GET /json]: count=$count, has_total=$has_total"
+        FAIL=$((FAIL + 1))
+    fi
+fi
 
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="

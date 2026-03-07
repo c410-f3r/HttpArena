@@ -18,6 +18,6 @@ Each profile is run at multiple connection counts to show how frameworks scale u
 {{< cards >}}
   {{< card link="baseline" title="Baseline" subtitle="Primary throughput benchmark with persistent keep-alive connections and mixed GET/POST workload." icon="lightning-bolt" >}}
   {{< card link="short-lived" title="Short-lived Connection" subtitle="Connections closed after 10 requests, measuring TCP handshake and connection setup overhead." icon="refresh" >}}
-  {{< card link="cpu-limited" title="CPU Limited (12 vCPU)" subtitle="Same workload as baseline but restricted to 12 vCPUs, revealing per-request CPU efficiency." icon="chip" >}}
+  {{< card link="json-processing" title="JSON Processing" subtitle="Loads a dataset, computes derived fields, and serializes a JSON response — testing real-world API workloads." icon="document-text" >}}
   {{< card link="pipelined" title="Pipelined (16x)" subtitle="16 requests sent back-to-back per connection, testing raw I/O and pipeline batching." icon="fast-forward" >}}
 {{< /cards >}}

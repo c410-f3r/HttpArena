@@ -47,6 +47,21 @@ Expected response body for POST: `75` (13 + 42 + 20)
 
 Return a fixed `OK` response (exactly 2 bytes). This endpoint is used for the pipelined benchmark and should be as lightweight as possible — no query parsing or body handling.
 
+### `GET /json`
+
+Load the dataset from `/data/dataset.json` at startup (mounted by the benchmark runner). For each request, compute a `total` field (`price × quantity`) for every item and return the full result as JSON:
+
+```json
+{
+  "items": [
+    {"id": 1, "name": "Alpha Widget", "category": "electronics", "price": 29.99, "quantity": 5, "active": true, "tags": ["fast", "new"], "rating": {"score": 4.2, "count": 127}, "total": 149.95}
+  ],
+  "count": 50
+}
+```
+
+The response must have `Content-Type: application/json`. The `total` field must be computed per-request — do not cache the serialized response.
+
 ## 3. Write the Dockerfile
 
 The Dockerfile should build and run your server. It will be started with `--network host`, so bind to port 8080.
@@ -75,7 +90,9 @@ Create `meta.json` in your framework directory:
   "language": "Go",
   "type": "realistic",
   "description": "Short description of the framework and its key features.",
-  "repo": "https://github.com/org/repo"
+  "repo": "https://github.com/org/repo",
+  "enabled": true,
+  "tests": ["baseline", "pipelined", "limited-conn", "json"]
 }
 ```
 
@@ -86,6 +103,8 @@ Create `meta.json` in your framework directory:
 | `type` | `realistic` for production-ready frameworks, `stripped` for custom/bare-metal implementations |
 | `description` | Shown in the framework detail popup |
 | `repo` | Link to the framework's source repository |
+| `enabled` | Set to `false` to skip this framework during benchmark runs |
+| `tests` | Array of test profiles this framework participates in: `baseline`, `pipelined`, `limited-conn`, `json` |
 
 ## 5. Test locally
 
