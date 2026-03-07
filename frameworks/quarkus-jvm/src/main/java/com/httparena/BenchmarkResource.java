@@ -2,16 +2,21 @@ package com.httparena;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.smallrye.common.annotation.NonBlocking;
+import io.vertx.core.buffer.Buffer;
 import jakarta.annotation.PostConstruct;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Path("/")
 public class BenchmarkResource {
+
+    private static final Buffer OK_BUFFER = Buffer.buffer("ok".getBytes(StandardCharsets.UTF_8));
 
     private final ObjectMapper mapper = new ObjectMapper();
     private List<Map<String, Object>> dataset;
@@ -29,13 +34,15 @@ public class BenchmarkResource {
     @GET
     @Path("/pipeline")
     @Produces(MediaType.TEXT_PLAIN)
-    public String pipeline() {
-        return "ok";
+    @NonBlocking
+    public Buffer pipeline() {
+        return OK_BUFFER;
     }
 
     @GET
     @Path("/baseline11")
     @Produces(MediaType.TEXT_PLAIN)
+    @NonBlocking
     public String baselineGet(@QueryParam("a") String a, @QueryParam("b") String b) {
         return String.valueOf(sumParams(a, b));
     }
@@ -44,6 +51,7 @@ public class BenchmarkResource {
     @Path("/baseline11")
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(MediaType.TEXT_PLAIN)
+    @NonBlocking
     public String baselinePost(@QueryParam("a") String a, @QueryParam("b") String b, String body) {
         int sum = sumParams(a, b);
         try {
@@ -55,6 +63,7 @@ public class BenchmarkResource {
     @GET
     @Path("/baseline2")
     @Produces(MediaType.TEXT_PLAIN)
+    @NonBlocking
     public String baseline2(@QueryParam("a") String a, @QueryParam("b") String b) {
         return String.valueOf(sumParams(a, b));
     }
@@ -62,6 +71,7 @@ public class BenchmarkResource {
     @GET
     @Path("/json")
     @Produces(MediaType.APPLICATION_JSON)
+    @NonBlocking
     public Map<String, Object> json() {
         List<Map<String, Object>> items = new ArrayList<>(dataset.size());
         for (Map<String, Object> item : dataset) {

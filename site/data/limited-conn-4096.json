@@ -32,16 +32,16 @@
 {
   "framework": "quarkus-jvm",
   "language": "Java",
-  "rps": 665614,
-  "avg_latency": "6.04ms",
-  "p99_latency": "31.80ms",
-  "cpu": "1981.4%",
-  "memory": "1.6GiB",
+  "rps": 1264203,
+  "avg_latency": "3.15ms",
+  "p99_latency": "34.20ms",
+  "cpu": "1639.9%",
+  "memory": "5.4GiB",
   "connections": 4096,
   "threads": 12,
   "duration": "5s",
   "pipeline": 1,
-  "reconnects": 331672
+  "reconnects": 632155
 }
 ,
 {

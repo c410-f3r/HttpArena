@@ -1,14 +1,19 @@
 package com.httparena;
 
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerResponseContext;
-import jakarta.ws.rs.container.ContainerResponseFilter;
-import jakarta.ws.rs.ext.Provider;
+import jakarta.inject.Singleton;
+import org.jboss.resteasy.reactive.server.ServerResponseFilter;
+import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpServerResponse;
 
-@Provider
-public class ServerHeaderFilter implements ContainerResponseFilter {
-    @Override
-    public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-        responseContext.getHeaders().putSingle("Server", "quarkus-jvm");
+@Singleton
+public class ServerHeaderFilter {
+
+    private static final CharSequence SERVER_HEADER_NAME = HttpHeaders.createOptimized("Server");
+    private static final CharSequence SERVER_HEADER_VALUE = HttpHeaders.createOptimized("quarkus-jvm");
+
+    @ServerResponseFilter
+    public void filter(HttpServerResponse response) {
+        response.headers().add(SERVER_HEADER_NAME, SERVER_HEADER_VALUE);
     }
 }
