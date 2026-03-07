@@ -15,48 +15,62 @@ PORT=8080
 REQUESTS_DIR="$ROOT_DIR/requests"
 RESULTS_DIR="$ROOT_DIR/results"
 
-# Profile definitions: pipeline|req_per_conn|cpu_limit|connections
-# connections is a comma-separated list
+# Profile definitions: pipeline|req_per_conn|cpu_limit|connections|endpoint
+# endpoint: empty = /bench (raw), "json" = /json (GET), "pipeline" = /pipeline
 declare -A PROFILES=(
-    [baseline]="1|0||512,4096,16384"
-    [pipelined]="16|0||512,4096,16384"
-    [limited-conn]="1|10||512,4096"
-    [cpu-limited]="1|0|12|512,4096"
+    [baseline]="1|0||512,4096,16384|"
+    [pipelined]="16|0||512,4096,16384|pipeline"
+    [limited-conn]="1|10||512,4096|"
+    [json]="1|0||4096,16384,32768|json"
 )
-PROFILE_ORDER=(baseline pipelined limited-conn cpu-limited)
+PROFILE_ORDER=(baseline pipelined limited-conn json)
 
 # Usage: benchmark.sh [framework] [profile]
 FRAMEWORK="${1:-}"
 PROFILE_FILTER="${2:-}"
 
-# If no framework, run all
-if [ -z "$FRAMEWORK" ]; then
-    for fw in $(ls -d "$ROOT_DIR"/frameworks/*/ | xargs -n1 basename); do
-        "$SCRIPT_DIR/benchmark.sh" "$fw" "$PROFILE_FILTER"
-    done
-    rebuild_site_data() {
-        local site_data="$ROOT_DIR/site/data"
-        mkdir -p "$site_data"
-        for profile_dir in "$RESULTS_DIR"/*/; do
-            [ -d "$profile_dir" ] || continue
-            local profile=$(basename "$profile_dir")
-            for conn_dir in "$profile_dir"/*/; do
-                [ -d "$conn_dir" ] || continue
-                local conns=$(basename "$conn_dir")
-                local data_file="$site_data/${profile}-${conns}.json"
-                echo '[' > "$data_file"
-                local first=true
-                for f in "$conn_dir"/*.json; do
-                    [ -f "$f" ] || continue
-                    $first || echo ',' >> "$data_file"
-                    cat "$f" >> "$data_file"
-                    first=false
-                done
-                echo ']' >> "$data_file"
-                echo "[updated] site/data/${profile}-${conns}.json"
+rebuild_site_data() {
+    local site_data="$ROOT_DIR/site/data"
+    mkdir -p "$site_data"
+    for profile_dir in "$RESULTS_DIR"/*/; do
+        [ -d "$profile_dir" ] || continue
+        local profile=$(basename "$profile_dir")
+        for conn_dir in "$profile_dir"/*/; do
+            [ -d "$conn_dir" ] || continue
+            local conns=$(basename "$conn_dir")
+            local data_file="$site_data/${profile}-${conns}.json"
+            echo '[' > "$data_file"
+            local first=true
+            for f in "$conn_dir"/*.json; do
+                [ -f "$f" ] || continue
+                $first || echo ',' >> "$data_file"
+                cat "$f" >> "$data_file"
+                first=false
             done
+            echo ']' >> "$data_file"
+            echo "[updated] site/data/${profile}-${conns}.json"
         done
-    }
+    done
+}
+
+# If no framework, run all enabled ones
+if [ -z "$FRAMEWORK" ]; then
+    for fw_dir in "$ROOT_DIR"/frameworks/*/; do
+        [ -d "$fw_dir" ] || continue
+        fw=$(basename "$fw_dir")
+        meta="$fw_dir/meta.json"
+
+        # Check enabled flag (default true if not present)
+        if [ -f "$meta" ]; then
+            enabled=$(grep -oP '"enabled"\s*:\s*\K(true|false)' "$meta" 2>/dev/null || echo "true")
+            if [ "$enabled" = "false" ]; then
+                echo "[skip] $fw (disabled)"
+                continue
+            fi
+        fi
+
+        "$SCRIPT_DIR/benchmark.sh" "$fw" "$PROFILE_FILTER" || true
+    done
     rebuild_site_data
     exit 0
 fi
@@ -68,10 +82,20 @@ CONTAINER_NAME="httparena-bench-${FRAMEWORK}"
 META_FILE="$ROOT_DIR/frameworks/$FRAMEWORK/meta.json"
 LANGUAGE=""
 DISPLAY_NAME="$FRAMEWORK"
+FRAMEWORK_TESTS=""
 if [ -f "$META_FILE" ]; then
-    LANGUAGE=$(grep -oP '"language"\s*:\s*"\K[^"]+' "$META_FILE")
-    dn=$(grep -oP '"display_name"\s*:\s*"\K[^"]+' "$META_FILE")
+    LANGUAGE=$(grep -oP '"language"\s*:\s*"\K[^"]+' "$META_FILE" 2>/dev/null || echo "")
+    dn=$(grep -oP '"display_name"\s*:\s*"\K[^"]+' "$META_FILE" 2>/dev/null || echo "")
     [ -n "$dn" ] && DISPLAY_NAME="$dn"
+    # Read tests array — extract as comma-separated list
+    FRAMEWORK_TESTS=$(grep -oP '"tests"\s*:\s*\[\K[^\]]+' "$META_FILE" 2>/dev/null | tr -d ' "' || echo "")
+
+    # Check enabled
+    enabled=$(grep -oP '"enabled"\s*:\s*\K(true|false)' "$META_FILE" 2>/dev/null || echo "true")
+    if [ "$enabled" = "false" ]; then
+        echo "[skip] $FRAMEWORK (disabled)"
+        exit 0
+    fi
 fi
 
 cleanup() {
@@ -98,7 +122,15 @@ else
 fi
 
 for profile in "${profiles_to_run[@]}"; do
-    IFS='|' read -r pipeline req_per_conn cpu_limit conn_list <<< "${PROFILES[$profile]}"
+    # Check if framework subscribes to this test
+    if [ -n "$FRAMEWORK_TESTS" ]; then
+        if ! echo ",$FRAMEWORK_TESTS," | grep -q ",$profile,"; then
+            echo "[skip] $FRAMEWORK does not subscribe to $profile"
+            continue
+        fi
+    fi
+
+    IFS='|' read -r pipeline req_per_conn cpu_limit conn_list endpoint <<< "${PROFILES[$profile]}"
 
     # Parse connection counts
     IFS=',' read -ra CONN_COUNTS <<< "$conn_list"
@@ -120,12 +152,20 @@ for profile in "${profiles_to_run[@]}"; do
     if [ -n "$cpu_limit" ]; then
         docker_args+=(--cpus="$cpu_limit")
     fi
+    # Mount dataset for json profile
+    if [ "$endpoint" = "json" ]; then
+        docker_args+=(-v "$ROOT_DIR/data/dataset.json:/data/dataset.json:ro")
+    fi
     docker run "${docker_args[@]}" "$IMAGE_NAME"
 
     # Wait for server
     echo "[wait] Waiting for server..."
+    local_check_url="http://localhost:$PORT/bench?a=1&b=1"
+    if [ "$endpoint" = "json" ]; then
+        local_check_url="http://localhost:$PORT/json"
+    fi
     for i in $(seq 1 30); do
-        if curl -s -o /dev/null --max-time 2 "http://localhost:$PORT/bench?a=1&b=1" 2>/dev/null; then
+        if curl -s -o /dev/null --max-time 2 "$local_check_url" 2>/dev/null; then
             break
         fi
         if [ "$i" -eq 30 ]; then
@@ -136,9 +176,12 @@ for profile in "${profiles_to_run[@]}"; do
     done
     echo "[ready] Server is up"
 
-    # Build gcannon args — pipelined profile uses lightweight /pipeline endpoint
-    if [ "$profile" = "pipelined" ]; then
+    # Build gcannon args based on profile endpoint
+    if [ "$endpoint" = "pipeline" ]; then
         gc_args=("http://localhost:$PORT/pipeline"
+            -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
+    elif [ "$endpoint" = "json" ]; then
+        gc_args=("http://localhost:$PORT/json"
             -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
     else
         gc_args=("http://localhost:$PORT"
@@ -232,24 +275,4 @@ EOF
 done
 
 # Rebuild site data
-SITE_DATA="$ROOT_DIR/site/data"
-mkdir -p "$SITE_DATA"
-for profile_dir in "$RESULTS_DIR"/*/; do
-    [ -d "$profile_dir" ] || continue
-    profile=$(basename "$profile_dir")
-    for conn_dir in "$profile_dir"/*/; do
-        [ -d "$conn_dir" ] || continue
-        conns=$(basename "$conn_dir")
-        data_file="$SITE_DATA/${profile}-${conns}.json"
-        echo '[' > "$data_file"
-        first=true
-        for f in "$conn_dir"/*.json; do
-            [ -f "$f" ] || continue
-            $first || echo ',' >> "$data_file"
-            cat "$f" >> "$data_file"
-            first=false
-        done
-        echo ']' >> "$data_file"
-        echo "[updated] site/data/${profile}-${conns}.json"
-    done
-done
+rebuild_site_data

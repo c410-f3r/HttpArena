@@ -3,5 +3,7 @@
   "language": "Go",
   "type": "realistic",
   "description": "High-performance Go HTTP server using fasthttp with zero-allocation design and buffer reuse.",
-  "repo": "https://github.com/valyala/fasthttp"
+  "repo": "https://github.com/valyala/fasthttp",
+  "enabled": true,
+  "tests": ["baseline", "pipelined", "limited-conn", "json"]
 }
