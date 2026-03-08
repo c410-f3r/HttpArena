@@ -1,0 +1,10 @@
+{
+  "display_name": "nginx",
+  "language": "C",
+  "type": "realistic",
+  "engine": "nginx",
+  "description": "Nginx with a custom C handler module, compiled with -O3 -march=native -flto.",
+  "repo": "https://github.com/nginx/nginx",
+  "enabled": true,
+  "tests": ["baseline", "pipelined", "limited-conn", "json", "baseline-h2", "static-h2"]
+}

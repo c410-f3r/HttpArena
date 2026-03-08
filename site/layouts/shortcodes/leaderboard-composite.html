@@ -15,7 +15,7 @@
     {{ $data := index site.Data $key }}
     {{ if $data }}
       {{ range $data }}
-        {{ $entries = $entries | append (dict "profile" $p.id "label" $p.label "framework" .framework "rps" .rps "language" (.language | default "")) }}
+        {{ $entries = $entries | append (dict "profile" $p.id "label" $p.label "framework" .framework "rps" .rps "language" (.language | default "") "cpu" (.cpu | default "") "memory" (.memory | default "")) }}
       {{ end }}
     {{ end }}
   {{ end }}
@@ -37,7 +37,8 @@ html.dark .composite-disclaimer { color: #fff !important; background: rgba(234,1
 <div class="lb-card" style="margin-top:1rem;">
   <div class="lb-card-title">Composite Score</div>
   <div class="lb-desc">
-    Overall ranking using a geometric mean across scored test profiles. Each profile is normalized so the top framework scores 100. The geometric mean rewards consistency — one weak result significantly lowers the composite score. Frameworks missing a profile are penalized proportionally.
+    Overall ranking using the average of normalized scores across scored test profiles. Each profile is normalized so the top framework scores 100. Frameworks missing a profile receive 0 for that profile, lowering their composite score proportionally.
+    Optionally factor in CPU and memory efficiency — measured as throughput per unit of resource (req/s per CPU%, req/s per MB).
     Columns marked with <strong>(*)</strong> are shown for reference only and do not count toward the composite score.
     <a href="{{ "docs/scoring/composite-score" | relURL }}" style="color:#3b82f6; text-decoration:none; font-weight:500;"> Learn more &rarr;</a>
   </div>
@@ -66,6 +67,21 @@ html.dark .composite-disclaimer { color: #fff !important; background: rgba(234,1
   html.dark .composite-profile-filter.active.cp-h2 { color:#fbbf24; border-color:#d97706; background:rgba(217,119,6,0.12); }
   </style>
 
+  <div class="lb-filters composite-resource-wrap" style="margin:0.5rem 0 0 0; padding:0.5rem 1rem; background:rgba(0,0,0,0.02); border-radius:8px; border:1px solid rgba(0,0,0,0.06);">
+    <span class="lb-filters-label">Resource factors</span>
+    <div class="composite-resource-toggle" data-resource="cpu">CPU efficiency <span style="font-size:0.6rem; color:#94a3b8;">(1x weight)</span></div>
+    <div class="composite-resource-toggle" data-resource="mem">Memory efficiency <span style="font-size:0.6rem; color:#94a3b8;">(0.5x weight)</span></div>
+  </div>
+  <style>
+  .composite-resource-toggle { padding:0.3rem 0.75rem; font-size:0.8rem; font-weight:500; color:#94a3b8; cursor:pointer; border-radius:6px; border:1.5px solid #e2e8f0; background:transparent; transition:all 0.15s ease; user-select:none; }
+  .composite-resource-toggle:hover { color:#475569; border-color:#cbd5e1; transform:translateY(-1px); box-shadow:0 2px 4px rgba(0,0,0,0.08); }
+  .composite-resource-toggle.active { color:#059669; border-color:#059669; background:rgba(5,150,105,0.06); font-weight:600; }
+  html.dark .composite-resource-wrap { background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.08); }
+  html.dark .composite-resource-toggle { color:#64748b; border-color:#334155; }
+  html.dark .composite-resource-toggle:hover { color:#94a3b8; border-color:#475569; }
+  html.dark .composite-resource-toggle.active { color:#34d399; border-color:#059669; background:rgba(5,150,105,0.12); }
+  </style>
+
   <div id="composite-table" class="lb" style="margin-top:1rem;">
   </div>
 </div>
@@ -84,19 +100,43 @@ var profileProtos = {};
 var profileScored = {};
 profiles.forEach(function(p) { profileLabels[p.id] = p.label; profileProtos[p.id] = p.proto; profileScored[p.id] = p.scored !== false; });
 
-// Precompute average RPS per framework per profile (static, doesn't change with filters)
+// Parse CPU string like "1982.2%" to number
+function parseCpu(s) {
+  if (!s) return 0;
+  return parseFloat(String(s).replace('%', '')) || 0;
+}
+// Parse memory string like "17.3MiB" or "1.2GiB" to MB
+function parseMem(s) {
+  if (!s) return 0;
+  s = String(s);
+  var m = s.match(/([\d.]+)\s*(GiB|MiB|KiB|GB|MB|KB)/i);
+  if (!m) return 0;
+  var v = parseFloat(m[1]);
+  var u = m[2].toLowerCase();
+  if (u === 'gib' || u === 'gb') return v * 1024;
+  if (u === 'kib' || u === 'kb') return v / 1024;
+  return v;
+}
+
+// Precompute averages per framework per profile
 var avgByProfile = {};
-allProfileIds.forEach(function(pid) { avgByProfile[pid] = {}; });
-var sums = {};
-var counts = {};
+var avgCpuByProfile = {};
+var avgMemByProfile = {};
+allProfileIds.forEach(function(pid) { avgByProfile[pid] = {}; avgCpuByProfile[pid] = {}; avgMemByProfile[pid] = {}; });
+var sums = {}, cpuSums = {}, memSums = {}, counts = {};
 entries.forEach(function(e) {
   var key = e.profile + '|' + e.framework;
   sums[key] = (sums[key] || 0) + e.rps;
+  cpuSums[key] = (cpuSums[key] || 0) + parseCpu(e.cpu);
+  memSums[key] = (memSums[key] || 0) + parseMem(e.memory);
   counts[key] = (counts[key] || 0) + 1;
 });
 Object.keys(sums).forEach(function(key) {
   var parts = key.split('|');
-  avgByProfile[parts[0]][parts[1]] = sums[key] / counts[key];
+  var c = counts[key];
+  avgByProfile[parts[0]][parts[1]] = sums[key] / c;
+  avgCpuByProfile[parts[0]][parts[1]] = cpuSums[key] / c;
+  avgMemByProfile[parts[0]][parts[1]] = memSums[key] / c;
 });
 
 var fwLang = {};
@@ -119,20 +159,42 @@ function renderComposite() {
   if (activeCount === 0) activeIds = allProfileIds.slice();
   activeCount = activeIds.length;
 
+  var useCpu = document.querySelector('.composite-resource-toggle[data-resource="cpu"]').classList.contains('active');
+  var useMem = document.querySelector('.composite-resource-toggle[data-resource="mem"]').classList.contains('active');
+
   // Separate scored and reference-only profiles
   var scoredIds = activeIds.filter(function(pid) { return profileScored[pid]; });
   var scoredCount = scoredIds.length;
 
-  // Compute max per active profile (realistic only)
-  var maxByProfile = {};
+  // Compute max RPS and max efficiency per active profile (realistic only)
+  var maxRpsByProfile = {};
+  var maxCpuEffByProfile = {};  // max rps/cpu% (best efficiency)
+  var maxMemEffByProfile = {};  // max rps/MB (best efficiency)
   activeIds.forEach(function(pid) {
-    maxByProfile[pid] = 0;
+    maxRpsByProfile[pid] = 0;
+    maxCpuEffByProfile[pid] = 0;
+    maxMemEffByProfile[pid] = 0;
     Object.keys(avgByProfile[pid] || {}).forEach(function(fw) {
       var fmeta = meta[fw] || {};
       if ((fmeta.type || 'realistic') === 'stripped') return;
-      if (avgByProfile[pid][fw] > maxByProfile[pid]) maxByProfile[pid] = avgByProfile[pid][fw];
+      var rps = avgByProfile[pid][fw] || 0;
+      if (rps > maxRpsByProfile[pid]) maxRpsByProfile[pid] = rps;
+      var cpu = avgCpuByProfile[pid][fw] || 0;
+      if (cpu > 0 && rps > 0) {
+        var cpuEff = rps / cpu;
+        if (cpuEff > maxCpuEffByProfile[pid]) maxCpuEffByProfile[pid] = cpuEff;
+      }
+      var mem = avgMemByProfile[pid][fw] || 0;
+      if (mem > 0 && rps > 0) {
+        var memEff = rps / mem;
+        if (memEff > maxMemEffByProfile[pid]) maxMemEffByProfile[pid] = memEff;
+      }
     });
   });
+
+  // Weight config
+  var wRps = 1, wCpu = useCpu ? 1 : 0, wMem = useMem ? 0.5 : 0;
+  var totalWeight = wRps + wCpu + wMem;
 
   // Compute scores
   var results = [];
@@ -142,9 +204,23 @@ function renderComposite() {
     var scores = [];
     var participated = 0;
     activeIds.forEach(function(pid) {
-      if (avgByProfile[pid] && avgByProfile[pid][fw] && maxByProfile[pid] > 0) {
-        var ratio = avgByProfile[pid][fw] / maxByProfile[pid];
-        scores.push(ratio * 100);
+      if (avgByProfile[pid] && avgByProfile[pid][fw] && maxRpsByProfile[pid] > 0) {
+        var rps = avgByProfile[pid][fw];
+        var rpsScore = (rps / maxRpsByProfile[pid]) * 100;
+        var profileScore = rpsScore * wRps;
+        if (wCpu > 0 && maxCpuEffByProfile[pid] > 0) {
+          var fwCpu = avgCpuByProfile[pid][fw] || 0;
+          var cpuEff = (fwCpu > 0) ? rps / fwCpu : 0;
+          var cpuScore = (cpuEff / maxCpuEffByProfile[pid]) * 100;
+          profileScore += cpuScore * wCpu;
+        }
+        if (wMem > 0 && maxMemEffByProfile[pid] > 0) {
+          var fwMem = avgMemByProfile[pid][fw] || 0;
+          var memEff = (fwMem > 0) ? rps / fwMem : 0;
+          var memScore = (memEff / maxMemEffByProfile[pid]) * 100;
+          profileScore += memScore * wMem;
+        }
+        scores.push(profileScore / totalWeight);
         if (profileScored[pid]) participated++;
       } else {
         scores.push(0);
@@ -154,11 +230,11 @@ function renderComposite() {
     if (participated === 0) {
       composite = 0;
     } else {
-      var logSum = 0;
+      var sum = 0;
       activeIds.forEach(function(pid, i) {
-        if (profileScored[pid] && scores[i] > 0) logSum += Math.log(scores[i]);
+        if (profileScored[pid] && scores[i] > 0) sum += scores[i];
       });
-      composite = Math.exp(logSum / participated) * (participated / scoredCount);
+      composite = (sum / scoredCount);
     }
     results.push({ framework: fw, language: fwLang[fw] || '', scores: scores, composite: composite, participated: participated });
   });
@@ -177,7 +253,7 @@ function renderComposite() {
     '<div>Lang</div>' +
     '<div title="HTTP server engine">Engine</div>' +
     '<div>Type</div>' +
-    '<div style="font-weight:700; padding-left:0.5rem;" title="Composite score: geometric mean of normalized profile scores">Score</div>' +
+    '<div style="font-weight:700; padding-left:0.5rem;" title="Composite score: average of normalized profile scores">Score</div>' +
     '<div></div>';
   activeIds.forEach(function(pid) {
     var isH2 = profileProtos[pid] === 'h2';
@@ -315,6 +391,14 @@ document.querySelectorAll('.composite-profile-filter').forEach(function(btn) {
         allFilters.forEach(function(f) { f.classList.add('active'); });
       }
     }
+    renderComposite();
+  });
+});
+
+// Resource factor toggle handlers
+document.querySelectorAll('.composite-resource-toggle').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    btn.classList.toggle('active');
     renderComposite();
   });
 });

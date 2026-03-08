@@ -1,5 +1,20 @@
 [
 {
+  "framework": "actix",
+  "language": "Rust",
+  "rps": 849556,
+  "avg_latency": "1.16ms",
+  "p99_latency": "7.44ms",
+  "cpu": "831.8%",
+  "memory": "149.7MiB",
+  "connections": 4096,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 549
+}
+,
+{
   "framework": "aspnet-minimal",
   "language": "C#",
   "rps": 516813,
@@ -127,6 +142,36 @@
   "p99_latency": "13.00ms",
   "cpu": "2445.2%",
   "memory": "140.8MiB",
+  "connections": 4096,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "laravel",
+  "language": "PHP",
+  "rps": 3565,
+  "avg_latency": "970.52ms",
+  "p99_latency": "110.00ms",
+  "cpu": "265.9%",
+  "memory": "1.3GiB",
+  "connections": 4096,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "nginx",
+  "language": "C",
+  "rps": 722446,
+  "avg_latency": "1.34ms",
+  "p99_latency": "5.00ms",
+  "cpu": "874.9%",
+  "memory": "912.9MiB",
   "connections": 4096,
   "threads": 12,
   "duration": "5s",

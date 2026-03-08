@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <unistd.h>
 
 // Simple JSON builder (avoids pulling in a JSON library)
 namespace sjson {
@@ -241,7 +242,8 @@ int main() {
         resp.write(std::to_string(sum));
     };
 
-    int nthreads = std::thread::hardware_concurrency();
+    int nthreads = sysconf(_SC_NPROCESSORS_ONLN);
+    if (nthreads < 1) nthreads = std::thread::hardware_concurrency();
     if (nthreads < 1) nthreads = 1;
     http_serve(api, 8080, s::nthreads = nthreads);
     return 0;

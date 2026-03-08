@@ -1,0 +1,10 @@
+{
+  "display_name": "actix",
+  "language": "Rust",
+  "type": "realistic",
+  "engine": "actix",
+  "description": "Actix-web 4 with rustls for HTTP/2 support, compiled with -O3 and thin LTO.",
+  "repo": "https://github.com/actix/actix-web",
+  "enabled": true,
+  "tests": ["baseline", "pipelined", "limited-conn", "json", "baseline-h2", "static-h2"]
+}

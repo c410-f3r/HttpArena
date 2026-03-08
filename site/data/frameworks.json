@@ -1,4 +1,5 @@
 {
+  "actix": {"description": "Actix-web 4 with rustls for HTTP/2 support, compiled with -O3 and thin LTO.", "repo": "https://github.com/actix/actix-web", "type": "realistic", "engine": "actix"},
   "aspnet-minimal": {"description": "Minimal ASP.NET Core server using .NET 10 preview with Kestrel and minimal API routing.", "repo": "https://github.com/dotnet/aspnetcore", "type": "realistic", "engine": "Kestrel"},
   "caddy": {"description": "Caddy web server with a custom handler module for benchmark endpoints, native HTTP/2 support.", "repo": "https://github.com/caddyserver/caddy", "type": "realistic", "engine": "caddy"},
   "deno": {"description": "Deno HTTP server using deno serve --parallel with zero-dependency native fetch handler.", "repo": "https://github.com/denoland/deno", "type": "realistic", "engine": "V8"},
@@ -8,7 +9,9 @@
   "go-fasthttp": {"description": "High-performance Go HTTP server using fasthttp with zero-allocation design and buffer reuse.", "repo": "https://github.com/valyala/fasthttp", "type": "realistic", "engine": "fasthttp"},
   "h2o": {"description": "High-performance C HTTP server using libh2o with multi-threaded event loops and native HTTP/2 support.", "repo": "https://github.com/h2o/h2o", "type": "realistic", "engine": "h2o"},
   "hyper": {"description": "Low-level HTTP library for Rust, built on tokio with multi-threaded async runtime.", "repo": "https://github.com/hyperium/hyper", "type": "realistic", "engine": "hyper"},
+  "laravel": {"description": "Laravel 11 with Octane on Swoole for high-performance PHP serving.", "repo": "https://github.com/laravel/laravel", "type": "realistic", "engine": "Swoole"},
   "lithium": {"description": "Lithium C++ HTTP framework with compile-time reflection, boost::context coroutines, and -O3 -march=native -flto.", "repo": "https://github.com/matt-42/lithium", "type": "realistic", "engine": "li/http"},
+  "nginx": {"description": "Nginx with a custom C handler module, compiled with -O3 -march=native -flto.", "repo": "https://github.com/nginx/nginx", "type": "realistic", "engine": "nginx"},
   "node": {"description": "Bare Node.js HTTP server using the cluster module for multi-core scaling.", "repo": "https://github.com/nodejs/node", "type": "realistic", "engine": "V8"},
   "ntex": {"description": "High-performance Rust web framework by the creator of actix-web, with mimalloc and sonic_rs.", "repo": "https://github.com/ntex-rs/ntex", "type": "realistic", "engine": "ntex-tokio"},
   "quarkus-jvm": {"description": "Quarkus with RESTEasy Reactive on Vert.x/Netty, JDK 21, optimized JVM tuning.", "repo": "https://github.com/quarkusio/quarkus", "type": "realistic", "engine": "Netty"},

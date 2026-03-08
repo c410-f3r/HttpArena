@@ -1,5 +1,20 @@
 [
 {
+  "framework": "actix",
+  "language": "Rust",
+  "rps": 20446662,
+  "avg_latency": "400us",
+  "p99_latency": "3.32ms",
+  "cpu": "2208.8%",
+  "memory": "36.9MiB",
+  "connections": 512,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 16,
+  "reconnects": 0
+}
+,
+{
   "framework": "aspnet-minimal",
   "language": "C#",
   "rps": 9235975,
@@ -105,13 +120,13 @@
 }
 ,
 {
-  "framework": "lithium",
-  "language": "C++",
-  "rps": 4866688,
-  "avg_latency": "104us",
-  "p99_latency": "127us",
-  "cpu": "166.1%",
-  "memory": "9.1MiB",
+  "framework": "nginx",
+  "language": "C",
+  "rps": 4777279,
+  "avg_latency": "1.71ms",
+  "p99_latency": "7.17ms",
+  "cpu": "2009.2%",
+  "memory": "873.7MiB",
   "connections": 512,
   "threads": 12,
   "duration": "5s",

@@ -7,5 +7,6 @@
   "JavaScript": { "accent": "#eab308", "text": "#a16207", "textDark": "#facc15", "rgb": "234,179,8" },
   "TypeScript": { "accent": "#2563eb", "text": "#1d4ed8", "textDark": "#60a5fa", "rgb": "37,99,235" },
   "Python":     { "accent": "#16a34a", "text": "#15803d", "textDark": "#4ade80", "rgb": "22,163,74" },
-  "C++":        { "accent": "#db2777", "text": "#be185d", "textDark": "#f472b6", "rgb": "219,39,119" }
+  "C++":        { "accent": "#db2777", "text": "#be185d", "textDark": "#f472b6", "rgb": "219,39,119" },
+  "PHP":        { "accent": "#7b7fb5", "text": "#4f5b93", "textDark": "#a0a4d9", "rgb": "123,127,181" }
 }
