@@ -1,0 +1,136 @@
+[
+{
+  "framework": "aspnet-minimal",
+  "language": "C#",
+  "rps": 177076,
+  "avg_latency": "35.86ms",
+  "p99_latency": "35.86ms",
+  "cpu": "2656.4%",
+  "memory": "524.4MiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "caddy",
+  "language": "Go",
+  "rps": 490883,
+  "avg_latency": "11.36ms",
+  "p99_latency": "11.36ms",
+  "cpu": "2132.4%",
+  "memory": "439.7MiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "drogon",
+  "language": "C++",
+  "rps": 963977,
+  "avg_latency": "6.58ms",
+  "p99_latency": "6.58ms",
+  "cpu": "2002.5%",
+  "memory": "325.6MiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "h2o",
+  "language": "C",
+  "rps": 1576484,
+  "avg_latency": "2.47ms",
+  "p99_latency": "2.47ms",
+  "cpu": "1614.1%",
+  "memory": "87.5MiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "hyper",
+  "language": "Rust",
+  "rps": 1137091,
+  "avg_latency": "3.85ms",
+  "p99_latency": "3.85ms",
+  "cpu": "1511.7%",
+  "memory": "81.5MiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "node",
+  "language": "JavaScript",
+  "rps": 445520,
+  "avg_latency": "13.98ms",
+  "p99_latency": "13.98ms",
+  "cpu": "2641.1%",
+  "memory": "3.1GiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "ntex",
+  "language": "Rust",
+  "rps": 56345,
+  "avg_latency": "109.86ms",
+  "p99_latency": "109.86ms",
+  "cpu": "2858.4%",
+  "memory": "674.0MiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "quarkus-jvm",
+  "language": "Java",
+  "rps": 470868,
+  "avg_latency": "11.74ms",
+  "p99_latency": "11.74ms",
+  "cpu": "2379.8%",
+  "memory": "5.7GiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "spring-jvm",
+  "language": "Java",
+  "rps": 341860,
+  "avg_latency": "16.52ms",
+  "p99_latency": "16.52ms",
+  "cpu": "2169.9%",
+  "memory": "4.7GiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+]

@@ -20,6 +20,17 @@ static SSL_CTX *ssl_ctx;
 static char *json_response;
 static size_t json_response_len;
 
+/* Pre-loaded static files */
+#define MAX_STATIC_FILES 32
+typedef struct {
+    const char *name;
+    const char *content_type;
+    char *data;
+    size_t len;
+} static_file_t;
+static static_file_t static_files[MAX_STATIC_FILES];
+static int static_file_count;
+
 /* Parse query string values and return their sum */
 static int64_t sum_query_values(h2o_req_t *req)
 {
@@ -129,6 +140,85 @@ static int on_json(h2o_handler_t *h, h2o_req_t *req)
     return 0;
 }
 
+/* GET /static/<filename> — serve pre-loaded static files */
+static int on_static(h2o_handler_t *h, h2o_req_t *req)
+{
+    (void)h;
+    /* path is /static/<filename>, extract filename after "/static/" (8 chars) */
+    if (req->path_normalized.len <= 8) {
+        h2o_send_error_404(req, "Not Found", "Not Found", 0);
+        return 0;
+    }
+    const char *fname = req->path_normalized.base + 8;
+    size_t fname_len = req->path_normalized.len - 8;
+
+    for (int i = 0; i < static_file_count; i++) {
+        size_t nlen = strlen(static_files[i].name);
+        if (nlen == fname_len && memcmp(static_files[i].name, fname, nlen) == 0) {
+            h2o_generator_t gen;
+            memset(&gen, 0, sizeof(gen));
+            h2o_iovec_t body = h2o_iovec_init(static_files[i].data, static_files[i].len);
+            req->res.status = 200;
+            req->res.reason = "OK";
+            req->res.content_length = static_files[i].len;
+            h2o_add_header(&req->pool, &req->res.headers, H2O_TOKEN_CONTENT_TYPE,
+                           NULL, static_files[i].content_type, strlen(static_files[i].content_type));
+            h2o_start_response(req, &gen);
+            h2o_send(req, &body, 1, H2O_SEND_STATE_FINAL);
+            return 0;
+        }
+    }
+    h2o_send_error_404(req, "Not Found", "Not Found", 0);
+    return 0;
+}
+
+/* Load all static files from /data/static/ into memory */
+static void load_static_files(void)
+{
+    static const struct { const char *name; const char *ct; } entries[] = {
+        {"reset.css",       "text/css"},
+        {"layout.css",      "text/css"},
+        {"theme.css",       "text/css"},
+        {"components.css",  "text/css"},
+        {"utilities.css",   "text/css"},
+        {"analytics.js",    "application/javascript"},
+        {"helpers.js",      "application/javascript"},
+        {"app.js",          "application/javascript"},
+        {"vendor.js",       "application/javascript"},
+        {"router.js",       "application/javascript"},
+        {"header.html",     "text/html"},
+        {"footer.html",     "text/html"},
+        {"regular.woff2",   "font/woff2"},
+        {"bold.woff2",      "font/woff2"},
+        {"logo.svg",        "image/svg+xml"},
+        {"icon-sprite.svg", "image/svg+xml"},
+        {"hero.webp",       "image/webp"},
+        {"thumb1.webp",     "image/webp"},
+        {"thumb2.webp",     "image/webp"},
+        {"manifest.json",   "application/json"},
+    };
+    int n = sizeof(entries) / sizeof(entries[0]);
+    for (int i = 0; i < n && static_file_count < MAX_STATIC_FILES; i++) {
+        char path[256];
+        snprintf(path, sizeof(path), "/data/static/%s", entries[i].name);
+        FILE *f = fopen(path, "rb");
+        if (!f) continue;
+        fseek(f, 0, SEEK_END);
+        long sz = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        char *data = malloc(sz);
+        if (!data) { fclose(f); continue; }
+        fread(data, 1, sz, f);
+        fclose(f);
+        static_files[static_file_count].name = entries[i].name;
+        static_files[static_file_count].content_type = entries[i].ct;
+        static_files[static_file_count].data = data;
+        static_files[static_file_count].len = sz;
+        static_file_count++;
+    }
+    printf("Loaded %d static files\n", static_file_count);
+}
+
 static void register_handler(h2o_hostconf_t *host, const char *path,
                               int (*fn)(h2o_handler_t *, h2o_req_t *))
 {
@@ -143,6 +233,7 @@ static void setup_host(h2o_hostconf_t *host)
     register_handler(host, "/baseline11", on_baseline11);
     register_handler(host, "/baseline2", on_baseline2);
     register_handler(host, "/json", on_json);
+    register_handler(host, "/static", on_static);
 }
 
 /* Load dataset.json and pre-serialize the /json response with yajl */
@@ -378,6 +469,7 @@ int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
     load_dataset();
+    load_static_files();
     init_tls();
 
     h2o_config_init(&globalconf);

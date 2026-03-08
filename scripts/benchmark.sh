@@ -19,15 +19,16 @@ RESULTS_DIR="$ROOT_DIR/results"
 CERTS_DIR="$ROOT_DIR/certs"
 
 # Profile definitions: pipeline|req_per_conn|cpu_limit|connections|endpoint
-# endpoint: empty = /baseline11 (raw), "json" = /json (GET), "pipeline" = /pipeline, "h2" = /baseline2 (h2load)
+# endpoint: empty = /baseline11 (raw), "json" = /json (GET), "pipeline" = /pipeline, "h2" = /baseline2 (h2load), "static-h2" = multi-URI h2load
 declare -A PROFILES=(
     [baseline]="1|0||512,4096,16384|"
     [pipelined]="16|0||512,4096,16384|pipeline"
     [limited-conn]="1|10||512,4096|"
     [json]="1|0||4096,16384,32768|json"
     [baseline-h2]="1|0||64,256,1024|h2"
+    [static-h2]="1|0||64,256,1024|static-h2"
 )
-PROFILE_ORDER=(baseline pipelined limited-conn json baseline-h2)
+PROFILE_ORDER=(baseline pipelined limited-conn json baseline-h2 static-h2)
 
 # Usage: benchmark.sh [framework] [profile]
 FRAMEWORK="${1:-}"
@@ -185,6 +186,7 @@ for profile in "${profiles_to_run[@]}"; do
         --ulimit memlock=-1:-1
         --ulimit nofile="$HARD_NOFILE:$HARD_NOFILE"
         -v "$ROOT_DIR/data/dataset.json:/data/dataset.json:ro"
+        -v "$ROOT_DIR/data/static:/data/static:ro"
         -v "$CERTS_DIR:/certs:ro")
     if [ -n "$cpu_limit" ]; then
         docker_args+=(--cpus="$cpu_limit")
@@ -193,8 +195,9 @@ for profile in "${profiles_to_run[@]}"; do
 
     # Wait for server
     echo "[wait] Waiting for server..."
-    if [ "$endpoint" = "h2" ]; then
-        local_check_url="https://localhost:$H2PORT/baseline2?a=1&b=1"
+    if [ "$endpoint" = "h2" ] || [ "$endpoint" = "static-h2" ]; then
+        local_check_url="https://localhost:$H2PORT/static/reset.css"
+        [ "$endpoint" = "h2" ] && local_check_url="https://localhost:$H2PORT/baseline2?a=1&b=1"
     elif [ "$endpoint" = "json" ]; then
         local_check_url="http://localhost:$PORT/json"
     else
@@ -214,7 +217,12 @@ for profile in "${profiles_to_run[@]}"; do
 
     # Build load generator args based on profile endpoint
     USE_H2LOAD=false
-    if [ "$endpoint" = "h2" ]; then
+    if [ "$endpoint" = "static-h2" ]; then
+        USE_H2LOAD=true
+        gc_args=("$H2LOAD"
+            -i "$REQUESTS_DIR/static-h2-uris.txt"
+            -c "$CONNS" -m 100 -t "$THREADS" -D "$DURATION")
+    elif [ "$endpoint" = "h2" ]; then
         USE_H2LOAD=true
         gc_args=("$H2LOAD"
             "https://localhost:$H2PORT/baseline2?a=1&b=1"
@@ -251,9 +259,9 @@ for profile in "${profiles_to_run[@]}"; do
         stats_pid=$!
 
         if [ "$USE_H2LOAD" = "true" ]; then
-            output=$("${gc_args[@]}" 2>&1) || true
+            output=$(timeout 45 "${gc_args[@]}" 2>&1) || true
         else
-            output=$("$GCANNON" "${gc_args[@]}" 2>&1) || true
+            output=$(timeout 45 "$GCANNON" "${gc_args[@]}" 2>&1) || true
         fi
 
         kill "$stats_pid" 2>/dev/null; wait "$stats_pid" 2>/dev/null || true

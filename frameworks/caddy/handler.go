@@ -7,7 +7,9 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
@@ -42,8 +44,14 @@ type ProcessResponse struct {
 	Count int             `json:"count"`
 }
 
+type staticFile struct {
+	data        []byte
+	contentType string
+}
+
 type Handler struct {
 	jsonResponse []byte
+	staticFiles  map[string]staticFile
 }
 
 func (Handler) CaddyModule() caddy.ModuleInfo {
@@ -85,6 +93,32 @@ func (h *Handler) Provision(ctx caddy.Context) error {
 		}
 	}
 	h.jsonResponse, _ = json.Marshal(ProcessResponse{Items: items, Count: len(items)})
+
+	// Load static files
+	mimeTypes := map[string]string{
+		".css": "text/css", ".js": "application/javascript", ".html": "text/html",
+		".woff2": "font/woff2", ".svg": "image/svg+xml", ".webp": "image/webp", ".json": "application/json",
+	}
+	h.staticFiles = make(map[string]staticFile)
+	entries, err := os.ReadDir("/data/static")
+	if err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			d, err := os.ReadFile(filepath.Join("/data/static", e.Name()))
+			if err != nil {
+				continue
+			}
+			ext := filepath.Ext(e.Name())
+			ct, ok := mimeTypes[ext]
+			if !ok {
+				ct = "application/octet-stream"
+			}
+			h.staticFiles[e.Name()] = staticFile{data: d, contentType: ct}
+		}
+	}
+
 	return nil
 }
 
@@ -139,6 +173,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyht
 		w.Header().Set("Content-Type", "text/plain")
 		w.Header().Set("Server", "caddy")
 		fmt.Fprint(w, sum)
+		return nil
+	}
+
+	if strings.HasPrefix(path, "/static/") {
+		name := path[8:]
+		if sf, ok := h.staticFiles[name]; ok {
+			w.Header().Set("Content-Type", sf.contentType)
+			w.Header().Set("Server", "caddy")
+			w.Header().Set("Content-Length", strconv.Itoa(len(sf.data)))
+			w.Write(sf.data)
+			return nil
+		}
+		http.NotFound(w, r)
 		return nil
 	}
 

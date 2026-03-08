@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
@@ -22,6 +23,33 @@ static SERVER_HEADER: HeaderValue = HeaderValue::from_static("hyper");
 static APPLICATION_JSON: HeaderValue = HeaderValue::from_static("application/json");
 static TEXT_PLAIN: HeaderValue = HeaderValue::from_static("text/plain");
 static OK_BODY: &[u8] = b"ok";
+
+struct StaticFile {
+    data: Bytes,
+    content_type: HeaderValue,
+}
+
+fn load_static_files() -> HashMap<String, StaticFile> {
+    let mime_types: HashMap<&str, &str> = [
+        (".css", "text/css"), (".js", "application/javascript"), (".html", "text/html"),
+        (".woff2", "font/woff2"), (".svg", "image/svg+xml"), (".webp", "image/webp"), (".json", "application/json"),
+    ].into();
+    let mut files = HashMap::new();
+    if let Ok(entries) = std::fs::read_dir("/data/static") {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if let Ok(data) = std::fs::read(entry.path()) {
+                let ext = name.rfind('.').map(|i| &name[i..]).unwrap_or("");
+                let ct = mime_types.get(ext).unwrap_or(&"application/octet-stream");
+                files.insert(name, StaticFile {
+                    data: Bytes::from(data),
+                    content_type: HeaderValue::from_str(ct).unwrap(),
+                });
+            }
+        }
+    }
+    files
+}
 
 #[derive(Deserialize, Clone)]
 struct Rating {
@@ -190,10 +218,12 @@ fn load_tls_config() -> Option<Arc<ServerConfig>> {
 fn main() -> io::Result<()> {
     let threads = num_cpus::get();
     let dataset = Arc::new(load_dataset());
+    let statics = Arc::new(load_static_files());
     let tls_config = load_tls_config();
 
     for _ in 1..threads {
         let ds = dataset.clone();
+        let sf = statics.clone();
         let tls = tls_config.clone();
         thread::spawn(move || {
             let rt = runtime::Builder::new_current_thread()
@@ -201,7 +231,7 @@ fn main() -> io::Result<()> {
                 .build()
                 .unwrap();
             let local = tokio::task::LocalSet::new();
-            local.block_on(&rt, serve(ds, tls)).unwrap();
+            local.block_on(&rt, serve(ds, sf, tls)).unwrap();
         });
     }
 
@@ -209,12 +239,20 @@ fn main() -> io::Result<()> {
         .enable_all()
         .build()?;
     let local = tokio::task::LocalSet::new();
-    local.block_on(&rt, serve(dataset, tls_config))
+    local.block_on(&rt, serve(dataset, statics, tls_config))
 }
 
-fn make_service(ds: Arc<Vec<DatasetItem>>) -> impl Fn(Request<Incoming>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Response<BoxBody<Bytes, Infallible>>, http::Error>> + Send>> + Clone {
+fn static_response(sf: &StaticFile) -> Result<Response<BoxBody<Bytes, Infallible>>, http::Error> {
+    Response::builder()
+        .header(SERVER, SERVER_HEADER.clone())
+        .header(CONTENT_TYPE, sf.content_type.clone())
+        .body(Full::from(sf.data.clone()).boxed())
+}
+
+fn make_service(ds: Arc<Vec<DatasetItem>>, statics: Arc<HashMap<String, StaticFile>>) -> impl Fn(Request<Incoming>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Response<BoxBody<Bytes, Infallible>>, http::Error>> + Send>> + Clone {
     move |req: Request<Incoming>| {
         let ds = ds.clone();
+        let statics = statics.clone();
         Box::pin(async move {
             let path = req.uri().path();
             let query = req.uri().query().map(|q| q.to_string());
@@ -229,13 +267,20 @@ fn make_service(ds: Arc<Vec<DatasetItem>>) -> impl Fn(Request<Incoming>) -> std:
                 }
                 "/baseline2" => baseline_get(query.as_deref()),
                 "/json" => json_response(&ds),
+                p if p.starts_with("/static/") => {
+                    let name = &p[8..];
+                    match statics.get(name) {
+                        Some(sf) => static_response(sf),
+                        None => not_found(),
+                    }
+                }
                 _ => not_found(),
             }
         })
     }
 }
 
-async fn serve(dataset: Arc<Vec<DatasetItem>>, tls_config: Option<Arc<ServerConfig>>) -> io::Result<()> {
+async fn serve(dataset: Arc<Vec<DatasetItem>>, statics: Arc<HashMap<String, StaticFile>>, tls_config: Option<Arc<ServerConfig>>) -> io::Result<()> {
     let addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 8080));
     let socket = create_socket(addr)?;
     let listener = TcpListener::from_std(socket.into())?;
@@ -250,6 +295,7 @@ async fn serve(dataset: Arc<Vec<DatasetItem>>, tls_config: Option<Arc<ServerConf
         let h2_socket = create_socket(h2_addr)?;
         let h2_listener = TcpListener::from_std(h2_socket.into())?;
         let ds = dataset.clone();
+        let sf = statics.clone();
         tokio::task::spawn_local(async move {
             loop {
                 let (stream, _) = match h2_listener.accept().await {
@@ -258,13 +304,14 @@ async fn serve(dataset: Arc<Vec<DatasetItem>>, tls_config: Option<Arc<ServerConf
                 };
                 let acceptor = acceptor.clone();
                 let ds = ds.clone();
+                let sf = sf.clone();
                 tokio::task::spawn_local(async move {
                     let tls_stream = match acceptor.accept(stream).await {
                         Ok(s) => s,
                         Err(_) => return,
                     };
                     let io = TokioIo::new(tls_stream);
-                    let svc = make_service(ds);
+                    let svc = make_service(ds, sf);
                     let _ = http2::Builder::new(TokioExecutor::new())
                         .serve_connection(io, service_fn(svc))
                         .await;
@@ -277,9 +324,10 @@ async fn serve(dataset: Arc<Vec<DatasetItem>>, tls_config: Option<Arc<ServerConf
         let (stream, _) = listener.accept().await?;
         let http = http.clone();
         let ds = dataset.clone();
+        let sf = statics.clone();
         tokio::task::spawn_local(async move {
             let io = TokioIo::new(stream);
-            let svc = make_service(ds);
+            let svc = make_service(ds, sf);
             let _ = http.serve_connection(io, service_fn(svc)).await;
         });
     }

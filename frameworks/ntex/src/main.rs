@@ -7,6 +7,7 @@ use ntex::util::Bytes;
 use ntex::{io::IoConfig, time::Seconds, web, SharedCfg};
 use rustls::ServerConfig;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::io;
 use std::sync::Arc;
 
@@ -60,8 +61,14 @@ struct JsonResponse {
     count: usize,
 }
 
+struct StaticFile {
+    data: Bytes,
+    content_type: http::header::HeaderValue,
+}
+
 struct AppState {
     dataset: Vec<DatasetItem>,
+    static_files: HashMap<String, StaticFile>,
 }
 
 fn load_dataset() -> Vec<DatasetItem> {
@@ -172,6 +179,41 @@ async fn json(state: web::types::State<Arc<AppState>>) -> web::HttpResponse {
     resp
 }
 
+fn load_static_files() -> HashMap<String, StaticFile> {
+    let mime_types: HashMap<&str, &str> = [
+        (".css", "text/css"), (".js", "application/javascript"), (".html", "text/html"),
+        (".woff2", "font/woff2"), (".svg", "image/svg+xml"), (".webp", "image/webp"), (".json", "application/json"),
+    ].into();
+    let mut files = HashMap::new();
+    if let Ok(entries) = std::fs::read_dir("/data/static") {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if let Ok(data) = std::fs::read(entry.path()) {
+                let ext = name.rfind('.').map(|i| &name[i..]).unwrap_or("");
+                let ct = mime_types.get(ext).unwrap_or(&"application/octet-stream");
+                files.insert(name, StaticFile {
+                    data: Bytes::from(data),
+                    content_type: http::header::HeaderValue::from_str(ct).unwrap(),
+                });
+            }
+        }
+    }
+    files
+}
+
+#[web::get("/static/{filename}")]
+async fn static_file(state: web::types::State<Arc<AppState>>, path: web::types::Path<String>) -> web::HttpResponse {
+    let filename = path.into_inner();
+    if let Some(sf) = state.static_files.get(&filename) {
+        let mut resp = web::HttpResponse::with_body(http::StatusCode::OK, http::body::Body::Bytes(sf.data.clone()));
+        resp.headers_mut().insert(SERVER, HDR_SERVER.clone());
+        resp.headers_mut().insert(CONTENT_TYPE, sf.content_type.clone());
+        resp
+    } else {
+        web::HttpResponse::with_body(http::StatusCode::NOT_FOUND, http::body::Body::Empty)
+    }
+}
+
 fn config() -> SharedCfg {
     SharedCfg::new("httparena")
         .add(
@@ -210,6 +252,7 @@ fn load_tls_config() -> Option<Arc<ServerConfig>> {
 async fn main() -> std::io::Result<()> {
     let dataset = Arc::new(AppState {
         dataset: load_dataset(),
+        static_files: load_static_files(),
     });
 
     let tls_config = load_tls_config();
@@ -224,6 +267,7 @@ async fn main() -> std::io::Result<()> {
                 .service(baseline_post)
                 .service(baseline2)
                 .service(json)
+                .service(static_file)
         }
     })
     .backlog(4096)

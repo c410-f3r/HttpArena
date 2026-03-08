@@ -2,6 +2,11 @@
 	admin off
 	auto_https off
 	order httparena first
+	servers {
+		timeouts {
+			idle 60s
+		}
+	}
 }
 
 :8080 {

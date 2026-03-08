@@ -1,5 +1,6 @@
 {{ $profiles := slice
   (dict "id" "baseline-h2" "label" "Baseline (HTTP/2)" "conns" (slice 64 256 1024) "desc" "Same workload as the HTTP/1.1 baseline — <code>GET /baseline2</code> with query parameter parsing — but over encrypted HTTP/2 connections using TLS + ALPN. Benchmarked with <code>h2load</code> instead of gcannon. Measures how efficiently a framework handles HTTP/2 multiplexing and TLS overhead.")
+  (dict "id" "static-h2" "label" "Static Files (HTTP/2)" "conns" (slice 64 256 1024) "desc" "Serves 20 static files of various types and sizes (CSS, JS, HTML, fonts, SVG, WebP, JSON — totaling ~325 KB) over HTTP/2 with TLS. The load generator (<code>h2load</code>) requests all files using multiplexed streams, simulating a realistic browser page load. Measures static file serving throughput with HTTP/2 multiplexing.")
 }}
 
 {{/* Collect all unique languages across all data files */}}
@@ -46,9 +47,14 @@
 </div>
 
 {{ range $i, $p := $profiles }}
-<div class="lb-panel-h2 active" data-panel="{{ $p.id }}" data-conns="{{ delimit $p.conns "," }}" style="margin-top:1rem;">
+<div class="lb-panel-h2{{ if eq $i 0 }} active{{ end }}" data-panel="{{ $p.id }}" data-conns="{{ delimit $p.conns "," }}" style="margin-top:1rem;">
   <div class="lb-card">
   <div class="lb-card-title">Results</div>
+  <div class="lb-tabs">
+  {{ range $j, $pp := $profiles }}
+    <div class="lb-tab-h2{{ if eq $pp.id $p.id }} active{{ end }}" data-tab="{{ $pp.id }}">{{ $pp.label }}</div>
+  {{ end }}
+  </div>
 
   <div class="lb-desc">{{ $p.desc | safeHTML }}</div>
 
@@ -136,6 +142,39 @@
 </div>
 {{ end }}
 
+<style>
+.lb-panel-h2 { display: none; }
+.lb-panel-h2.active { display: block; margin-top: 1rem; }
+.lb-tab-h2 {
+  flex: 1;
+  text-align: center;
+  padding: 0.65rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  transition: all 0.2s ease;
+  user-select: none;
+  letter-spacing: -0.01em;
+}
+.lb-tab-h2:hover {
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.5);
+}
+.lb-tab-h2.active {
+  color: #92400e;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(234, 179, 8, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+}
+html.dark .lb-tab-h2 { color: #94a3b8; }
+html.dark .lb-tab-h2:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.06); }
+html.dark .lb-tab-h2.active { color: #fbbf24; background: rgba(234, 179, 8, 0.15); box-shadow: 0 2px 8px rgba(234, 179, 8, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3); }
+</style>
+
 <script>
 (function() {
 var medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
@@ -188,6 +227,15 @@ w.querySelector('.lb-filters-toggle-h2').addEventListener('click', function() {
     icon.textContent = '+';
     hint.textContent = '(expand)';
   }
+});
+
+/* Profile tabs — clicking switches panels */
+w.querySelectorAll('.lb-tab-h2').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    w.querySelectorAll('.lb-panel-h2').forEach(function(p) { p.classList.remove('active'); });
+    w.querySelector('.lb-panel-h2[data-panel="' + tab.dataset.tab + '"]').classList.add('active');
+    applyFilters();
+  });
 });
 
 /* Conn tabs */
@@ -283,10 +331,81 @@ w.querySelectorAll('.lb-type-filter').forEach(function(btn) {
   });
 });
 
+/* Column sorting */
+function parseSortValue(row, key) {
+  var stats = row.querySelectorAll('.lb-stat');
+  if (key === 'rps') return Number(row.dataset.rps);
+  var text = '';
+  switch (key) {
+    case 'cpu': text = stats[0] ? stats[0].textContent.trim() : ''; break;
+    case 'mem': text = stats[1] ? stats[1].textContent.trim() : ''; break;
+    case 'avglat': text = stats[2] ? stats[2].textContent.trim() : ''; break;
+    case 'p99': text = stats[3] ? stats[3].textContent.trim() : ''; break;
+  }
+  if (!text || text === '\u2014') return key === 'rps' ? -Infinity : Infinity;
+  if (key === 'cpu') return parseFloat(text) || 0;
+  if (key === 'mem') {
+    var m = text.match(/([\d.]+)\s*(KiB|MiB|GiB|KB|MB|GB)/i);
+    if (!m) return 0;
+    var v = parseFloat(m[1]);
+    var u = m[2].toUpperCase();
+    if (u === 'GIB' || u === 'GB') v *= 1024;
+    if (u === 'KIB' || u === 'KB') v /= 1024;
+    return v;
+  }
+  var lm = text.match(/([\d.]+)\s*(us|ms|s)\b/i);
+  if (!lm) return Infinity;
+  var lv = parseFloat(lm[1]);
+  var lu = lm[2].toLowerCase();
+  if (lu === 'ms') lv *= 1000;
+  else if (lu === 's') lv *= 1000000;
+  return lv;
+}
+
+w.querySelectorAll('.lb-sortable').forEach(function(hdr) {
+  hdr.addEventListener('click', function() {
+    var lb = hdr.closest('.lb');
+    var key = hdr.dataset.sort;
+    var wasAsc = hdr.classList.contains('sort-asc');
+    var wasDesc = hdr.classList.contains('sort-desc');
+    lb.querySelectorAll('.lb-sortable').forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+    var dir;
+    if (!wasAsc && !wasDesc) dir = (key === 'rps') ? 'desc' : 'asc';
+    else if (wasDesc) dir = 'asc';
+    else dir = 'desc';
+    hdr.classList.add('sort-' + dir);
+    var rows = Array.from(lb.querySelectorAll('.lb-row:not(.lb-header)'));
+    rows.sort(function(a, b) {
+      var va = parseSortValue(a, key);
+      var vb = parseSortValue(b, key);
+      return dir === 'asc' ? va - vb : vb - va;
+    });
+    rows.forEach(function(row) { lb.appendChild(row); });
+    var visibleIdx = 0;
+    var maxRps = 0;
+    rows.forEach(function(row) {
+      if (!row.classList.contains('lb-hidden')) {
+        var rps = Number(row.dataset.rps);
+        if (rps > maxRps) maxRps = rps;
+      }
+    });
+    rows.forEach(function(row) {
+      if (row.classList.contains('lb-hidden')) return;
+      row.querySelector('.lb-rank').textContent = visibleIdx < 3 ? medals[visibleIdx] : String(visibleIdx + 1);
+      var bar = row.querySelector('.lb-bar');
+      barClasses.forEach(function(c) { bar.classList.remove(c); });
+      bar.classList.add(barClasses[Math.min(visibleIdx, barClasses.length - 1)]);
+      bar.style.width = (maxRps > 0 ? (Number(row.dataset.rps) / maxRps * 100) : 0).toFixed(1) + '%';
+      visibleIdx++;
+    });
+  });
+});
+
 /* Row click — popup */
 w.addEventListener('click', function(e) {
   var row = e.target.closest('.lb-row:not(.lb-header)');
   if (!row) return;
+  if (e.target.closest('.lb-sortable')) return;
   var name = row.dataset.name;
   var lang = row.dataset.lang;
   var desc = row.dataset.desc || '';

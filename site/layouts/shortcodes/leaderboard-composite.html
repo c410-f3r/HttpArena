@@ -1,9 +1,10 @@
 {{ $profiles := slice
-  (dict "id" "baseline" "label" "Baseline" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384))
-  (dict "id" "pipelined" "label" "Pipelined" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384))
-  (dict "id" "limited-conn" "label" "Short-lived" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096))
-  (dict "id" "json" "label" "JSON" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 4096 16384 32768))
-  (dict "id" "baseline-h2" "label" "Baseline" "sublabel" "HTTP/2" "proto" "h2" "conns" (slice 64 256 1024))
+  (dict "id" "baseline" "label" "Baseline" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384) "scored" true)
+  (dict "id" "pipelined" "label" "Pipelined" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384) "scored" false)
+  (dict "id" "limited-conn" "label" "Short-lived" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096) "scored" true)
+  (dict "id" "json" "label" "JSON" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 4096 16384 32768) "scored" true)
+  (dict "id" "baseline-h2" "label" "Baseline" "sublabel" "HTTP/2" "proto" "h2" "conns" (slice 64 256 1024) "scored" true)
+  (dict "id" "static-h2" "label" "Static" "sublabel" "HTTP/2" "proto" "h2" "conns" (slice 64 256 1024) "scored" true)
 }}
 
 {{/* Build a clean JSON blob: array of {profile, framework, rps, language} entries */}}
@@ -36,7 +37,8 @@ html.dark .composite-disclaimer { color: #fff !important; background: rgba(234,1
 <div class="lb-card" style="margin-top:1rem;">
   <div class="lb-card-title">Composite Score</div>
   <div class="lb-desc">
-    Overall ranking using a geometric mean across all test profiles. Each profile is normalized so the top framework scores 100. The geometric mean rewards consistency — one weak result significantly lowers the composite score. Frameworks missing a profile are penalized proportionally.
+    Overall ranking using a geometric mean across scored test profiles. Each profile is normalized so the top framework scores 100. The geometric mean rewards consistency — one weak result significantly lowers the composite score. Frameworks missing a profile are penalized proportionally.
+    Columns marked with <strong>(*)</strong> are shown for reference only and do not count toward the composite score.
     <a href="{{ "docs/scoring/composite-score" | relURL }}" style="color:#3b82f6; text-decoration:none; font-weight:500;"> Learn more &rarr;</a>
   </div>
 
@@ -79,7 +81,8 @@ var barClasses = ['lb-bar-1', 'lb-bar-2', 'lb-bar-3', 'lb-bar-4', 'lb-bar-5'];
 var allProfileIds = profiles.map(function(p) { return p.id; });
 var profileLabels = {};
 var profileProtos = {};
-profiles.forEach(function(p) { profileLabels[p.id] = p.label; profileProtos[p.id] = p.proto; });
+var profileScored = {};
+profiles.forEach(function(p) { profileLabels[p.id] = p.label; profileProtos[p.id] = p.proto; profileScored[p.id] = p.scored !== false; });
 
 // Precompute average RPS per framework per profile (static, doesn't change with filters)
 var avgByProfile = {};
@@ -116,6 +119,10 @@ function renderComposite() {
   if (activeCount === 0) activeIds = allProfileIds.slice();
   activeCount = activeIds.length;
 
+  // Separate scored and reference-only profiles
+  var scoredIds = activeIds.filter(function(pid) { return profileScored[pid]; });
+  var scoredCount = scoredIds.length;
+
   // Compute max per active profile (realistic only)
   var maxByProfile = {};
   activeIds.forEach(function(pid) {
@@ -135,10 +142,10 @@ function renderComposite() {
     var scores = [];
     var participated = 0;
     activeIds.forEach(function(pid) {
-      if (avgByProfile[pid] && avgByProfile[pid][fw]) {
+      if (avgByProfile[pid] && avgByProfile[pid][fw] && maxByProfile[pid] > 0) {
         var ratio = avgByProfile[pid][fw] / maxByProfile[pid];
         scores.push(ratio * 100);
-        participated++;
+        if (profileScored[pid]) participated++;
       } else {
         scores.push(0);
       }
@@ -148,8 +155,10 @@ function renderComposite() {
       composite = 0;
     } else {
       var logSum = 0;
-      scores.forEach(function(s) { if (s > 0) logSum += Math.log(s); });
-      composite = Math.exp(logSum / participated) * (participated / activeCount);
+      activeIds.forEach(function(pid, i) {
+        if (profileScored[pid] && scores[i] > 0) logSum += Math.log(scores[i]);
+      });
+      composite = Math.exp(logSum / participated) * (participated / scoredCount);
     }
     results.push({ framework: fw, language: fwLang[fw] || '', scores: scores, composite: composite, participated: participated });
   });
@@ -172,9 +181,18 @@ function renderComposite() {
     '<div></div>';
   activeIds.forEach(function(pid) {
     var isH2 = profileProtos[pid] === 'h2';
-    var bgStyle = isH2 ? ' background:rgba(234,179,8,0.12); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;' : ' background:rgba(59,130,246,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
+    var scored = profileScored[pid];
+    var bgStyle;
+    if (!scored) {
+      bgStyle = ' background:rgba(148,163,184,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px; opacity:0.6;';
+    } else if (isH2) {
+      bgStyle = ' background:rgba(234,179,8,0.12); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
+    } else {
+      bgStyle = ' background:rgba(59,130,246,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
+    }
     var sublabel = isH2 ? 'HTTP/2' : 'HTTP/1.1';
-    headerHtml += '<div style="text-align:right; font-size:0.7rem; line-height:1.2;' + bgStyle + '" title="' + profileLabels[pid] + ' (' + sublabel + ') profile score (0-100)">' + profileLabels[pid] + '<br><span style="color:#94a3b8; font-size:0.6rem;">(' + sublabel + ')</span></div>';
+    var label = profileLabels[pid] + (scored ? '' : ' *');
+    headerHtml += '<div style="text-align:right; font-size:0.7rem; line-height:1.2;' + bgStyle + '" title="' + profileLabels[pid] + ' (' + sublabel + ')' + (scored ? ' — counts toward composite score' : ' — reference only, does not count toward composite score') + '">' + label + '<br><span style="color:#94a3b8; font-size:0.6rem;">(' + sublabel + ')</span></div>';
   });
   header.innerHTML = headerHtml;
   table.appendChild(header);
@@ -200,13 +218,21 @@ function renderComposite() {
     r.scores.forEach(function(s, i) {
       var pid = activeIds[i];
       var isH2 = profileProtos[pid] === 'h2';
-      var bgStyle = isH2 ? ' background:rgba(234,179,8,0.12); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;' : ' background:rgba(59,130,246,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
+      var scored = profileScored[pid];
+      var bgStyle;
+      if (!scored) {
+        bgStyle = ' background:rgba(148,163,184,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px; opacity:0.5;';
+      } else if (isH2) {
+        bgStyle = ' background:rgba(234,179,8,0.12); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
+      } else {
+        bgStyle = ' background:rgba(59,130,246,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
+      }
       if (s === 0) {
         profileCells += '<div class="lb-stat" style="text-align:right; color:#cbd5e1;' + bgStyle + '">—</div>';
       } else {
         var rps = avgByProfile[pid][r.framework];
         var rpsStr = rps >= 1000000 ? (rps / 1000000).toFixed(1) + 'M' : rps >= 1000 ? (rps / 1000).toFixed(0) + 'K' : Math.round(rps);
-        var color = s >= 80 ? '#16a34a' : s >= 50 ? '#ca8a04' : '#dc2626';
+        var color = scored ? (s >= 80 ? '#16a34a' : s >= 50 ? '#ca8a04' : '#dc2626') : '#94a3b8';
         profileCells += '<div class="lb-stat" style="text-align:right; color:' + color + '; font-weight:500;' + bgStyle + '">' + s.toFixed(1) + ' <span style="font-size:0.6rem; color:#94a3b8; font-weight:400;">(' + rpsStr + ')</span></div>';
       }
     });
@@ -280,18 +306,13 @@ document.querySelectorAll('.composite-profile-filter').forEach(function(btn) {
     var allBtn = document.querySelector('.composite-profile-filter[data-profile="all"]');
     if (pid === 'all') {
       allFilters.forEach(function(f) { f.classList.add('active'); });
-    } else if (btn.classList.contains('active') && allBtn.classList.contains('active')) {
-      allFilters.forEach(function(f) { f.classList.remove('active'); });
-      btn.classList.add('active');
     } else {
       btn.classList.toggle('active');
       allBtn.classList.remove('active');
-      if (!document.querySelector('.composite-profile-filter[data-profile]:not([data-profile="all"]).active')) {
+      var total = document.querySelectorAll('.composite-profile-filter[data-profile]:not([data-profile="all"])').length;
+      var active = document.querySelectorAll('.composite-profile-filter[data-profile]:not([data-profile="all"]).active').length;
+      if (active === 0 || active === total) {
         allFilters.forEach(function(f) { f.classList.add('active'); });
-      } else {
-        var total = document.querySelectorAll('.composite-profile-filter[data-profile]:not([data-profile="all"])').length;
-        var active = document.querySelectorAll('.composite-profile-filter[data-profile]:not([data-profile="all"]).active').length;
-        if (total === active) allBtn.classList.add('active');
       }
     }
     renderComposite();

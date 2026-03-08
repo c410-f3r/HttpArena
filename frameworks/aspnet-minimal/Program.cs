@@ -46,6 +46,32 @@ if (File.Exists(datasetPath))
     datasetItems = JsonSerializer.Deserialize<List<DatasetItem>>(json);
 }
 
+// Pre-load static files
+var staticFileMap = new Dictionary<string, (byte[] Data, string ContentType)>();
+var staticDir = "/data/static";
+if (Directory.Exists(staticDir))
+{
+    var mimeTypes = new Dictionary<string, string>
+    {
+        {".css", "text/css"}, {".js", "application/javascript"}, {".html", "text/html"},
+        {".woff2", "font/woff2"}, {".svg", "image/svg+xml"}, {".webp", "image/webp"}, {".json", "application/json"}
+    };
+    foreach (var file in Directory.GetFiles(staticDir))
+    {
+        var name = Path.GetFileName(file);
+        var ext = Path.GetExtension(file);
+        var ct = mimeTypes.GetValueOrDefault(ext, "application/octet-stream");
+        staticFileMap[name] = (File.ReadAllBytes(file), ct);
+    }
+}
+
+app.MapGet("/static/{filename}", (string filename) =>
+{
+    if (staticFileMap.TryGetValue(filename, out var sf))
+        return Results.Bytes(sf.Data, sf.ContentType);
+    return Results.NotFound();
+});
+
 app.MapGet("/pipeline", () => Results.Text("ok"));
 
 app.MapGet("/baseline11", (HttpRequest req) =>

@@ -8,4 +8,5 @@ FROM debian:bookworm-slim
 COPY --from=build /app/caddy /usr/local/bin/caddy
 COPY Caddyfile /etc/caddy/Caddyfile
 EXPOSE 8080 8443
+ENV GOGC=400
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]

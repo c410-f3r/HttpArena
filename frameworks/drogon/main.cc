@@ -1,4 +1,5 @@
 #include <drogon/drogon.h>
+#include <dirent.h>
 #include <fstream>
 #include <sstream>
 #include <cmath>
@@ -7,6 +8,12 @@
 using namespace drogon;
 
 static std::string json_response;
+
+struct StaticFile {
+    std::string data;
+    std::string content_type;
+};
+static std::unordered_map<std::string, StaticFile> static_files;
 
 static void loadDataset()
 {
@@ -50,6 +57,32 @@ static void loadDataset()
     json_response = Json::writeString(wb, resp);
 }
 
+static void loadStaticFiles()
+{
+    static const std::unordered_map<std::string, std::string> mime = {
+        {".css","text/css"},{".js","application/javascript"},{".html","text/html"},
+        {".woff2","font/woff2"},{".svg","image/svg+xml"},{".webp","image/webp"},{".json","application/json"}
+    };
+    DIR *d = opendir("/data/static");
+    if (!d) return;
+    struct dirent *e;
+    while ((e = readdir(d)) != nullptr) {
+        if (e->d_type != DT_REG) continue;
+        std::string name(e->d_name);
+        std::string fpath = "/data/static/" + name;
+        std::ifstream f(fpath, std::ios::binary);
+        if (!f) continue;
+        std::ostringstream ss;
+        ss << f.rdbuf();
+        auto dot = name.rfind('.');
+        std::string ext = dot != std::string::npos ? name.substr(dot) : "";
+        auto it = mime.find(ext);
+        std::string ct = it != mime.end() ? it->second : "application/octet-stream";
+        static_files[name] = {ss.str(), ct};
+    }
+    closedir(d);
+}
+
 static int64_t sumQuery(const HttpRequestPtr &req)
 {
     int64_t sum = 0;
@@ -62,6 +95,7 @@ static int64_t sumQuery(const HttpRequestPtr &req)
 int main()
 {
     loadDataset();
+    loadStaticFiles();
 
     // Register sync advice for fastest dispatch (bypasses controller pipeline)
     app().registerSyncAdvice(
@@ -114,6 +148,20 @@ int main()
                 resp->setBody(std::to_string(sum));
                 resp->setContentTypeCode(CT_TEXT_PLAIN);
                 resp->addHeader("Server", "drogon");
+                return resp;
+            }
+
+            if (path.size() > 8 && path.substr(0, 8) == "/static/") {
+                auto it = static_files.find(path.substr(8));
+                if (it != static_files.end()) {
+                    auto resp = HttpResponse::newHttpResponse();
+                    resp->setBody(it->second.data);
+                    resp->addHeader("Content-Type", it->second.content_type);
+                    resp->addHeader("Server", "drogon");
+                    return resp;
+                }
+                auto resp = HttpResponse::newHttpResponse();
+                resp->setStatusCode(k404NotFound);
                 return resp;
             }
 

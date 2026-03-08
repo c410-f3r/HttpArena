@@ -11,7 +11,9 @@ import jakarta.ws.rs.core.MediaType;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Path("/")
 public class BenchmarkResource {
@@ -20,6 +22,16 @@ public class BenchmarkResource {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private List<Map<String, Object>> dataset;
+    private final Map<String, byte[]> staticFiles = new ConcurrentHashMap<>();
+    private static final Map<String, String> MIME_TYPES = Map.ofEntries(
+        Map.entry(".css", "text/css"),
+        Map.entry(".js", "application/javascript"),
+        Map.entry(".html", "text/html"),
+        Map.entry(".woff2", "font/woff2"),
+        Map.entry(".svg", "image/svg+xml"),
+        Map.entry(".webp", "image/webp"),
+        Map.entry(".json", "application/json")
+    );
 
     @PostConstruct
     public void init() throws IOException {
@@ -28,6 +40,20 @@ public class BenchmarkResource {
         File f = new File(path);
         if (f.exists()) {
             dataset = mapper.readValue(f, new TypeReference<>() {});
+        }
+        // Pre-load static files
+        File staticDir = new File("/data/static");
+        if (staticDir.isDirectory()) {
+            File[] files = staticDir.listFiles();
+            if (files != null) {
+                for (File sf : files) {
+                    if (sf.isFile()) {
+                        try {
+                            staticFiles.put(sf.getName(), Files.readAllBytes(sf.toPath()));
+                        } catch (IOException ignored) {}
+                    }
+                }
+            }
         }
     }
 
@@ -82,6 +108,20 @@ public class BenchmarkResource {
             items.add(processed);
         }
         return Map.of("items", items, "count", items.size());
+    }
+
+    @GET
+    @Path("/static/{filename}")
+    @NonBlocking
+    public jakarta.ws.rs.core.Response staticFile(@PathParam("filename") String filename) {
+        byte[] data = staticFiles.get(filename);
+        if (data == null) {
+            return jakarta.ws.rs.core.Response.status(404).build();
+        }
+        int dot = filename.lastIndexOf('.');
+        String ext = dot >= 0 ? filename.substring(dot) : "";
+        String ct = MIME_TYPES.getOrDefault(ext, "application/octet-stream");
+        return jakarta.ws.rs.core.Response.ok(data).header("Content-Type", ct).build();
     }
 
     private int sumParams(String a, String b) {

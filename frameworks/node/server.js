@@ -9,6 +9,24 @@ const SERVER_HEADERS = { 'server': 'node' };
 // Pre-serialized JSON response buffer
 let jsonResponseBuf;
 
+// Pre-loaded static files
+const staticFiles = {};
+const MIME_TYPES = {
+    '.css': 'text/css', '.js': 'application/javascript', '.html': 'text/html',
+    '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.json': 'application/json'
+};
+
+function loadStaticFiles() {
+    const dir = '/data/static';
+    try {
+        for (const name of fs.readdirSync(dir)) {
+            const buf = fs.readFileSync(dir + '/' + name);
+            const ext = name.slice(name.lastIndexOf('.'));
+            staticFiles[name] = { buf, ct: MIME_TYPES[ext] || 'application/octet-stream' };
+        }
+    } catch (e) {}
+}
+
 function loadDataset() {
     const path = process.env.DATASET_PATH || '/data/dataset.json';
     try {
@@ -98,11 +116,24 @@ function startH2() {
             allowHTTP1: false,
         };
         const h2server = http2.createSecureServer(opts, (req, res) => {
-            // H2 only serves /baseline2
             const url = req.url;
-            const sum = sumQuery(url);
-            res.writeHead(200, { 'content-type': 'text/plain', 'server': 'node' });
-            res.end(String(sum));
+            const q = url.indexOf('?');
+            const p = q === -1 ? url : url.slice(0, q);
+            if (p.startsWith('/static/')) {
+                const name = p.slice(8);
+                const sf = staticFiles[name];
+                if (sf) {
+                    res.writeHead(200, { 'content-type': sf.ct, 'content-length': sf.buf.length, 'server': 'node' });
+                    res.end(sf.buf);
+                } else {
+                    res.writeHead(404);
+                    res.end();
+                }
+            } else {
+                const sum = sumQuery(url);
+                res.writeHead(200, { 'content-type': 'text/plain', 'server': 'node' });
+                res.end(String(sum));
+            }
         });
         h2server.listen(8443);
     } catch (e) {
@@ -115,6 +146,7 @@ if (cluster.isPrimary) {
     for (let i = 0; i < numCPUs; i++) cluster.fork();
 } else {
     loadDataset();
+    loadStaticFiles();
     server.listen(8080);
     startH2();
 }
