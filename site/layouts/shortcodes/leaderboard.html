@@ -253,6 +253,10 @@ html.dark .lb-sortable.sort-desc::after { color: #60a5fa; }
 .lb-row.lb-row-reconn {
   grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 4.5rem 3.5rem 5.5rem 7rem 5.5rem 4rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
 }
+.lb-row.lb-row-noisy {
+  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 4.5rem 3.5rem 5.5rem 7rem 5.5rem 4rem 5.5rem 5rem 5.5rem 4.5rem;
+}
+.lb-row.lb-row-noisy .lb-bar-cell { display: none; }
 .lb-row:not(.lb-header) { cursor: pointer; }
 .lb-row:not(.lb-header):hover { background: rgba(59, 130, 246, 0.04); }
 .lb-row.lb-hidden { display: none; }
@@ -413,7 +417,7 @@ html.dark .lb-filters-toggle:hover .lb-toggle-icon { color: #60a5fa; }
   (dict "id" "json"      "label" "JSON Processing"       "conns" (slice 4096 16384 32768)       "desc" "Each request hits <code>GET /json</code>. The server loads a 50-item dataset at startup, computes a derived <code>total</code> field per item, and returns the full result as a JSON response (~10 KB). Measures object allocation, JSON serialization performance, and framework response overhead — the typical workload of a real-world API.")
   (dict "id" "upload"       "label" "Upload (20 MB)"        "conns" (slice 64 256 512)     "desc" "Each request sends a 20 MB binary payload via <code>POST /upload</code>. The server reads the entire body and returns its CRC32 checksum. Measures request body ingestion throughput — how efficiently a framework handles large uploads, including buffering, memory management, and I/O handling under sustained load.")
   (dict "id" "compression" "label" "Compression"           "conns" (slice 4096 16384) "desc" "Requests <code>GET /compression</code> with <code>Accept-Encoding: gzip</code>. The server loads a 6000-item dataset (~1 MB JSON) at startup and serves it gzip-compressed on the fly. Measures the throughput cost of real-time compression — only frameworks with built-in gzip support are eligible.")
-  (dict "id" "noisy"       "label" "Noisy"                 "conns" (slice 512 4096 16384) "desc" "Valid baseline requests interleaved with malformed noise — nonexistent paths, oversized headers, bad content-length, and raw binary. Only 2xx responses count. Measures resilience: how well a framework maintains throughput while rejecting garbage traffic.")
+  (dict "id" "noisy"       "label" "Noisy"                 "conns" (slice 512 4096 16384) "desc" "Valid baseline requests interleaved with malformed noise — nonexistent paths, bad content-length, and raw binary. Only 2xx responses count. Measures resilience: how well a framework maintains throughput while rejecting garbage traffic.")
   (dict "id" "pipelined"    "label" "Pipelined (16)"        "conns" (slice 512 4096 16384) "desc" "16 HTTP requests are sent back-to-back on each connection before waiting for responses. Uses a lightweight <code>GET /pipeline</code> endpoint that returns a fixed response, isolating raw I/O and pipeline handling from application logic. Frameworks that batch pipelined requests from the read buffer gain a significant advantage.")
 }}
 
@@ -502,9 +506,10 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
   <div style="font-size:0.75rem; color:#94a3b8; margin:0 0 0.75rem 0;">Click a row to expand details</div>
 
   {{ $isReconn := or (eq $p.id "limited-conn") (eq $p.id "noisy") }}
+  {{ $isNoisy := eq $p.id "noisy" }}
   <div class="lb-conn-panel active" data-profile="{{ $p.id }}" data-conns="best">
     <div class="lb">
-      <div class="lb-row lb-header{{ if $isReconn }} lb-row-reconn{{ end }}">
+      <div class="lb-row lb-header{{ if $isReconn }} lb-row-reconn{{ end }}{{ if $isNoisy }} lb-row-noisy{{ end }}">
         <div title="Rank by requests per second">#</div>
         <div title="HTTP server framework name">Framework</div>
         <div title="Programming language">Lang</div>
@@ -515,7 +520,7 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
         <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
         <div class="lb-sortable" data-sort="bandwidth" title="Bandwidth — MB/s transferred" style="text-align:right">BW</div>
         <div class="lb-sortable" data-sort="errors" title="HTTP error count (4xx+5xx) — hover for breakdown" style="text-align:right">Err</div>
-        <div></div>
+        <div class="lb-bar-cell"></div>
         <div class="lb-sortable" data-sort="cpu" title="Average CPU usage of the server container during the benchmark" style="text-align:right">CPU</div>
         <div class="lb-sortable" data-sort="mem" title="Peak memory usage of the server container" style="text-align:right">Mem</div>
         <div class="lb-sortable" data-sort="avglat" title="Average request latency — lower is better" style="text-align:right">Avg Lat</div>
@@ -530,7 +535,7 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
   <div class="lb-conn-panel" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
   {{ if $data }}
   <div class="lb">
-    <div class="lb-row lb-header{{ if $isReconn }} lb-row-reconn{{ end }}">
+    <div class="lb-row lb-header{{ if $isReconn }} lb-row-reconn{{ end }}{{ if $isNoisy }} lb-row-noisy{{ end }}">
       <div title="Rank by requests per second">#</div>
       <div title="HTTP server framework name">Framework</div>
       <div title="Programming language">Lang</div>
@@ -541,7 +546,7 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
       <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
       <div class="lb-sortable" data-sort="bandwidth" title="Bandwidth — MB/s transferred" style="text-align:right">BW</div>
       <div class="lb-sortable" data-sort="errors" title="HTTP error count (4xx+5xx) — hover for breakdown" style="text-align:right">Err</div>
-      <div></div>
+      <div class="lb-bar-cell"></div>
       <div class="lb-sortable" data-sort="cpu" title="Average CPU usage of the server container during the benchmark" style="text-align:right">CPU</div>
       <div class="lb-sortable" data-sort="mem" title="Peak memory usage of the server container" style="text-align:right">Mem</div>
       <div class="lb-sortable" data-sort="avglat" title="Average request latency — lower is better" style="text-align:right">Avg Lat</div>
@@ -554,7 +559,7 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
     {{ $pct := mul (div (float $r.rps) (float $maxRps)) 100.0 }}
     {{ $meta := index site.Data.frameworks $r.framework }}
     {{ $s2xx := int ($r.status_2xx | default 0) }}{{ $s3xx := int ($r.status_3xx | default 0) }}{{ $s4xx := int ($r.status_4xx | default 0) }}{{ $s5xx := int ($r.status_5xx | default 0) }}{{ $errs := add $s4xx $s5xx }}
-    <div class="lb-row{{ if $isReconn }} lb-row-reconn{{ end }}" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-bandwidth="{{ $r.bandwidth | default "" }}" data-type="{{ with $meta }}{{ .type | default "realistic" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}" data-s2xx="{{ $s2xx }}" data-s3xx="{{ $s3xx }}" data-s4xx="{{ $s4xx }}" data-s5xx="{{ $s5xx }}">
+    <div class="lb-row{{ if $isReconn }} lb-row-reconn{{ end }}{{ if $isNoisy }} lb-row-noisy{{ end }}" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-bandwidth="{{ $r.bandwidth | default "" }}" data-type="{{ with $meta }}{{ .type | default "realistic" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}" data-s2xx="{{ $s2xx }}" data-s3xx="{{ $s3xx }}" data-s4xx="{{ $s4xx }}" data-s5xx="{{ $s5xx }}">
       {{ $ftype := "realistic" }}{{ with $meta }}{{ $ftype = .type | default "realistic" }}{{ end }}
       <div class="lb-rank">{{ if eq $j 0 }}🥇{{ else if eq $j 1 }}🥈{{ else if eq $j 2 }}🥉{{ else }}{{ add $j 1 }}{{ end }}</div>
       <div class="lb-name">{{ $r.framework }}</div>
@@ -948,6 +953,7 @@ window.addEventListener('roundChanged', function(ev) {
     if (!results || results.length === 0) return;
 
     var isReconn = profile === 'limited-conn' || profile === 'noisy';
+    var isNoisy = profile === 'noisy';
     var sorted = results.slice().sort(function(a, b) { return b.rps - a.rps; });
     var maxRps = sorted[0].rps || 1;
 
@@ -963,7 +969,7 @@ window.addEventListener('roundChanged', function(ev) {
           '<div class="lb-status-tip"><div><b>2xx:</b> ' + rs2.toLocaleString() + '</div><div><b>3xx:</b> ' + rs3.toLocaleString() + '</div><div><b>4xx:</b> ' + rs4.toLocaleString() + '</div><div><b>5xx:</b> ' + rs5.toLocaleString() + '</div></div></div>'
         : '<div class="lb-status"><span class="lb-status-na">\u2014</span></div>';
       var row = document.createElement('div');
-      row.className = 'lb-row' + (isReconn ? ' lb-row-reconn' : '');
+      row.className = 'lb-row' + (isReconn ? ' lb-row-reconn' : '') + (isNoisy ? ' lb-row-noisy' : '');
       row.dataset.lang = r.language || '';
       row.dataset.name = r.framework;
       row.dataset.rps = String(r.rps);

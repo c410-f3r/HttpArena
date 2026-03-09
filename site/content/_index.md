@@ -91,7 +91,7 @@ html.dark .test-card-endpoint { color: #64748b; }
   </a>
   <a class="test-card" href="docs/tests/h1/noisy">
     <div class="test-card-title">Noisy (Resilience)</div>
-    <div class="test-card-desc">Valid requests mixed with malformed noise — bad paths, binary, oversized headers, bad content-length. Only 2xx count.</div>
+    <div class="test-card-desc">Valid requests mixed with malformed noise — bad paths, bad content-length, binary. Only 2xx count.</div>
     <div class="test-card-endpoint">GET/POST /baseline11 + noise</div>
   </a>
   <a class="test-card" href="docs/tests/h1/pipelined">
