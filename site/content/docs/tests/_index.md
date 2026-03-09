@@ -1,6 +1,7 @@
 ---
 title: Test Profiles
 toc: false
+weight: 4
 ---
 
 HttpArena runs every framework through multiple benchmark profiles. Each profile isolates a different performance dimension, ensuring frameworks are compared fairly across varied workloads.

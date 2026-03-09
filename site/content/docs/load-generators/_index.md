@@ -1,11 +1,13 @@
 ---
 title: Load Generators
 toc: false
+weight: 3
 ---
 
-HttpArena uses two load generators: **gcannon** for HTTP/1.1 profiles and **h2load** for HTTP/2.
+HttpArena uses three load generators, one per protocol version.
 
 {{< cards >}}
-  {{< card link="gcannon" title="gcannon" subtitle="Custom io_uring-based HTTP/1.1 load generator built for maximum throughput." icon="lightning-bolt" >}}
-  {{< card link="h2load" title="h2load" subtitle="HTTP/2 load generator from nghttp2 with TLS and stream multiplexing support." icon="globe-alt" >}}
+  {{< card link="h1" title="HTTP/1.1" subtitle="gcannon — custom io_uring-based load generator for maximum HTTP/1.1 throughput." icon="lightning-bolt" >}}
+  {{< card link="h2" title="HTTP/2" subtitle="h2load — nghttp2's load generator with TLS and stream multiplexing." icon="globe-alt" >}}
+  {{< card link="h3" title="HTTP/3" subtitle="oha — HTTP load generator with QUIC support for HTTP/3 benchmarks." icon="globe-alt" >}}
 {{< /cards >}}

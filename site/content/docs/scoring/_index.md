@@ -1,6 +1,7 @@
 ---
 title: Scoring
 toc: false
+weight: 5
 ---
 
 How HttpArena computes the composite score that ranks frameworks across all test profiles.
