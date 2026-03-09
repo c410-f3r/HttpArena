@@ -3,6 +3,7 @@ package httparenahandler
 import (
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"math"
 	"net/http"
@@ -173,6 +174,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyht
 		w.Header().Set("Content-Type", "text/plain")
 		w.Header().Set("Server", "caddy")
 		fmt.Fprint(w, sum)
+		return nil
+
+	case "/upload":
+		if r.Method == "POST" && r.Body != nil {
+			body, _ := io.ReadAll(r.Body)
+			checksum := crc32.ChecksumIEEE(body)
+			w.Header().Set("Content-Type", "text/plain")
+			w.Header().Set("Server", "caddy")
+			fmt.Fprintf(w, "%08x", checksum)
+		} else {
+			http.Error(w, "POST required", 405)
+		}
 		return nil
 	}
 

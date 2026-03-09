@@ -4,6 +4,8 @@ const cluster = require('cluster');
 const os = require('os');
 const fs = require('fs');
 
+const zlib = require('zlib');
+
 const SERVER_HEADERS = { 'server': 'node' };
 
 // Pre-serialized JSON response buffer
@@ -83,6 +85,15 @@ const server = http.createServer((req, res) => {
         const body = String(sumQuery(url));
         res.writeHead(200, { 'content-type': 'text/plain', ...SERVER_HEADERS });
         res.end(body);
+    } else if (path === '/upload' && req.method === 'POST') {
+        const chunks = [];
+        req.on('data', chunk => chunks.push(chunk));
+        req.on('end', () => {
+            const buf = Buffer.concat(chunks);
+            const crc = zlib.crc32(buf);
+            res.writeHead(200, { 'content-type': 'text/plain', ...SERVER_HEADERS });
+            res.end((crc >>> 0).toString(16).padStart(8, '0'));
+        });
     } else {
         // /baseline11 — GET or POST
         const querySum = sumQuery(url);

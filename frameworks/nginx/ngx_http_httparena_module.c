@@ -97,6 +97,64 @@ send_resp(ngx_http_request_t *r, ngx_uint_t status,
     return ngx_http_output_filter(r, &out);
 }
 
+/* ---------- CRC32 ---------- */
+
+static uint32_t crc32_tab[8][256];
+
+static void
+init_crc32_table(void)
+{
+    uint32_t i;
+    int j, s;
+    for (i = 0; i < 256; i++) {
+        uint32_t c = i;
+        for (j = 0; j < 8; j++) c = (c >> 1) ^ (0xEDB88320 & (-(c & 1)));
+        crc32_tab[0][i] = c;
+    }
+    for (i = 0; i < 256; i++)
+        for (s = 1; s < 8; s++)
+            crc32_tab[s][i] = (crc32_tab[s-1][i] >> 8) ^ crc32_tab[0][crc32_tab[s-1][i] & 0xFF];
+}
+
+static uint32_t
+compute_crc32(u_char *data, size_t len)
+{
+    uint32_t crc = 0xFFFFFFFF;
+    while (len >= 8) {
+        uint32_t a = *(uint32_t *)data ^ crc;
+        uint32_t b = *(uint32_t *)(data + 4);
+        crc = crc32_tab[7][a & 0xFF] ^ crc32_tab[6][(a >> 8) & 0xFF]
+            ^ crc32_tab[5][(a >> 16) & 0xFF] ^ crc32_tab[4][(a >> 24)]
+            ^ crc32_tab[3][b & 0xFF] ^ crc32_tab[2][(b >> 8) & 0xFF]
+            ^ crc32_tab[1][(b >> 16) & 0xFF] ^ crc32_tab[0][(b >> 24)];
+        data += 8; len -= 8;
+    }
+    while (len--) crc = (crc >> 8) ^ crc32_tab[0][(crc ^ *data++) & 0xFF];
+    return crc ^ 0xFFFFFFFF;
+}
+
+/* ---------- POST body handler for /upload ---------- */
+
+static void
+upload_post_handler(ngx_http_request_t *r)
+{
+    uint32_t crc = 0;
+    if (r->request_body && r->request_body->bufs) {
+        ngx_buf_t *buf = r->request_body->bufs->buf;
+        if (buf && !buf->in_file && buf->pos < buf->last) {
+            crc = compute_crc32(buf->pos, buf->last - buf->pos);
+        }
+    }
+
+    u_char resp[16];
+    u_char *last = ngx_snprintf(resp, sizeof(resp), "%08xd", crc);
+
+    ngx_int_t rc = send_resp(r, 200,
+                              (u_char *)"text/plain", 10,
+                              resp, last - resp, 1);
+    ngx_http_finalize_request(r, rc);
+}
+
 /* ---------- POST body handler for /baseline11 ---------- */
 
 static void
@@ -163,6 +221,14 @@ ngx_http_httparena_handler(ngx_http_request_t *r)
         return send_resp(r, 200,
                          (u_char *)"text/plain", 10,
                          buf, last - buf, 1);
+    }
+
+    /* /upload */
+    if (uri_len == 7 && ngx_strncmp(uri, "/upload", 7) == 0 && r->method == NGX_HTTP_POST) {
+        r->request_body_in_single_buf = 1;
+        ngx_int_t rc = ngx_http_read_client_request_body(r, upload_post_handler);
+        if (rc >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
+        return NGX_DONE;
     }
 
     /* /json */
@@ -311,6 +377,7 @@ ngx_http_httparena(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static ngx_int_t
 ngx_http_httparena_init_module(ngx_cycle_t *cycle)
 {
+    init_crc32_table();
     load_dataset();
     load_static_files();
     return NGX_OK;

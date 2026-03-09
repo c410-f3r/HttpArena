@@ -86,6 +86,16 @@ public class BenchmarkResource {
         return String.valueOf(sum);
     }
 
+    @POST
+    @Path("/upload")
+    @Produces(MediaType.TEXT_PLAIN)
+    @NonBlocking
+    public String upload(byte[] body) {
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        crc.update(body);
+        return String.format("%08x", crc.getValue());
+    }
+
     @GET
     @Path("/baseline2")
     @Produces(MediaType.TEXT_PLAIN)

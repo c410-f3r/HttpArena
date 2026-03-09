@@ -26,12 +26,13 @@ declare -A PROFILES=(
     [pipelined]="16|0||512,4096,16384|pipeline"
     [limited-conn]="1|10||512,4096|"
     [json]="1|0||4096,16384,32768|json"
+    [upload]="1|0||64,256,512|upload"
     [baseline-h2]="1|0||64,256,1024|h2"
     [static-h2]="1|0||64,256,1024|static-h2"
     [baseline-h3]="128|0||64,512|h3"
     [static-h3]="128|0||64,512|static-h3"
 )
-PROFILE_ORDER=(baseline pipelined limited-conn json baseline-h2 static-h2 baseline-h3 static-h3)
+PROFILE_ORDER=(baseline pipelined limited-conn json upload baseline-h2 static-h2 baseline-h3 static-h3)
 
 # Parse flags
 SAVE_RESULTS=false
@@ -275,6 +276,8 @@ for profile in "${profiles_to_run[@]}"; do
     elif [ "$endpoint" = "h2" ] || [ "$endpoint" = "static-h2" ]; then
         local_check_url="https://localhost:$H2PORT/static/reset.css"
         [ "$endpoint" = "h2" ] && local_check_url="https://localhost:$H2PORT/baseline2?a=1&b=1"
+    elif [ "$endpoint" = "upload" ]; then
+        local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
     elif [ "$endpoint" = "json" ]; then
         local_check_url="http://localhost:$PORT/json"
     else
@@ -324,6 +327,10 @@ for profile in "${profiles_to_run[@]}"; do
             -c "$CONNS" -m 100 -t "$THREADS" -D "$DURATION")
     elif [ "$endpoint" = "pipeline" ]; then
         gc_args=("http://localhost:$PORT/pipeline"
+            -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
+    elif [ "$endpoint" = "upload" ]; then
+        gc_args=("http://localhost:$PORT"
+            --raw "$REQUESTS_DIR/upload.raw"
             -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
     elif [ "$endpoint" = "json" ]; then
         gc_args=("http://localhost:$PORT/json"
@@ -381,9 +388,9 @@ for profile in "${profiles_to_run[@]}"; do
             rps_int=$(echo "$output" | grep -oP 'finished in [\d.]+s, \K[\d.]+' | cut -d. -f1 || echo "0")
             rps_int=${rps_int:-0}
         else
-            req_count=$(echo "$output" | grep -oP '(\d+) requests in' | grep -oP '\d+' || echo "0")
             duration_secs=$(echo "$output" | grep -oP 'requests in ([\d.]+)s' | grep -oP '[\d.]+' || echo "1")
-            rps_int=$(echo "$req_count / $duration_secs" | bc | cut -d. -f1)
+            run_2xx=$(echo "$output" | grep -oP '2xx=\K\d+' || echo "0")
+            rps_int=$(echo "$run_2xx / $duration_secs" | bc | cut -d. -f1)
             rps_int=${rps_int:-0}
         fi
 

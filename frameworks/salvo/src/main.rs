@@ -6,6 +6,44 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+static CRC32_TABLE: OnceLock<[[u32; 256]; 8]> = OnceLock::new();
+
+fn init_crc32_table() -> [[u32; 256]; 8] {
+    let mut tab = [[0u32; 256]; 8];
+    for i in 0..256u32 {
+        let mut c = i;
+        for _ in 0..8 {
+            c = if c & 1 != 0 { 0xEDB88320 ^ (c >> 1) } else { c >> 1 };
+        }
+        tab[0][i as usize] = c;
+    }
+    for i in 0..256usize {
+        for s in 1..8usize {
+            tab[s][i] = (tab[s - 1][i] >> 8) ^ tab[0][(tab[s - 1][i] & 0xFF) as usize];
+        }
+    }
+    tab
+}
+
+fn crc32_compute(data: &[u8]) -> u32 {
+    let tab = CRC32_TABLE.get_or_init(init_crc32_table);
+    let mut crc = 0xFFFFFFFFu32;
+    let mut p = data;
+    while p.len() >= 8 {
+        let a = u32::from_le_bytes([p[0], p[1], p[2], p[3]]) ^ crc;
+        let b = u32::from_le_bytes([p[4], p[5], p[6], p[7]]);
+        crc = tab[7][(a & 0xFF) as usize] ^ tab[6][((a >> 8) & 0xFF) as usize]
+            ^ tab[5][((a >> 16) & 0xFF) as usize] ^ tab[4][(a >> 24) as usize]
+            ^ tab[3][(b & 0xFF) as usize] ^ tab[2][((b >> 8) & 0xFF) as usize]
+            ^ tab[1][((b >> 16) & 0xFF) as usize] ^ tab[0][(b >> 24) as usize];
+        p = &p[8..];
+    }
+    for &byte in p {
+        crc = (crc >> 8) ^ tab[0][((crc ^ byte as u32) & 0xFF) as usize];
+    }
+    crc ^ 0xFFFFFFFF
+}
+
 static STATE: OnceLock<AppState> = OnceLock::new();
 static SERVER_HDR: HeaderValue = HeaderValue::from_static("salvo");
 
@@ -190,6 +228,18 @@ async fn json_endpoint(res: &mut Response) {
 }
 
 #[handler]
+async fn upload(req: &mut Request, res: &mut Response) {
+    if let Ok(body) = req.payload_with_max_size(25 * 1024 * 1024).await {
+        let crc = crc32_compute(body);
+        res.headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
+        res.render(format!("{:08x}", crc));
+    } else {
+        res.status_code(StatusCode::BAD_REQUEST);
+    }
+}
+
+#[handler]
 async fn static_file(req: &mut Request, res: &mut Response) {
     let state = STATE.get().unwrap();
     let filename: String = req.param("filename").unwrap_or_default();
@@ -225,6 +275,7 @@ async fn main() {
         )
         .push(Router::with_path("baseline2").get(baseline2))
         .push(Router::with_path("json").get(json_endpoint))
+        .push(Router::with_path("upload").post(upload))
         .push(
             Router::with_path("static").push(
                 Router::with_path("{filename}").get(static_file),

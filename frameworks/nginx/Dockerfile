@@ -31,8 +31,8 @@ RUN ./configure \
     --with-http_v2_module \
     --with-http_v3_module \
     --add-module=/tmp/module \
-    --with-cc-opt="-O3 -march=native -flto -DNDEBUG -I/opt/quictls/include" \
-    --with-ld-opt="-flto -lm -L/opt/quictls/lib -Wl,-rpath,/opt/quictls/lib" && \
+    --with-cc-opt="-O3 -march=native -DNDEBUG -I/opt/quictls/include" \
+    --with-ld-opt="-lm -L/opt/quictls/lib -Wl,-rpath,/opt/quictls/lib" && \
     make -j$(nproc)
 
 FROM debian:bookworm-slim

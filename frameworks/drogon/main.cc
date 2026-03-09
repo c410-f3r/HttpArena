@@ -7,6 +7,33 @@
 
 using namespace drogon;
 
+static uint32_t crc32_tab[8][256];
+static void crc32_init() {
+    for (uint32_t i = 0; i < 256; i++) {
+        uint32_t c = i;
+        for (int j = 0; j < 8; j++) c = (c >> 1) ^ (0xEDB88320 & (-(c & 1)));
+        crc32_tab[0][i] = c;
+    }
+    for (uint32_t i = 0; i < 256; i++)
+        for (int s = 1; s < 8; s++)
+            crc32_tab[s][i] = (crc32_tab[s-1][i] >> 8) ^ crc32_tab[0][crc32_tab[s-1][i] & 0xFF];
+}
+static uint32_t crc32_compute(const void *data, size_t len) {
+    uint32_t crc = 0xFFFFFFFF;
+    const uint8_t *p = (const uint8_t *)data;
+    while (len >= 8) {
+        uint32_t a = *(const uint32_t *)p ^ crc;
+        uint32_t b = *(const uint32_t *)(p + 4);
+        crc = crc32_tab[7][a & 0xFF] ^ crc32_tab[6][(a >> 8) & 0xFF]
+            ^ crc32_tab[5][(a >> 16) & 0xFF] ^ crc32_tab[4][(a >> 24)]
+            ^ crc32_tab[3][b & 0xFF] ^ crc32_tab[2][(b >> 8) & 0xFF]
+            ^ crc32_tab[1][(b >> 16) & 0xFF] ^ crc32_tab[0][(b >> 24)];
+        p += 8; len -= 8;
+    }
+    while (len--) crc = (crc >> 8) ^ crc32_tab[0][(crc ^ *p++) & 0xFF];
+    return crc ^ 0xFFFFFFFF;
+}
+
 static std::string json_response;
 
 struct StaticFile {
@@ -94,6 +121,7 @@ static int64_t sumQuery(const HttpRequestPtr &req)
 
 int main()
 {
+    crc32_init();
     loadDataset();
     loadStaticFiles();
 
@@ -136,6 +164,18 @@ int main()
                 return resp;
             }
 
+            if (path == "/upload" && req->method() == Post) {
+                const auto &body = req->body();
+                uint32_t crc = crc32_compute(body.data(), body.size());
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%08x", crc);
+                auto resp = HttpResponse::newHttpResponse();
+                resp->setBody(std::string(buf));
+                resp->setContentTypeCode(CT_TEXT_PLAIN);
+                resp->addHeader("Server", "drogon");
+                return resp;
+            }
+
             if (path == "/baseline11") {
                 int64_t sum = sumQuery(req);
                 if (req->method() == Post) {
@@ -170,6 +210,7 @@ int main()
 
     app().setLogLevel(trantor::Logger::kWarn);
     app().setThreadNum(0); // auto-detect CPU cores
+    app().setClientMaxBodySize(25 * 1024 * 1024);
     app().setIdleConnectionTimeout(0);
     app().setKeepaliveRequestsNumber(0);
     app().setGzipStatic(false);

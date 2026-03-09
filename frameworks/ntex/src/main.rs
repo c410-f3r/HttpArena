@@ -9,7 +9,45 @@ use rustls::ServerConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
+
+static CRC32_TABLE: OnceLock<[[u32; 256]; 8]> = OnceLock::new();
+
+fn init_crc32_table() -> [[u32; 256]; 8] {
+    let mut tab = [[0u32; 256]; 8];
+    for i in 0..256u32 {
+        let mut c = i;
+        for _ in 0..8 {
+            c = if c & 1 != 0 { 0xEDB88320 ^ (c >> 1) } else { c >> 1 };
+        }
+        tab[0][i as usize] = c;
+    }
+    for i in 0..256usize {
+        for s in 1..8usize {
+            tab[s][i] = (tab[s - 1][i] >> 8) ^ tab[0][(tab[s - 1][i] & 0xFF) as usize];
+        }
+    }
+    tab
+}
+
+fn crc32_compute(data: &[u8]) -> u32 {
+    let tab = CRC32_TABLE.get_or_init(init_crc32_table);
+    let mut crc = 0xFFFFFFFFu32;
+    let mut p = data;
+    while p.len() >= 8 {
+        let a = u32::from_le_bytes([p[0], p[1], p[2], p[3]]) ^ crc;
+        let b = u32::from_le_bytes([p[4], p[5], p[6], p[7]]);
+        crc = tab[7][(a & 0xFF) as usize] ^ tab[6][((a >> 8) & 0xFF) as usize]
+            ^ tab[5][((a >> 16) & 0xFF) as usize] ^ tab[4][(a >> 24) as usize]
+            ^ tab[3][(b & 0xFF) as usize] ^ tab[2][((b >> 8) & 0xFF) as usize]
+            ^ tab[1][((b >> 16) & 0xFF) as usize] ^ tab[0][(b >> 24) as usize];
+        p = &p[8..];
+    }
+    for &byte in p {
+        crc = (crc >> 8) ^ tab[0][((crc ^ byte as u32) & 0xFF) as usize];
+    }
+    crc ^ 0xFFFFFFFF
+}
 
 static HDR_SERVER: http::header::HeaderValue = http::header::HeaderValue::from_static("ntex");
 static HDR_JSON: http::header::HeaderValue =
@@ -201,6 +239,16 @@ fn load_static_files() -> HashMap<String, StaticFile> {
     files
 }
 
+#[web::post("/upload")]
+async fn upload(body: Bytes) -> web::HttpResponse {
+    let crc = crc32_compute(&body);
+    let hex = format!("{:08x}", crc);
+    let mut resp = web::HttpResponse::with_body(http::StatusCode::OK, hex.into());
+    resp.headers_mut().insert(SERVER, HDR_SERVER.clone());
+    resp.headers_mut().insert(CONTENT_TYPE, HDR_TEXT.clone());
+    resp
+}
+
 #[web::get("/static/{filename}")]
 async fn static_file(state: web::types::State<Arc<AppState>>, path: web::types::Path<String>) -> web::HttpResponse {
     let filename = path.into_inner();
@@ -262,11 +310,13 @@ async fn main() -> std::io::Result<()> {
         async move || {
             web::App::new()
                 .state(ds.clone())
+                .state(web::types::PayloadConfig::new(25 * 1024 * 1024))
                 .service(pipeline)
                 .service(baseline_get)
                 .service(baseline_post)
                 .service(baseline2)
                 .service(json)
+                .service(upload)
                 .service(static_file)
         }
     })

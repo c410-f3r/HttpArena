@@ -172,6 +172,63 @@ static int on_static(h2o_handler_t *h, h2o_req_t *req)
     return 0;
 }
 
+/* CRC32 (ISO 3309) — slicing-by-8 for throughput, no zlib dependency */
+static uint32_t crc32_tab[8][256];
+static void crc32_init(void)
+{
+    for (uint32_t i = 0; i < 256; i++) {
+        uint32_t c = i;
+        for (int j = 0; j < 8; j++)
+            c = (c >> 1) ^ (0xEDB88320 & (-(c & 1)));
+        crc32_tab[0][i] = c;
+    }
+    for (uint32_t i = 0; i < 256; i++)
+        for (int s = 1; s < 8; s++)
+            crc32_tab[s][i] = (crc32_tab[s-1][i] >> 8) ^ crc32_tab[0][crc32_tab[s-1][i] & 0xFF];
+}
+static uint32_t crc32_compute(const void *data, size_t len)
+{
+    uint32_t crc = 0xFFFFFFFF;
+    const uint8_t *p = data;
+    while (len >= 8) {
+        uint32_t a = *(const uint32_t *)p ^ crc;
+        uint32_t b = *(const uint32_t *)(p + 4);
+        crc = crc32_tab[7][a & 0xFF] ^ crc32_tab[6][(a >> 8) & 0xFF]
+            ^ crc32_tab[5][(a >> 16) & 0xFF] ^ crc32_tab[4][(a >> 24)]
+            ^ crc32_tab[3][b & 0xFF] ^ crc32_tab[2][(b >> 8) & 0xFF]
+            ^ crc32_tab[1][(b >> 16) & 0xFF] ^ crc32_tab[0][(b >> 24)];
+        p += 8; len -= 8;
+    }
+    while (len--)
+        crc = (crc >> 8) ^ crc32_tab[0][(crc ^ *p++) & 0xFF];
+    return crc ^ 0xFFFFFFFF;
+}
+
+/* POST /upload — compute CRC32 of request body */
+static int on_upload(h2o_handler_t *h, h2o_req_t *req)
+{
+    (void)h;
+    if (!h2o_memis(req->method.base, req->method.len, H2O_STRLIT("POST"))
+        || req->entity.len == 0) {
+        h2o_send_error_400(req, "Bad Request", "POST with body required", 0);
+        return 0;
+    }
+    uint32_t crc = crc32_compute(req->entity.base, req->entity.len);
+    char buf[16];
+    int len = snprintf(buf, sizeof(buf), "%08x", crc);
+    h2o_generator_t gen;
+    memset(&gen, 0, sizeof(gen));
+    h2o_iovec_t body = h2o_iovec_init(buf, len);
+    req->res.status = 200;
+    req->res.reason = "OK";
+    req->res.content_length = len;
+    h2o_add_header(&req->pool, &req->res.headers, H2O_TOKEN_CONTENT_TYPE,
+                   NULL, H2O_STRLIT("text/plain"));
+    h2o_start_response(req, &gen);
+    h2o_send(req, &body, 1, H2O_SEND_STATE_FINAL);
+    return 0;
+}
+
 /* Load all static files from /data/static/ into memory */
 static void load_static_files(void)
 {
@@ -234,6 +291,7 @@ static void setup_host(h2o_hostconf_t *host)
     register_handler(host, "/baseline2", on_baseline2);
     register_handler(host, "/json", on_json);
     register_handler(host, "/static", on_static);
+    register_handler(host, "/upload", on_upload);
 }
 
 /* Load dataset.json and pre-serialize the /json response with yajl */
@@ -468,6 +526,7 @@ static void init_tls(void)
 int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
+    crc32_init();
     load_dataset();
     load_static_files();
     init_tls();

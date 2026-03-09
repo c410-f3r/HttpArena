@@ -157,6 +157,43 @@ async fn baseline11_get(req: HttpRequest) -> HttpResponse {
         .body(sum.to_string())
 }
 
+fn crc32_compute(data: &[u8]) -> u32 {
+    static TABLE: std::sync::OnceLock<[[u32; 256]; 8]> = std::sync::OnceLock::new();
+    let t = TABLE.get_or_init(|| {
+        let mut t = [[0u32; 256]; 8];
+        for i in 0..256u32 {
+            let mut c = i;
+            for _ in 0..8 { c = if c & 1 != 0 { 0xEDB88320 ^ (c >> 1) } else { c >> 1 }; }
+            t[0][i as usize] = c;
+        }
+        for i in 0..256 {
+            for s in 1..8 { t[s][i] = (t[s-1][i] >> 8) ^ t[0][(t[s-1][i] & 0xFF) as usize]; }
+        }
+        t
+    });
+    let mut crc = 0xFFFFFFFFu32;
+    let mut i = 0;
+    while i + 8 <= data.len() {
+        let a = u32::from_le_bytes([data[i], data[i+1], data[i+2], data[i+3]]) ^ crc;
+        let b = u32::from_le_bytes([data[i+4], data[i+5], data[i+6], data[i+7]]);
+        crc = t[7][(a & 0xFF) as usize] ^ t[6][((a >> 8) & 0xFF) as usize]
+            ^ t[5][((a >> 16) & 0xFF) as usize] ^ t[4][(a >> 24) as usize]
+            ^ t[3][(b & 0xFF) as usize] ^ t[2][((b >> 8) & 0xFF) as usize]
+            ^ t[1][((b >> 16) & 0xFF) as usize] ^ t[0][(b >> 24) as usize];
+        i += 8;
+    }
+    while i < data.len() { crc = (crc >> 8) ^ t[0][((crc ^ data[i] as u32) & 0xFF) as usize]; i += 1; }
+    crc ^ 0xFFFFFFFF
+}
+
+async fn upload(body: web::Bytes) -> HttpResponse {
+    let crc = crc32_compute(&body);
+    HttpResponse::Ok()
+        .insert_header((SERVER, SERVER_HDR.clone()))
+        .content_type(ContentType::plaintext())
+        .body(format!("{:08x}", crc))
+}
+
 async fn baseline11_post(req: HttpRequest, body: web::Bytes) -> HttpResponse {
     let mut sum = req
         .uri()
@@ -243,11 +280,13 @@ async fn main() -> io::Result<()> {
         move || {
             App::new()
                 .app_data(web::Data::new(state.clone()))
+                .app_data(web::PayloadConfig::new(25 * 1024 * 1024))
                 .route("/pipeline", web::get().to(pipeline))
                 .route("/baseline11", web::get().to(baseline11_get))
                 .route("/baseline11", web::post().to(baseline11_post))
                 .route("/baseline2", web::get().to(baseline2))
                 .route("/json", web::get().to(json_endpoint))
+                .route("/upload", web::post().to(upload))
                 .route("/static/{filename}", web::get().to(static_file))
         }
     })
