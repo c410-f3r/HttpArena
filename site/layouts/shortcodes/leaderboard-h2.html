@@ -97,6 +97,7 @@ var lbH2Profiles = {{ $profiles | jsonify | safeJS }};
         <div title="realistic = production-ready framework, stripped = custom bare-metal implementation">Type</div>
         <div title="Number of concurrent connections" style="text-align:right">Conn</div>
         <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
+        <div class="lb-sortable" data-sort="errors" title="HTTP error count (4xx+5xx) — hover for breakdown" style="text-align:right">Err</div>
         <div></div>
         <div class="lb-sortable" data-sort="cpu" title="Average CPU usage" style="text-align:right">CPU</div>
         <div class="lb-sortable" data-sort="mem" title="Peak memory usage" style="text-align:right">Mem</div>
@@ -120,6 +121,7 @@ var lbH2Profiles = {{ $profiles | jsonify | safeJS }};
       <div title="realistic = production-ready framework, stripped = custom bare-metal implementation">Type</div>
       <div title="Number of concurrent connections" style="text-align:right">Conn</div>
       <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
+      <div class="lb-sortable" data-sort="errors" title="HTTP error count (4xx+5xx) — hover for breakdown" style="text-align:right">Err</div>
       <div></div>
       <div class="lb-sortable" data-sort="cpu" title="Average CPU usage" style="text-align:right">CPU</div>
       <div class="lb-sortable" data-sort="mem" title="Peak memory usage" style="text-align:right">Mem</div>
@@ -132,7 +134,8 @@ var lbH2Profiles = {{ $profiles | jsonify | safeJS }};
     {{ range $j, $r := $results }}
     {{ $pct := mul (div (float $r.rps) (float $maxRps)) 100.0 }}
     {{ $meta := index site.Data.frameworks $r.framework }}
-    <div class="lb-row" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-type="{{ with $meta }}{{ .type | default "realistic" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}">
+    {{ $s2xx := int ($r.status_2xx | default 0) }}{{ $s3xx := int ($r.status_3xx | default 0) }}{{ $s4xx := int ($r.status_4xx | default 0) }}{{ $s5xx := int ($r.status_5xx | default 0) }}{{ $errs := add $s4xx $s5xx }}
+    <div class="lb-row" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-type="{{ with $meta }}{{ .type | default "realistic" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}" data-s2xx="{{ $s2xx }}" data-s3xx="{{ $s3xx }}" data-s4xx="{{ $s4xx }}" data-s5xx="{{ $s5xx }}">
       {{ $ftype := "realistic" }}{{ with $meta }}{{ $ftype = .type | default "realistic" }}{{ end }}
       <div class="lb-rank">{{ if eq $j 0 }}🥇{{ else if eq $j 1 }}🥈{{ else if eq $j 2 }}🥉{{ else }}{{ add $j 1 }}{{ end }}</div>
       <div class="lb-name">{{ $r.framework }}</div>
@@ -141,6 +144,7 @@ var lbH2Profiles = {{ $profiles | jsonify | safeJS }};
       <div><span class="lb-pill lb-pill-{{ $ftype }}">{{ $ftype }}</span></div>
       <div class="lb-conns">{{ lang.FormatNumber 0 $r.connections }}</div>
       <div class="lb-rps">{{ lang.FormatNumber 0 $r.rps }}</div>
+      <div class="lb-status">{{ if gt $s2xx 0 }}<span class="{{ if gt $errs 0 }}lb-status-err{{ else }}lb-status-ok{{ end }}">{{ if gt $errs 0 }}{{ lang.FormatNumber 0 $errs }}{{ else }}✓{{ end }}</span><div class="lb-status-tip"><div><b>2xx:</b> {{ lang.FormatNumber 0 $s2xx }}</div><div><b>3xx:</b> {{ lang.FormatNumber 0 $s3xx }}</div><div><b>4xx:</b> {{ lang.FormatNumber 0 $s4xx }}</div><div><b>5xx:</b> {{ lang.FormatNumber 0 $s5xx }}</div></div>{{ else }}<span class="lb-status-na">—</span>{{ end }}</div>
       <div class="lb-bar-cell">
         <div class="lb-bar lb-bar-{{ add $j 1 }}" style="width: {{ printf "%.1f" $pct }}%"></div>
       </div>
@@ -353,6 +357,7 @@ w.querySelectorAll('.lb-type-filter').forEach(function(btn) {
 function parseSortValue(row, key) {
   var stats = row.querySelectorAll('.lb-stat');
   if (key === 'rps') return Number(row.dataset.rps);
+  if (key === 'errors') return Number(row.dataset.s4xx || 0) + Number(row.dataset.s5xx || 0);
   var text = '';
   switch (key) {
     case 'cpu': text = stats[0] ? stats[0].textContent.trim() : ''; break;
@@ -435,6 +440,10 @@ w.addEventListener('click', function(e) {
   var mem = stats[1].textContent;
   var avgLat = stats[2].textContent;
   var p99 = stats[3].textContent;
+  var s2xx = Number(row.dataset.s2xx || 0);
+  var s3xx = Number(row.dataset.s3xx || 0);
+  var s4xx = Number(row.dataset.s4xx || 0);
+  var s5xx = Number(row.dataset.s5xx || 0);
   var connPanel = row.closest('.lb-conn-panel-h2');
   var profile = connPanel ? connPanel.dataset.profile : '';
   var connCount = connPanel ? connPanel.dataset.conns : '';
@@ -443,6 +452,9 @@ w.addEventListener('click', function(e) {
   var repoHtml = repo ? '<a class="lb-popup-link" href="' + repo + '" target="_blank" rel="noreferrer">View source &rarr;</a>' : '';
   var benchHtml = '<a class="lb-popup-link" href="https://github.com/MDA2AV/HttpArena/tree/main/frameworks/' + encodeURIComponent(name) + '" target="_blank" rel="noreferrer">Benchmark implementation &rarr;</a>';
   var logHtml = (profile && connCount) ? '<a class="lb-popup-link" href="' + baseUrl + '/' + profile + '/' + connCount + '/' + encodeURIComponent(name) + '.log" target="_blank" rel="noreferrer">Docker logs &rarr;</a>' : '';
+  var statusHtml = s2xx > 0
+    ? '2xx: ' + s2xx.toLocaleString() + ', 3xx: ' + s3xx.toLocaleString() + ', 4xx: ' + s4xx.toLocaleString() + ', 5xx: ' + s5xx.toLocaleString()
+    : '\u2014';
   var overlay = document.createElement('div');
   overlay.className = 'lb-overlay';
   overlay.innerHTML =
@@ -458,6 +470,7 @@ w.addEventListener('click', function(e) {
         '<div><div class="lb-popup-stat-label">P99 Latency</div><div class="lb-popup-stat-value">' + p99 + '</div></div>' +
         '<div><div class="lb-popup-stat-label">CPU</div><div class="lb-popup-stat-value">' + cpu + '</div></div>' +
         '<div><div class="lb-popup-stat-label">Memory</div><div class="lb-popup-stat-value">' + mem + '</div></div>' +
+        '<div style="grid-column:1/-1"><div class="lb-popup-stat-label">Status Codes</div><div class="lb-popup-stat-value">' + statusHtml + '</div></div>' +
       '</div>' +
       '<div class="lb-popup-links">' + repoHtml + benchHtml + logHtml + '</div>' +
     '</div>';
@@ -496,6 +509,12 @@ window.addEventListener('roundChanged', function(ev) {
       var ftype = m.type || 'realistic';
       var pct = (r.rps / maxRps * 100).toFixed(1);
       var rank = j < 3 ? medals[j] : String(j + 1);
+      var rs2 = r.status_2xx || 0, rs3 = r.status_3xx || 0, rs4 = r.status_4xx || 0, rs5 = r.status_5xx || 0;
+      var rErrs = rs4 + rs5;
+      var statusCell = rs2 > 0
+        ? '<div class="lb-status"><span class="' + (rErrs > 0 ? 'lb-status-err' : 'lb-status-ok') + '">' + (rErrs > 0 ? rErrs.toLocaleString() : '\u2713') + '</span>' +
+          '<div class="lb-status-tip"><div><b>2xx:</b> ' + rs2.toLocaleString() + '</div><div><b>3xx:</b> ' + rs3.toLocaleString() + '</div><div><b>4xx:</b> ' + rs4.toLocaleString() + '</div><div><b>5xx:</b> ' + rs5.toLocaleString() + '</div></div></div>'
+        : '<div class="lb-status"><span class="lb-status-na">\u2014</span></div>';
       var row = document.createElement('div');
       row.className = 'lb-row';
       row.dataset.lang = r.language || '';
@@ -504,6 +523,10 @@ window.addEventListener('roundChanged', function(ev) {
       row.dataset.type = ftype;
       row.dataset.desc = m.description || '';
       row.dataset.repo = m.repo || '';
+      row.dataset.s2xx = String(rs2);
+      row.dataset.s3xx = String(rs3);
+      row.dataset.s4xx = String(rs4);
+      row.dataset.s5xx = String(rs5);
       row.innerHTML =
         '<div class="lb-rank">' + rank + '</div>' +
         '<div class="lb-name">' + r.framework + '</div>' +
@@ -512,6 +535,7 @@ window.addEventListener('roundChanged', function(ev) {
         '<div><span class="lb-pill lb-pill-' + ftype + '">' + ftype + '</span></div>' +
         '<div class="lb-conns">' + Number(r.connections).toLocaleString() + '</div>' +
         '<div class="lb-rps">' + Number(r.rps).toLocaleString() + '</div>' +
+        statusCell +
         '<div class="lb-bar-cell"><div class="lb-bar lb-bar-' + (j + 1) + '" style="width:' + pct + '%"></div></div>' +
         '<div class="lb-stat">' + (r.cpu || '\u2014') + '</div>' +
         '<div class="lb-stat">' + (r.memory || '\u2014') + '</div>' +

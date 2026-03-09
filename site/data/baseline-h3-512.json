@@ -43,4 +43,34 @@
   "pipeline": 128,
   "reconnects": 0
 }
+,
+{
+  "framework": "nginx",
+  "language": "C",
+  "rps": 1063349,
+  "avg_latency": "22.82ms",
+  "p99_latency": "144.82ms",
+  "cpu": "939.5%",
+  "memory": "1.6GiB",
+  "connections": 512,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 128,
+  "reconnects": 0
+}
+,
+{
+  "framework": "salvo",
+  "language": "Rust",
+  "rps": 203124,
+  "avg_latency": "21.18ms",
+  "p99_latency": "226.93ms",
+  "cpu": "924.8%",
+  "memory": "53.8MiB",
+  "connections": 512,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 128,
+  "reconnects": 0
+}
 ]

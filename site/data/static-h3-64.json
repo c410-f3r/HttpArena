@@ -43,4 +43,19 @@
   "pipeline": 128,
   "reconnects": 0
 }
+,
+{
+  "framework": "nginx",
+  "language": "C",
+  "rps": 267111,
+  "avg_latency": "30.56ms",
+  "p99_latency": "87.31ms",
+  "cpu": "1731.1%",
+  "memory": "1.1GiB",
+  "connections": 64,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 128,
+  "reconnects": 0
+}
 ]

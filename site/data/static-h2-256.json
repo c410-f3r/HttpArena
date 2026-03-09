@@ -165,6 +165,36 @@
 }
 ,
 {
+  "framework": "salvo",
+  "language": "Rust",
+  "rps": 703827,
+  "avg_latency": "31.20ms",
+  "p99_latency": "31.20ms",
+  "cpu": "1610.1%",
+  "memory": "393.8MiB",
+  "connections": 256,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
+  "framework": "spring-jvm-jetty",
+  "language": "Java",
+  "rps": 390304,
+  "avg_latency": "61.17ms",
+  "p99_latency": "61.17ms",
+  "cpu": "2279.0%",
+  "memory": "4.2GiB",
+  "connections": 256,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 1,
+  "reconnects": 0
+}
+,
+{
   "framework": "spring-jvm",
   "language": "Java",
   "rps": 325740,

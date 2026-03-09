@@ -16,5 +16,7 @@
   "ntex": {"description": "High-performance Rust web framework by the creator of actix-web, with mimalloc and sonic_rs.", "repo": "https://github.com/ntex-rs/ntex", "type": "realistic", "engine": "ntex-tokio"},
   "quarkus-jvm": {"description": "Quarkus with RESTEasy Reactive on Vert.x/Netty, JDK 21, optimized JVM tuning.", "repo": "https://github.com/quarkusio/quarkus", "type": "realistic", "engine": "Netty"},
   "ringzero": {"description": "Custom C HTTP server built on io_uring with a multi-reactor architecture. No epoll, no thread-per-connection.", "repo": "https://github.com/MDA2AV/ringzero", "type": "stripped", "engine": "io_uring"},
-  "spring-jvm": {"description": "Spring Boot with embedded Tomcat on JDK 21 (HotSpot JVM with ZGC).", "repo": "https://github.com/spring-projects/spring-boot", "type": "realistic", "engine": "Tomcat"}
+  "salvo": {"description": "Salvo web framework with Quinn HTTP/3 support on Tokio runtime, compiled with -O3 and thin LTO.", "repo": "https://github.com/salvo-rs/salvo", "type": "realistic", "engine": "Salvo"},
+  "spring-jvm": {"description": "Spring Boot with embedded Tomcat on JDK 21 (HotSpot JVM with ZGC).", "repo": "https://github.com/spring-projects/spring-boot", "type": "realistic", "engine": "Tomcat"},
+  "spring-jvm-jetty": {"description": "Spring Boot with embedded Jetty 12 on JDK 21, supporting HTTP/1.1 and HTTP/2.", "repo": "https://github.com/spring-projects/spring-boot", "type": "realistic", "engine": "Jetty"}
 }

@@ -208,4 +208,19 @@
   "pipeline": 16,
   "reconnects": 0
 }
+,
+{
+  "framework": "salvo",
+  "language": "Rust",
+  "rps": 3921411,
+  "avg_latency": "16.68ms",
+  "p99_latency": "65.90ms",
+  "cpu": "2206.6%",
+  "memory": "216.4MiB",
+  "connections": 4096,
+  "threads": 12,
+  "duration": "5s",
+  "pipeline": 16,
+  "reconnects": 0
+}
 ]

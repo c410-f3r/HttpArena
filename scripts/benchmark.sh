@@ -417,6 +417,25 @@ for profile in "${profiles_to_run[@]}"; do
         reconnects=$(echo "$best_output" | grep -oP 'Reconnects: \K\d+' || echo "0")
     fi
 
+    # Extract status codes
+    status_2xx=0; status_3xx=0; status_4xx=0; status_5xx=0
+    if [ "$USE_OHA" = "true" ]; then
+        status_2xx=$(echo "$best_output" | python3 -c "import sys,json; d=json.load(sys.stdin).get('statusCodeDistribution',{}); print(sum(v for k,v in d.items() if 200<=int(k)<300))" 2>/dev/null || echo "0")
+        status_3xx=$(echo "$best_output" | python3 -c "import sys,json; d=json.load(sys.stdin).get('statusCodeDistribution',{}); print(sum(v for k,v in d.items() if 300<=int(k)<400))" 2>/dev/null || echo "0")
+        status_4xx=$(echo "$best_output" | python3 -c "import sys,json; d=json.load(sys.stdin).get('statusCodeDistribution',{}); print(sum(v for k,v in d.items() if 400<=int(k)<500))" 2>/dev/null || echo "0")
+        status_5xx=$(echo "$best_output" | python3 -c "import sys,json; d=json.load(sys.stdin).get('statusCodeDistribution',{}); print(sum(v for k,v in d.items() if 500<=int(k)<600))" 2>/dev/null || echo "0")
+    elif [ "$USE_H2LOAD" = "true" ]; then
+        status_2xx=$(echo "$best_output" | grep -oP '\d+(?= 2xx)' || echo "0")
+        status_3xx=$(echo "$best_output" | grep -oP '\d+(?= 3xx)' || echo "0")
+        status_4xx=$(echo "$best_output" | grep -oP '\d+(?= 4xx)' || echo "0")
+        status_5xx=$(echo "$best_output" | grep -oP '\d+(?= 5xx)' || echo "0")
+    else
+        status_2xx=$(echo "$best_output" | grep -oP '2xx=\K\d+' || echo "0")
+        status_3xx=$(echo "$best_output" | grep -oP '3xx=\K\d+' || echo "0")
+        status_4xx=$(echo "$best_output" | grep -oP '4xx=\K\d+' || echo "0")
+        status_5xx=$(echo "$best_output" | grep -oP '5xx=\K\d+' || echo "0")
+    fi
+
     # Save results only with --save flag
     if [ "$SAVE_RESULTS" = "true" ]; then
         mkdir -p "$RESULTS_DIR/$profile/$CONNS"
@@ -433,7 +452,11 @@ for profile in "${profiles_to_run[@]}"; do
   "threads": $THREADS,
   "duration": "$DURATION",
   "pipeline": $pipeline,
-  "reconnects": $reconnects
+  "reconnects": $reconnects,
+  "status_2xx": ${status_2xx:-0},
+  "status_3xx": ${status_3xx:-0},
+  "status_4xx": ${status_4xx:-0},
+  "status_5xx": ${status_5xx:-0}
 }
 EOF
         echo "[saved] results/$profile/${CONNS}/${FRAMEWORK}.json"

@@ -1,10 +1,17 @@
 FROM debian:bookworm AS build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libssl-dev libpcre2-dev zlib1g-dev wget ca-certificates
+    build-essential libpcre2-dev zlib1g-dev wget ca-certificates git perl
+
+# Build quictls (OpenSSL fork with QUIC support)
+WORKDIR /tmp
+RUN git clone --depth 1 -b openssl-3.1.5+quic https://github.com/quictls/openssl.git quictls && \
+    cd quictls && \
+    ./Configure --prefix=/opt/quictls --libdir=lib no-tests && \
+    make -j$(nproc) && \
+    make install_sw
 
 # Download nginx source
-WORKDIR /tmp
 ARG NGINX_VERSION=1.26.2
 RUN wget -q http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
     tar xzf nginx-${NGINX_VERSION}.tar.gz
@@ -17,22 +24,29 @@ RUN wget -q -O /tmp/cJSON.c https://raw.githubusercontent.com/DaveGamble/cJSON/v
 COPY ngx_http_httparena_module.c config /tmp/module/
 RUN cp /tmp/cJSON.c /tmp/cJSON.h /tmp/module/
 
-# Build nginx with custom module
+# Build nginx with custom module + HTTP/3
 WORKDIR /tmp/nginx-${NGINX_VERSION}
 RUN ./configure \
     --with-http_ssl_module \
     --with-http_v2_module \
+    --with-http_v3_module \
     --add-module=/tmp/module \
-    --with-cc-opt="-O3 -march=native -flto -DNDEBUG" \
-    --with-ld-opt="-flto -lm" && \
+    --with-cc-opt="-O3 -march=native -flto -DNDEBUG -I/opt/quictls/include" \
+    --with-ld-opt="-flto -lm -L/opt/quictls/lib -Wl,-rpath,/opt/quictls/lib" && \
     make -j$(nproc)
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libssl3 libpcre2-8-0 && \
+    libpcre2-8-0 && \
     rm -rf /var/lib/apt/lists/*
+COPY --from=build /opt/quictls/lib/libssl.so.81.3 /opt/quictls/lib/libcrypto.so.81.3 /opt/quictls/lib/
+RUN ln -s libssl.so.81.3 /opt/quictls/lib/libssl.so.81 && \
+    ln -s libssl.so.81 /opt/quictls/lib/libssl.so && \
+    ln -s libcrypto.so.81.3 /opt/quictls/lib/libcrypto.so.81 && \
+    ln -s libcrypto.so.81 /opt/quictls/lib/libcrypto.so && \
+    ldconfig /opt/quictls/lib
 COPY --from=build /tmp/nginx-1.26.2/objs/nginx /usr/sbin/nginx
 RUN mkdir -p /usr/local/nginx/logs
 COPY nginx.conf /usr/local/nginx/conf/nginx.conf
-EXPOSE 8080 8443
+EXPOSE 8080 8443/tcp 8443/udp
 CMD ["nginx", "-g", "daemon off;"]
