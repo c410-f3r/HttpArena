@@ -1,6 +1,6 @@
 {{ $profiles := slice
-  (dict "id" "baseline-h3" "label" "Baseline (HTTP/3)" "conns" (slice 64 512) "desc" "Same workload as the HTTP/1.1 baseline — <code>GET /baseline2</code> with query parameter parsing — but over HTTP/3 (QUIC) with TLS 1.3. Benchmarked with <code>oha</code> using 128 parallel streams per connection. Measures how efficiently a framework handles HTTP/3 over UDP-based QUIC transport.")
-  (dict "id" "static-h3" "label" "Static Files (HTTP/3)" "conns" (slice 64 512) "desc" "Serves 20 static files of various types and sizes (CSS, JS, HTML, fonts, SVG, WebP, JSON — totaling ~325 KB) over HTTP/3 (QUIC) with TLS 1.3. The load generator (<code>oha</code>) requests all files using 128 parallel streams per connection, simulating a realistic browser page load over QUIC.")
+  (dict "id" "baseline-h3" "label" "Baseline (HTTP/3)" "conns" (slice 256 512) "desc" "Same workload as the HTTP/1.1 baseline — <code>GET /baseline2</code> with query parameter parsing — but over HTTP/3 (QUIC) with TLS 1.3. Benchmarked with <code>oha</code> using 128 parallel streams per connection. Measures how efficiently a framework handles HTTP/3 over UDP-based QUIC transport.")
+  (dict "id" "static-h3" "label" "Static Files (HTTP/3)" "conns" (slice 256 512) "desc" "Serves 20 static files of various types and sizes (CSS, JS, HTML, fonts, SVG, WebP, JSON — totaling ~325 KB) over HTTP/3 (QUIC) with TLS 1.3. The load generator (<code>oha</code>) requests all files using 128 parallel streams per connection, simulating a realistic browser page load over QUIC.")
 }}
 
 {{/* Build JSON data blob for round switching */}}
@@ -66,7 +66,7 @@ html.dark .h3-disclaimer { color: #fff !important; background: rgba(234,179,8,0.
     </div>
     <div class="lb-search">
       <span class="lb-filters-label">Filter</span>
-      <input type="text" class="lb-search-input" placeholder="e.g. h2o-h3, C" />
+      <input type="text" class="lb-search-input" placeholder="e.g. h2o-mruby, C" />
     </div>
   </div>
 </div>
@@ -119,7 +119,6 @@ html.dark .h3-disclaimer { color: #fff !important; background: rgba(234,179,8,0.
   {{ $key := printf "%s-%d" $p.id $c }}
   {{ $data := index site.Data $key }}
   <div class="lb-conn-panel-h3" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
-  {{ if $data }}
   <div class="lb">
     <div class="lb-row lb-header">
       <div title="Rank by requests per second">#</div>
@@ -136,6 +135,7 @@ html.dark .h3-disclaimer { color: #fff !important; background: rgba(234,179,8,0.
       <div class="lb-sortable" data-sort="avglat" title="Average request latency" style="text-align:right">Avg Lat</div>
       <div class="lb-sortable" data-sort="p99" title="99th percentile latency" style="text-align:right">P99</div>
     </div>
+    {{ if $data }}
     {{ $results := sort $data "rps" "desc" }}
     {{ $maxRps := 0 }}
     {{ range $results }}{{ if gt .rps $maxRps }}{{ $maxRps = .rps }}{{ end }}{{ end }}
@@ -163,10 +163,8 @@ html.dark .h3-disclaimer { color: #fff !important; background: rgba(234,179,8,0.
       <div class="lb-stat">{{ $r.p99_latency }}</div>
     </div>
     {{ end }}
+    {{ end }}
   </div>
-  {{ else }}
-  <p><em>No results yet for this configuration.</em></p>
-  {{ end }}
   </div>
   {{ end }}
   </div>
@@ -285,6 +283,8 @@ function applyFilters() {
   var filters = w.querySelectorAll('.lb-lang-filter[data-lang]:not([data-lang="all"])');
   var activeLangs = new Set();
   filters.forEach(function(f) { if (f.classList.contains('active')) activeLangs.add(f.dataset.lang); });
+  var allBtn = w.querySelector('.lb-lang-filter[data-lang="all"]');
+  var allLangs = filters.length === 0 || (allBtn && allBtn.classList.contains('active'));
 
   var showStripped = w.querySelector('.lb-type-filter[data-type="stripped"]').classList.contains('active');
   var showRealistic = w.querySelector('.lb-type-filter[data-type="realistic"]').classList.contains('active');
@@ -302,7 +302,7 @@ function applyFilters() {
       var lang = row.dataset.lang;
       var name = row.dataset.name.toLowerCase();
       var type = row.dataset.type || 'realistic';
-      var langMatch = activeLangs.has(lang);
+      var langMatch = allLangs || activeLangs.has(lang);
       var typeMatch = (type === 'stripped' && showStripped) || (type !== 'stripped' && showRealistic);
       var textMatch = terms.length === 0 || terms.some(function(t) {
         return name.indexOf(t) !== -1 || lang.toLowerCase().indexOf(t) !== -1;

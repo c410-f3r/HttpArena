@@ -14,15 +14,16 @@ git clone https://github.com/MDA2AV/HttpArena.git
 cd HttpArena
 ```
 
-2. Build gcannon and note its path:
+2. Build and install gcannon:
 
 ```bash
 git clone https://github.com/MDA2AV/gcannon.git
 cd gcannon
 make
+sudo cp gcannon /usr/local/bin/
 ```
 
-3. Set the gcannon path (or export it):
+Alternatively, if you prefer not to install system-wide, set the `GCANNON` environment variable:
 
 ```bash
 export GCANNON=/path/to/gcannon/gcannon

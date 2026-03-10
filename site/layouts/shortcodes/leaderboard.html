@@ -533,7 +533,6 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
   {{ $key := printf "%s-%d" $p.id $c }}
   {{ $data := index site.Data $key }}
   <div class="lb-conn-panel" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
-  {{ if $data }}
   <div class="lb">
     <div class="lb-row lb-header{{ if $isReconn }} lb-row-reconn{{ end }}{{ if $isNoisy }} lb-row-noisy{{ end }}">
       <div title="Rank by requests per second">#</div>
@@ -552,6 +551,7 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
       <div class="lb-sortable" data-sort="avglat" title="Average request latency — lower is better" style="text-align:right">Avg Lat</div>
       <div class="lb-sortable" data-sort="p99" title="99th percentile latency — lower is better" style="text-align:right">P99</div>
     </div>
+    {{ if $data }}
     {{ $results := sort $data "rps" "desc" }}
     {{ $maxRps := 0 }}
     {{ range $results }}{{ if gt .rps $maxRps }}{{ $maxRps = .rps }}{{ end }}{{ end }}
@@ -580,10 +580,8 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
       <div class="lb-stat">{{ $r.p99_latency }}</div>
     </div>
     {{ end }}
+    {{ end }}
   </div>
-  {{ else }}
-  <p><em>No results yet for this configuration.</em></p>
-  {{ end }}
   </div><!-- /lb-conn-panel -->
   {{ end }}
   </div><!-- /lb-card -->
@@ -673,12 +671,15 @@ document.querySelectorAll('.lb-conn-tab').forEach(function(btn) {
 });
 
 function applyFilters() {
-  var filters = document.querySelectorAll('.lb-lang-filter[data-lang]:not([data-lang="all"])');
+  var filters = document.querySelectorAll('#lb-wrapper .lb-lang-filter[data-lang]:not([data-lang="all"])');
   var activeLangs = new Set();
   filters.forEach(function(f) { if (f.classList.contains('active')) activeLangs.add(f.dataset.lang); });
-  var allBtn = document.querySelector('.lb-lang-filter[data-lang="all"]');
-  if (activeLangs.size === filters.length) allBtn.classList.add('active');
-  else allBtn.classList.remove('active');
+  var allBtn = document.querySelector('#lb-wrapper .lb-lang-filter[data-lang="all"]');
+  var allLangs = filters.length === 0 || (allBtn && allBtn.classList.contains('active'));
+  if (allBtn) {
+    if (activeLangs.size === filters.length) allBtn.classList.add('active');
+    else allBtn.classList.remove('active');
+  }
 
   var showStripped = document.querySelector('.lb-type-filter[data-type="stripped"]').classList.contains('active');
   var showRealistic = document.querySelector('.lb-type-filter[data-type="realistic"]').classList.contains('active');
@@ -698,7 +699,7 @@ function applyFilters() {
       var lang = row.dataset.lang;
       var name = row.dataset.name.toLowerCase();
       var type = row.dataset.type || 'realistic';
-      var langMatch = activeLangs.has(lang);
+      var langMatch = allLangs || activeLangs.has(lang);
       var typeMatch = (type === 'stripped' && showStripped) || (type !== 'stripped' && showRealistic);
       var textMatch = terms.length === 0 || terms.some(function(t) {
         return name.indexOf(t) !== -1 || lang.toLowerCase().indexOf(t) !== -1;
