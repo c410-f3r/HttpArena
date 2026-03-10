@@ -5,12 +5,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$SCRIPT_DIR/.."
 cd "$ROOT_DIR"
 
-GCANNON="${GCANNON:-/home/diogo/Desktop/Socket/gcannon/gcannon}"
+GCANNON="${GCANNON:-gcannon}"
 H2LOAD="${H2LOAD:-h2load}"
-OHA="${OHA:-oha}"
+OHA="${OHA:-$HOME/.cargo/bin/oha}"
 HARD_NOFILE=$(ulimit -Hn)
 ulimit -n "$HARD_NOFILE"
-THREADS=12
+THREADS="${THREADS:-12}"
 DURATION=5s
 RUNS=3
 PORT=8080
@@ -26,14 +26,14 @@ declare -A PROFILES=(
     [baseline]="1|0||512,4096,16384|"
     [pipelined]="16|0||512,4096,16384|pipeline"
     [limited-conn]="1|10||512,4096|"
-    [json]="1|0||4096,16384,32768|json"
+    [json]="1|0||4096,16384|json"
     [upload]="1|0||64,256,512|upload"
     [compression]="1|0||4096,16384|compression"
     [noisy]="1|0||512,4096,16384|noisy"
     [baseline-h2]="1|0||64,256,1024|h2"
     [static-h2]="1|0||64,256,1024|static-h2"
-    [baseline-h3]="128|0||64,512|h3"
-    [static-h3]="128|0||64,512|static-h3"
+    [baseline-h3]="32|0||256,512|h3"
+    [static-h3]="32|0||256,512|static-h3"
 )
 PROFILE_ORDER=(baseline pipelined limited-conn json upload compression noisy baseline-h2 static-h2 baseline-h3 static-h3)
 
@@ -194,7 +194,7 @@ if [ -f "$META_FILE" ]; then
     dn=$(grep -oP '"display_name"\s*:\s*"\K[^"]+' "$META_FILE" 2>/dev/null || echo "")
     [ -n "$dn" ] && DISPLAY_NAME="$dn"
     # Read tests array — extract as comma-separated list
-    FRAMEWORK_TESTS=$(grep -oP '"tests"\s*:\s*\[\K[^\]]+' "$META_FILE" 2>/dev/null | tr -d ' "' || echo "")
+    FRAMEWORK_TESTS=$(python3 -c "import json,sys; print(','.join(json.load(open(sys.argv[1])).get('tests',[])))" "$META_FILE" 2>/dev/null || echo "")
 
     # Check enabled
     enabled=$(grep -oP '"enabled"\s*:\s*\K(true|false)' "$META_FILE" 2>/dev/null || echo "true")
@@ -294,8 +294,10 @@ for profile in "${profiles_to_run[@]}"; do
             break
         fi
         if [ "$i" -eq 30 ]; then
-            echo "FAIL: Server did not start within 30s"
-            exit 1
+            echo "FAIL: Server did not start within 30s — skipping"
+            docker stop -t 5 "$CONTAINER_NAME" 2>/dev/null || true
+            docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+            continue 2
         fi
         sleep 1
     done
@@ -375,7 +377,7 @@ for profile in "${profiles_to_run[@]}"; do
         stats_pid=$!
 
         if [ "$USE_OHA" = "true" ]; then
-            "${gc_args[@]}" || true
+            timeout --foreground 45 "${gc_args[@]}" || true
             output=$(cat "$oha_out" 2>/dev/null)
             rm -f "$oha_out"
         elif [ "$USE_H2LOAD" = "true" ]; then

@@ -20,6 +20,15 @@ Required tools and system dependencies to run HttpArena benchmarks.
 sudo apt install nghttp2-client
 ```
 
+## Installing gcannon
+
+```bash
+git clone https://github.com/MDA2AV/gcannon.git
+cd gcannon
+make
+sudo cp gcannon /usr/local/bin/
+```
+
 ## Installing oha
 
 ```bash

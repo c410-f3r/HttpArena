@@ -112,7 +112,6 @@ var lbH2Profiles = {{ $profiles | jsonify | safeJS }};
   {{ $key := printf "%s-%d" $p.id $c }}
   {{ $data := index site.Data $key }}
   <div class="lb-conn-panel-h2" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
-  {{ if $data }}
   <div class="lb">
     <div class="lb-row lb-header">
       <div title="Rank by requests per second">#</div>
@@ -129,6 +128,7 @@ var lbH2Profiles = {{ $profiles | jsonify | safeJS }};
       <div class="lb-sortable" data-sort="avglat" title="Average request latency" style="text-align:right">Avg Lat</div>
       <div class="lb-sortable" data-sort="p99" title="99th percentile latency" style="text-align:right">P99</div>
     </div>
+    {{ if $data }}
     {{ $results := sort $data "rps" "desc" }}
     {{ $maxRps := 0 }}
     {{ range $results }}{{ if gt .rps $maxRps }}{{ $maxRps = .rps }}{{ end }}{{ end }}
@@ -156,10 +156,8 @@ var lbH2Profiles = {{ $profiles | jsonify | safeJS }};
       <div class="lb-stat">{{ $r.p99_latency }}</div>
     </div>
     {{ end }}
+    {{ end }}
   </div>
-  {{ else }}
-  <p><em>No results yet for this configuration.</em></p>
-  {{ end }}
   </div>
   {{ end }}
   </div>
@@ -278,6 +276,8 @@ function applyFilters() {
   var filters = w.querySelectorAll('.lb-lang-filter[data-lang]:not([data-lang="all"])');
   var activeLangs = new Set();
   filters.forEach(function(f) { if (f.classList.contains('active')) activeLangs.add(f.dataset.lang); });
+  var allBtn = w.querySelector('.lb-lang-filter[data-lang="all"]');
+  var allLangs = filters.length === 0 || (allBtn && allBtn.classList.contains('active'));
 
   var showStripped = w.querySelector('.lb-type-filter[data-type="stripped"]').classList.contains('active');
   var showRealistic = w.querySelector('.lb-type-filter[data-type="realistic"]').classList.contains('active');
@@ -295,7 +295,7 @@ function applyFilters() {
       var lang = row.dataset.lang;
       var name = row.dataset.name.toLowerCase();
       var type = row.dataset.type || 'realistic';
-      var langMatch = activeLangs.has(lang);
+      var langMatch = allLangs || activeLangs.has(lang);
       var typeMatch = (type === 'stripped' && showStripped) || (type !== 'stripped' && showRealistic);
       var textMatch = terms.length === 0 || terms.some(function(t) {
         return name.indexOf(t) !== -1 || lang.toLowerCase().indexOf(t) !== -1;
