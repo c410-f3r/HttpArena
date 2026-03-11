@@ -38,25 +38,6 @@
     "status_5xx": 0
   },
   {
-    "framework": "aspnet-minimal",
-    "language": "C#",
-    "rps": 616319,
-    "avg_latency": "8.96ms",
-    "p99_latency": "43.30ms",
-    "cpu": "4864.7%",
-    "memory": "745.4MiB",
-    "connections": 16384,
-    "threads": 64,
-    "duration": "5s",
-    "pipeline": 1,
-    "bandwidth": "115.79MB/s",
-    "reconnects": 100256,
-    "status_2xx": 3087762,
-    "status_3xx": 0,
-    "status_4xx": 1582301,
-    "status_5xx": 0
-  },
-  {
     "framework": "caddy",
     "language": "Go",
     "rps": 624340,
@@ -339,6 +320,25 @@
     "status_2xx": 28357,
     "status_3xx": 0,
     "status_4xx": 4595,
+    "status_5xx": 0
+  },
+  {
+    "framework": "aspnet-minimal",
+    "language": "C#",
+    "rps": 601394,
+    "avg_latency": "7.01ms",
+    "p99_latency": "37.20ms",
+    "cpu": "4441.2%",
+    "memory": "885.3MiB",
+    "connections": 16384,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "112.41MB/s",
+    "reconnects": 118879,
+    "status_2xx": 3019000,
+    "status_3xx": 0,
+    "status_4xx": 1521643,
     "status_5xx": 0
   }
 ]
