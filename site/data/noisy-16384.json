@@ -1,5 +1,24 @@
 [
   {
+    "framework": "bun",
+    "language": "TS",
+    "rps": 163712,
+    "avg_latency": "55.87ms",
+    "p99_latency": "84.80ms",
+    "cpu": "3160.2%",
+    "memory": "2.0GiB",
+    "connections": 16384,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "17.43MB/s",
+    "reconnects": 156772,
+    "status_2xx": 820202,
+    "status_3xx": 0,
+    "status_4xx": 156755,
+    "status_5xx": 0
+  },
+  {
     "framework": "actix",
     "language": "Rust",
     "rps": 225639,
@@ -114,25 +133,6 @@
     "status_5xx": 0
   },
   {
-    "framework": "h2o",
-    "language": "C",
-    "rps": 204892,
-    "avg_latency": "29.32ms",
-    "p99_latency": "45.30ms",
-    "cpu": "1377.5%",
-    "memory": "182.5MiB",
-    "connections": 16384,
-    "threads": 64,
-    "duration": "5s",
-    "pipeline": 1,
-    "bandwidth": "40.83MB/s",
-    "reconnects": 306202,
-    "status_2xx": 1026509,
-    "status_3xx": 0,
-    "status_4xx": 804321,
-    "status_5xx": 0
-  },
-  {
     "framework": "h2o-mruby",
     "language": "C",
     "rps": 1337508,
@@ -149,6 +149,25 @@
     "status_2xx": 6687544,
     "status_3xx": 0,
     "status_4xx": 1421493,
+    "status_5xx": 0
+  },
+  {
+    "framework": "h2o",
+    "language": "C",
+    "rps": 204892,
+    "avg_latency": "29.32ms",
+    "p99_latency": "45.30ms",
+    "cpu": "1377.5%",
+    "memory": "182.5MiB",
+    "connections": 16384,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "40.83MB/s",
+    "reconnects": 306202,
+    "status_2xx": 1026509,
+    "status_3xx": 0,
+    "status_4xx": 804321,
     "status_5xx": 0
   },
   {
@@ -171,25 +190,6 @@
     "status_5xx": 0
   },
   {
-    "framework": "nginx",
-    "language": "C",
-    "rps": 135148,
-    "avg_latency": "44.75ms",
-    "p99_latency": "68.80ms",
-    "cpu": "1205.7%",
-    "memory": "3.6GiB",
-    "connections": 16384,
-    "threads": 64,
-    "duration": "5s",
-    "pipeline": 1,
-    "bandwidth": "47.92MB/s",
-    "reconnects": 197298,
-    "status_2xx": 677093,
-    "status_3xx": 0,
-    "status_4xx": 528505,
-    "status_5xx": 0
-  },
-  {
     "framework": "nginx-openresty",
     "language": "Lua",
     "rps": 131824,
@@ -206,6 +206,25 @@
     "status_2xx": 660439,
     "status_3xx": 0,
     "status_4xx": 515683,
+    "status_5xx": 0
+  },
+  {
+    "framework": "nginx",
+    "language": "C",
+    "rps": 135148,
+    "avg_latency": "44.75ms",
+    "p99_latency": "68.80ms",
+    "cpu": "1205.7%",
+    "memory": "3.6GiB",
+    "connections": 16384,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "47.92MB/s",
+    "reconnects": 197298,
+    "status_2xx": 677093,
+    "status_3xx": 0,
+    "status_4xx": 528505,
     "status_5xx": 0
   },
   {
@@ -320,25 +339,6 @@
     "status_2xx": 28357,
     "status_3xx": 0,
     "status_4xx": 4595,
-    "status_5xx": 0
-  },
-  {
-    "framework": "bun",
-    "language": "TS",
-    "rps": 163712,
-    "avg_latency": "55.87ms",
-    "p99_latency": "84.80ms",
-    "cpu": "3160.2%",
-    "memory": "2.0GiB",
-    "connections": 16384,
-    "threads": 64,
-    "duration": "5s",
-    "pipeline": 1,
-    "bandwidth": "17.43MB/s",
-    "reconnects": 156772,
-    "status_2xx": 820202,
-    "status_3xx": 0,
-    "status_4xx": 156755,
     "status_5xx": 0
   }
 ]

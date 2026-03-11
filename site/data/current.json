@@ -6,7 +6,7 @@
   "os": "Ubuntu 24.04.4 LTS",
   "kernel": "6.17.0-14-generic",
   "docker": "29.3.0",
-  "commit": "7ca4f08",
+  "commit": "badaa09",
   "governor": "performance",
   "docker_runtime": "runc",
   "threads_per_core": "2",

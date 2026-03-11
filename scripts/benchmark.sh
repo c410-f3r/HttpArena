@@ -31,12 +31,13 @@ declare -A PROFILES=(
     [upload]="1|0||64,256,512|upload"
     [compression]="1|0||4096,16384|compression"
     [noisy]="1|0||512,4096,16384|noisy"
+    [mixed]="1|100||512,4096|mixed"
     [baseline-h2]="1|0||256,1024|h2"
     [static-h2]="1|0||256,1024|static-h2"
     [baseline-h3]="32|0||256,512|h3"
     [static-h3]="32|0||256,512|static-h3"
 )
-PROFILE_ORDER=(baseline pipelined limited-conn json upload compression noisy baseline-h2 static-h2 baseline-h3 static-h3)
+PROFILE_ORDER=(baseline pipelined limited-conn json upload compression noisy mixed baseline-h2 static-h2 baseline-h3 static-h3)
 
 # Parse flags
 SAVE_RESULTS=false
@@ -394,6 +395,10 @@ for profile in "${profiles_to_run[@]}"; do
     elif [ "$endpoint" = "compression" ]; then
         gc_args=("http://localhost:$PORT"
             --raw "$REQUESTS_DIR/json-gzip.raw"
+            -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
+    elif [ "$endpoint" = "mixed" ]; then
+        gc_args=("http://localhost:$PORT"
+            --raw "$REQUESTS_DIR/get.raw,$REQUESTS_DIR/get.raw,$REQUESTS_DIR/get.raw,$REQUESTS_DIR/post_cl.raw,$REQUESTS_DIR/post_cl.raw,$REQUESTS_DIR/json-get.raw,$REQUESTS_DIR/upload-small.raw,$REQUESTS_DIR/json-gzip.raw,$REQUESTS_DIR/json-gzip.raw"
             -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
     elif [ "$endpoint" = "noisy" ]; then
         gc_args=("http://localhost:$PORT"

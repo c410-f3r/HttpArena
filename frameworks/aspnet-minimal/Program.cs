@@ -13,6 +13,10 @@ var hasCert = File.Exists(certPath) && File.Exists(keyPath);
 
 builder.WebHost.ConfigureKestrel(options =>
 {
+    options.Limits.Http2.MaxStreamsPerConnection = 256;
+    options.Limits.Http2.InitialConnectionWindowSize = 2 * 1024 * 1024;
+    options.Limits.Http2.InitialStreamWindowSize = 1024 * 1024;
+
     // HTTP/1.1 on port 8080
     options.ListenAnyIP(8080, lo =>
     {
