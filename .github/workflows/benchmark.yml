@@ -11,6 +11,10 @@ on:
         description: 'Framework to benchmark (leave empty for all)'
         required: false
         default: ''
+      profile:
+        description: 'Profile to run (e.g. baseline, baseline-h2, leave empty for all)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -46,7 +50,7 @@ jobs:
         run: |
           for fw in ${{ steps.detect.outputs.list }}; do
             echo ">>> Benchmarking: $fw"
-            ./scripts/benchmark.sh --save "$fw" || echo "WARN: $fw benchmark failed"
+            ./scripts/benchmark.sh --save "$fw" ${{ inputs.profile }} || echo "WARN: $fw benchmark failed"
           done
 
       - name: Commit and push results
