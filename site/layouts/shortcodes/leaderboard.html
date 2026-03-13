@@ -197,37 +197,6 @@ html.dark .lb-type-filter:hover { color: #94a3b8; border-color: #475569; backgro
 html.dark .lb-type-engine.active { color: #fbbf24; border-color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
 html.dark .lb-type-framework.active { color: #4ade80; border-color: #22c55e; background: rgba(34, 197, 94, 0.12); }
 
-/* Type pills */
-.lb-pill {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  font-size: 0.65rem;
-  font-weight: 600;
-  border-radius: 9999px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  line-height: 1.4;
-}
-.lb-pill-framework {
-  color: #15803d;
-  background: rgba(34, 197, 94, 0.15);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-.lb-pill-engine {
-  color: #b45309;
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-html.dark .lb-pill-framework {
-  color: #4ade80;
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.3);
-}
-html.dark .lb-pill-engine {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.15);
-  border-color: rgba(245, 158, 11, 0.3);
-}
 
 /* Sortable headers */
 .lb-sortable { cursor: pointer; user-select: none; }
@@ -243,7 +212,7 @@ html.dark .lb-sortable.sort-desc::after { color: #60a5fa; }
 .lb { width: 100%; font-family: inherit; }
 .lb-row {
   display: grid;
-  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 4.5rem 3.5rem 7rem 5.5rem 4rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
+  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 3.5rem 7rem 5.5rem 4rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
   align-items: center;
   gap: 0.4rem;
   padding: 0.1rem 0.75rem;
@@ -251,10 +220,10 @@ html.dark .lb-sortable.sort-desc::after { color: #60a5fa; }
   transition: background 0.15s ease;
 }
 .lb-row.lb-row-reconn {
-  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 4.5rem 3.5rem 5.5rem 7rem 5.5rem 4rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
+  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 3.5rem 5.5rem 7rem 5.5rem 4rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
 }
 .lb-row.lb-row-noisy {
-  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 4.5rem 3.5rem 5.5rem 7rem 5.5rem 4rem 5.5rem 5rem 5.5rem 4.5rem;
+  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 3.5rem 5.5rem 7rem 5.5rem 4rem 5.5rem 5rem 5.5rem 4.5rem;
 }
 .lb-row.lb-row-noisy .lb-bar-cell { display: none; }
 .lb-row:not(.lb-header) { cursor: pointer; }
@@ -423,7 +392,7 @@ html.dark .lb-filters-toggle:hover .lb-toggle-icon { color: #60a5fa; }
   (dict "id" "upload"       "label" "Upload (20 MB)"        "conns" (slice 64 256 512)     "desc" "Each request sends a 20 MB binary payload via <code>POST /upload</code>. The server reads the entire body and returns its CRC32 checksum. Measures request body ingestion throughput — how efficiently a framework handles large uploads, including buffering, memory management, and I/O handling under sustained load.")
   (dict "id" "compression" "label" "Compression"           "conns" (slice 4096 16384) "desc" "Requests <code>GET /compression</code> with <code>Accept-Encoding: gzip</code>. The server loads a 6000-item dataset (~1 MB JSON) at startup and serves it gzip-compressed on the fly. Measures the throughput cost of real-time compression — only frameworks with built-in gzip support are eligible.")
   (dict "id" "noisy"       "label" "Noisy"                 "conns" (slice 512 4096 16384) "desc" "Valid baseline requests interleaved with malformed noise — nonexistent paths, bad content-length, and raw binary. Only 2xx responses count. Measures resilience: how well a framework maintains throughput while rejecting garbage traffic.")
-  (dict "id" "mixed"        "label" "Mixed Workload"        "conns" (slice 512 1024) "desc" "A realistic mix of request types: 3 baseline GETs, 2 baseline POSTs, 1 JSON processing, 1 SQLite DB lookup, 1 file upload (1 MB), and 2 compression requests. Connections limited to 100 requests each. Measures overall framework performance under a diverse, real-world-like workload that exercises multiple code paths simultaneously.")
+  (dict "id" "mixed"        "label" "Mixed Workload"        "conns" (slice 4096 16384) "desc" "A realistic mix of request types: 3 baseline GETs, 2 baseline POSTs, 1 JSON processing, 1 SQLite DB lookup, 1 file upload (1 MB), and 2 compression requests. Connections limited to 100 requests each. Measures overall framework performance under a diverse, real-world-like workload that exercises multiple code paths simultaneously.")
   (dict "id" "pipelined"    "label" "Pipelined (16)"        "conns" (slice 512 4096 16384) "desc" "16 HTTP requests are sent back-to-back on each connection before waiting for responses. Uses a lightweight <code>GET /pipeline</code> endpoint that returns a fixed response, isolating raw I/O and pipeline handling from application logic. Frameworks that batch pipelined requests from the read buffer gain a significant advantage.")
 }}
 
@@ -519,7 +488,6 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
         <div title="HTTP server framework name">Framework</div>
         <div title="Programming language">Lang</div>
         <div title="HTTP server engine">Engine</div>
-        <div title="framework = production-ready framework, engine = bare-metal/engine-level implementation">Type</div>
         <div title="Number of concurrent connections maintained by the load generator" style="text-align:right">Conn</div>
         {{ if $isReconn }}<div title="Total TCP connections established during the benchmark (reconnects)" style="text-align:right">TCP Conn</div>{{ end }}
         <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
@@ -544,7 +512,6 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
       <div title="HTTP server framework name">Framework</div>
       <div title="Programming language">Lang</div>
       <div title="HTTP server engine">Engine</div>
-      <div title="framework = production-ready framework, engine = bare-metal/engine-level implementation">Type</div>
       <div title="Number of concurrent connections maintained by the load generator" style="text-align:right">Conn</div>
       {{ if $isReconn }}<div title="Total TCP connections established during the benchmark (reconnects)" style="text-align:right">TCP Conn</div>{{ end }}
       <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
@@ -570,7 +537,6 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
       <div class="lb-name">{{ $r.framework }}</div>
       <div class="lb-lang">{{ $r.language | default "—" }}</div>
       <div class="lb-lang">{{ with $meta }}{{ .engine | default "—" }}{{ else }}—{{ end }}</div>
-      <div><span class="lb-pill lb-pill-{{ $ftype }}">{{ $ftype }}</span></div>
       <div class="lb-conns">{{ lang.FormatNumber 0 $r.connections }}</div>
       {{ if $isReconn }}<div class="lb-stat">{{ lang.FormatNumber 0 $r.reconnects }}</div>{{ end }}
       <div class="lb-rps">{{ lang.FormatNumber 0 $r.rps }}</div>
@@ -1012,7 +978,6 @@ window.addEventListener('roundChanged', function(ev) {
         '<div class="lb-name">' + r.framework + '</div>' +
         '<div class="lb-lang">' + (r.language || '\u2014') + '</div>' +
         '<div class="lb-lang">' + (m.engine || '\u2014') + '</div>' +
-        '<div><span class="lb-pill lb-pill-' + ftype + '">' + ftype + '</span></div>' +
         '<div class="lb-conns">' + Number(r.connections).toLocaleString() + '</div>' +
         (isReconn ? '<div class="lb-stat">' + Number(r.reconnects || 0).toLocaleString() + '</div>' : '') +
         '<div class="lb-rps">' + Number(r.rps).toLocaleString() + '</div>' +

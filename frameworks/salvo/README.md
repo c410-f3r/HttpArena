@@ -1,13 +1,13 @@
-# aspnet-minimal
+# salvo
 
-Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal API routing.
+Salvo web framework on Tokio async runtime with rustls for TLS support, compiled with thin LTO.
 
 ## Stack
 
-- **Language:** C# / .NET 10 (preview, Alpine)
-- **Framework:** ASP.NET Core Minimal APIs
-- **Engine:** Kestrel
-- **Build:** Self-contained publish, `aspnet:10.0-preview-alpine` runtime
+- **Language:** Rust 1.88
+- **Framework:** Salvo
+- **TLS:** rustls
+- **Build:** Multi-stage, `debian:bookworm-slim` runtime, `-C target-cpu=native`
 
 ## Endpoints
 
@@ -25,8 +25,7 @@ Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal 
 
 ## Notes
 
-- HTTP/1.1 on port 8080, HTTP/1+2+3 on port 8443
-- Logging disabled (`ClearProviders()`) for throughput
-- Response compression middleware (gzip, fastest level)
-- HTTP/2 tuned: 256 max streams, 2 MB connection window
-- Split into Program.cs, Handlers.cs, AppData.cs, Models.cs
+- Thread-local SQLite connections
+- Compression middleware enabled
+- Static files preloaded into memory via `OnceLock`
+- Tokio multi-threaded async runtime

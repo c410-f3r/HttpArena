@@ -1,16 +1,16 @@
 {{ $profiles := slice
-  (dict "id" "baseline" "label" "Baseline" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384) "scored" true)
-  (dict "id" "pipelined" "label" "Pipelined" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384) "scored" false)
-  (dict "id" "limited-conn" "label" "Short-lived" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096) "scored" true)
-  (dict "id" "json" "label" "JSON" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 4096 16384 32768) "scored" true)
-  (dict "id" "upload" "label" "Upload" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 64 256 512) "scored" true)
-  (dict "id" "compression" "label" "Compression" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 4096 16384) "scored" true)
-  (dict "id" "noisy" "label" "Noisy" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384) "scored" false)
-  (dict "id" "mixed" "label" "Mixed" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 1024) "scored" true)
-  (dict "id" "baseline-h2" "label" "Baseline" "sublabel" "HTTP/2" "proto" "h2" "conns" (slice 256 1024) "scored" true)
-  (dict "id" "static-h2" "label" "Static" "sublabel" "HTTP/2" "proto" "h2" "conns" (slice 256 1024) "scored" true)
-  (dict "id" "baseline-h3" "label" "Baseline" "sublabel" "HTTP/3" "proto" "h3" "conns" (slice 256 512) "scored" true)
-  (dict "id" "static-h3" "label" "Static" "sublabel" "HTTP/3" "proto" "h3" "conns" (slice 256 512) "scored" true)
+  (dict "id" "baseline" "label" "Baseline" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384) "scored" true "engineScored" true)
+  (dict "id" "pipelined" "label" "Pipelined" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384) "scored" false "engineScored" true)
+  (dict "id" "limited-conn" "label" "Short-lived" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096) "scored" true "engineScored" true)
+  (dict "id" "json" "label" "JSON" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 4096 16384 32768) "scored" true "engineScored" false)
+  (dict "id" "upload" "label" "Upload" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 64 256 512) "scored" true "engineScored" false)
+  (dict "id" "compression" "label" "Compression" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 4096 16384) "scored" true "engineScored" false)
+  (dict "id" "noisy" "label" "Noisy" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 512 4096 16384) "scored" false "engineScored" false)
+  (dict "id" "mixed" "label" "Mixed" "sublabel" "HTTP/1.1" "proto" "h1" "conns" (slice 4096 16384) "scored" true "engineScored" false)
+  (dict "id" "baseline-h2" "label" "Baseline" "sublabel" "HTTP/2" "proto" "h2" "conns" (slice 256 1024) "scored" true "engineScored" true)
+  (dict "id" "static-h2" "label" "Static" "sublabel" "HTTP/2" "proto" "h2" "conns" (slice 256 1024) "scored" true "engineScored" true)
+  (dict "id" "baseline-h3" "label" "Baseline" "sublabel" "HTTP/3" "proto" "h3" "conns" (slice 256 512) "scored" true "engineScored" true)
+  (dict "id" "static-h3" "label" "Static" "sublabel" "HTTP/3" "proto" "h3" "conns" (slice 256 512) "scored" true "engineScored" true)
 }}
 
 {{/* Build a clean JSON blob: array of {profile, framework, rps, language} entries */}}
@@ -157,7 +157,8 @@ var allProfileIds = profiles.map(function(p) { return p.id; });
 var profileLabels = {};
 var profileProtos = {};
 var profileScored = {};
-profiles.forEach(function(p) { profileLabels[p.id] = p.label; profileProtos[p.id] = p.proto; profileScored[p.id] = p.scored !== false; });
+var profileEngineScored = {};
+profiles.forEach(function(p) { profileLabels[p.id] = p.label; profileProtos[p.id] = p.proto; profileScored[p.id] = p.scored !== false; profileEngineScored[p.id] = p.engineScored === true; });
 
 function parseCpu(s) {
   if (!s) return 0;
@@ -293,8 +294,11 @@ function renderComposite() {
   var useMem = document.querySelector('.composite-resource-toggle[data-resource="mem"]').classList.contains('active');
   var activeType = getActiveType();
 
-  // Separate scored and reference-only profiles
-  var scoredIds = activeIds.filter(function(pid) { return profileScored[pid]; });
+  // Separate scored and reference-only profiles (engine uses different scored set)
+  function isScoredForType(pid) {
+    return activeType === 'engine' ? profileEngineScored[pid] : profileScored[pid];
+  }
+  var scoredIds = activeIds.filter(function(pid) { return isScoredForType(pid); });
   var scoredCount = scoredIds.length;
 
   function isExcluded(fw) {
@@ -411,7 +415,7 @@ function renderComposite() {
           profileScore += memScore * wMem;
         }
         scores.push(profileScore / totalWeight);
-        if (profileScored[pid]) participated++;
+        if (isScoredForType(pid)) participated++;
       } else {
         scores.push(0);
       }
@@ -422,7 +426,7 @@ function renderComposite() {
     } else {
       var sum = 0;
       activeIds.forEach(function(pid, i) {
-        if (profileScored[pid] && scores[i] > 0) sum += scores[i];
+        if (isScoredForType(pid) && scores[i] > 0) sum += scores[i];
       });
       composite = (sum / scoredCount);
     }
@@ -444,7 +448,7 @@ function renderComposite() {
     '<div style="font-weight:700; padding-left:0.5rem;" title="Composite score: average of normalized profile scores">Score</div>';
   activeIds.forEach(function(pid) {
     var proto = profileProtos[pid];
-    var scored = profileScored[pid];
+    var scored = isScoredForType(pid);
     var bgStyle;
     if (!scored) {
       bgStyle = ' background:rgba(148,163,184,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px; opacity:0.6;';
@@ -484,7 +488,7 @@ function renderComposite() {
     r.scores.forEach(function(s, i) {
       var pid = activeIds[i];
       var proto = profileProtos[pid];
-      var scored = profileScored[pid];
+      var scored = isScoredForType(pid);
       var bgStyle;
       if (!scored) {
         bgStyle = ' background:rgba(148,163,184,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px; opacity:0.5;';

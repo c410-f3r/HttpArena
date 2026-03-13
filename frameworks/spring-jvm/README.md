@@ -1,13 +1,13 @@
-# aspnet-minimal
+# spring-jvm
 
-Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal API routing.
+Spring Boot with embedded Tomcat on JDK 21.
 
 ## Stack
 
-- **Language:** C# / .NET 10 (preview, Alpine)
-- **Framework:** ASP.NET Core Minimal APIs
-- **Engine:** Kestrel
-- **Build:** Self-contained publish, `aspnet:10.0-preview-alpine` runtime
+- **Language:** Java 21
+- **Framework:** Spring Boot (Spring MVC)
+- **Engine:** Tomcat
+- **Build:** `maven:3.9-eclipse-temurin-21` → `eclipse-temurin:21-jre` runtime
 
 ## Endpoints
 
@@ -25,8 +25,7 @@ Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal 
 
 ## Notes
 
-- HTTP/1.1 on port 8080, HTTP/1+2+3 on port 8443
-- Logging disabled (`ClearProviders()`) for throughput
-- Response compression middleware (gzip, fastest level)
-- HTTP/2 tuned: 256 max streams, 2 MB connection window
-- Split into Program.cs, Handlers.cs, AppData.cs, Models.cs
+- Spring MVC controller with `@RestController`
+- Server-level gzip compression for `application/json`
+- Static files preloaded into `ConcurrentHashMap` at startup
+- SQLite JDBC with read-only connection

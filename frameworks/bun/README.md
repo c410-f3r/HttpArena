@@ -1,13 +1,13 @@
-# aspnet-minimal
+# bun
 
-Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal API routing.
+Bun's built-in HTTP server using the JavaScriptCore engine with `reusePort` for multi-core scaling.
 
 ## Stack
 
-- **Language:** C# / .NET 10 (preview, Alpine)
-- **Framework:** ASP.NET Core Minimal APIs
-- **Engine:** Kestrel
-- **Build:** Self-contained publish, `aspnet:10.0-preview-alpine` runtime
+- **Language:** TypeScript
+- **Runtime:** Bun (latest)
+- **Engine:** JavaScriptCore
+- **Build:** `oven/bun:latest` base
 
 ## Endpoints
 
@@ -25,8 +25,7 @@ Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal 
 
 ## Notes
 
-- HTTP/1.1 on port 8080, HTTP/1+2+3 on port 8443
-- Logging disabled (`ClearProviders()`) for throughput
-- Response compression middleware (gzip, fastest level)
-- HTTP/2 tuned: 256 max streams, 2 MB connection window
-- Split into Program.cs, Handlers.cs, AppData.cs, Models.cs
+- Built-in SQLite via `bun:sqlite` (read-only)
+- Dual server: HTTP on 8080, TLS on 8443
+- Gzip compression level 1
+- `reusePort` for kernel-level load balancing

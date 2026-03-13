@@ -100,7 +100,6 @@ html.dark .h3-disclaimer { color: #fff !important; background: rgba(234,179,8,0.
         <div title="HTTP server framework name">Framework</div>
         <div title="Programming language">Lang</div>
         <div title="HTTP server engine">Engine</div>
-        <div title="framework = production-ready framework, engine = bare-metal/engine-level implementation">Type</div>
         <div title="Number of concurrent connections" style="text-align:right">Conn</div>
         <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
         <div class="lb-sortable" data-sort="bandwidth" title="Bandwidth — MB/s transferred" style="text-align:right">BW</div>
@@ -124,7 +123,6 @@ html.dark .h3-disclaimer { color: #fff !important; background: rgba(234,179,8,0.
       <div title="HTTP server framework name">Framework</div>
       <div title="Programming language">Lang</div>
       <div title="HTTP server engine">Engine</div>
-      <div title="framework = production-ready framework, engine = bare-metal/engine-level implementation">Type</div>
       <div title="Number of concurrent connections" style="text-align:right">Conn</div>
       <div class="lb-sortable" data-sort="rps" title="Requests per second — higher is better" style="text-align:right">Req/s</div>
       <div class="lb-sortable" data-sort="errors" title="HTTP error count (4xx+5xx) — hover for breakdown" style="text-align:right">Err</div>
@@ -148,7 +146,6 @@ html.dark .h3-disclaimer { color: #fff !important; background: rgba(234,179,8,0.
       <div class="lb-name">{{ $r.framework }}</div>
       <div class="lb-lang">{{ $r.language | default "—" }}</div>
       <div class="lb-lang">{{ with $meta }}{{ .engine | default "—" }}{{ else }}—{{ end }}</div>
-      <div><span class="lb-pill lb-pill-{{ $ftype }}">{{ $ftype }}</span></div>
       <div class="lb-conns">{{ lang.FormatNumber 0 $r.connections }}</div>
       <div class="lb-rps">{{ lang.FormatNumber 0 $r.rps }}</div>
       <div class="lb-stat">{{ $r.bandwidth | default "—" }}</div>
@@ -546,7 +543,6 @@ window.addEventListener('roundChanged', function(ev) {
         '<div class="lb-name">' + r.framework + '</div>' +
         '<div class="lb-lang">' + (r.language || '\u2014') + '</div>' +
         '<div class="lb-lang">' + (m.engine || '\u2014') + '</div>' +
-        '<div><span class="lb-pill lb-pill-' + ftype + '">' + ftype + '</span></div>' +
         '<div class="lb-conns">' + Number(r.connections).toLocaleString() + '</div>' +
         '<div class="lb-rps">' + Number(r.rps).toLocaleString() + '</div>' +
         '<div class="lb-stat">' + (r.bandwidth || '\u2014') + '</div>' +

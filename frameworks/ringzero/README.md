@@ -5,18 +5,21 @@ Custom C HTTP server built on Linux's `io_uring` interface. Uses a multi-reactor
 ## Stack
 
 - **Language:** C (GCC, `-O2 -march=native`)
-- **I/O:** io_uring via liburing
-- **Architecture:** 12 reactor threads, shared accept
+- **Engine:** io_uring via liburing 2.9
+- **Architecture:** Multi-reactor threads, shared accept
+- **Build:** Ubuntu 24.04, builds liburing from source
 
 ## Endpoints
 
-- `GET /pipeline` — returns `ok`, handles pipelined requests by scanning for multiple `\r\n\r\n` boundaries in a single read buffer
-- `GET /baseline11?a=N&b=N` — sums query parameter values
-- `POST /baseline11?a=N&b=N` — sums query parameters + request body (Content-Length and chunked)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/pipeline` | GET | Returns `ok`, batches pipelined requests by scanning for multiple `\r\n\r\n` boundaries |
+| `/baseline11` | GET | Sums query parameter values |
+| `/baseline11` | POST | Sums query parameters + request body (Content-Length and chunked) |
 
 ## Notes
 
 - Pipeline handler batches multiple responses per `read()` for maximum throughput
 - Manual HTTP parsing with `memmem`/`memchr` — no framework overhead
 - Chunked Transfer-Encoding decoded inline
-- Runs on Ubuntu 24.04 with `liburing2`
+- Worker count configurable via CLI argument (default 64)

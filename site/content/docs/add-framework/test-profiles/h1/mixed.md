@@ -4,11 +4,11 @@ title: Mixed Workload
 
 The Mixed Workload profile measures overall framework performance under a diverse, realistic request mix that exercises multiple code paths simultaneously — baseline request handling, JSON serialization, database queries, file uploads, and gzip compression.
 
-**Connections:** 512, 1,024
+**Connections:** 4,096, 16,384
 
 ## How it works
 
-1. The load generator (gcannon) opens 512 or 1,024 connections across 64 threads
+1. The load generator (gcannon) opens 4,096 or 16,384 connections across 64 threads
 2. Each connection is assigned a request template from a pool of 10 templates:
    - 3× baseline GET (`GET /baseline11?a=1&b=2`)
    - 2× baseline POST (`POST /baseline11` with body)
@@ -62,7 +62,7 @@ The leaderboard displays a **stacked bar** for each framework showing the actual
 | Parameter | Value |
 |-----------|-------|
 | Endpoints | `/baseline11`, `/json`, `/db`, `/upload`, `/compression` |
-| Connections | 512, 1,024 |
+| Connections | 4,096, 16,384 |
 | Pipeline | 1 |
 | Requests per connection | 100 (then reconnect with next template) |
 | Duration | 5s |

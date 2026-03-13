@@ -1,12 +1,13 @@
-# go-fasthttp
+# flask
 
-High-performance Go HTTP server using fasthttp with zero-allocation design and buffer reuse.
+Flask web framework on Gunicorn with sync workers, scaled to available CPU cores.
 
 ## Stack
 
-- **Language:** Go 1.24
-- **Framework:** fasthttp
-- **Build:** `golang:1.24-alpine` → `alpine:3.19` runtime
+- **Language:** Python 3.13
+- **Framework:** Flask
+- **WSGI server:** Gunicorn (sync workers)
+- **Build:** `python:3.13-slim` base
 
 ## Endpoints
 
@@ -15,6 +16,7 @@ High-performance Go HTTP server using fasthttp with zero-allocation design and b
 | `/pipeline` | GET | Returns `ok` (plain text) |
 | `/baseline11` | GET | Sums query parameter values |
 | `/baseline11` | POST | Sums query parameters + request body |
+| `/baseline2` | GET | Sums query parameter values (HTTP/2 variant) |
 | `/json` | GET | Processes 50-item dataset, serializes JSON |
 | `/compression` | GET | Gzip-compressed large JSON response |
 | `/db` | GET | SQLite range query with JSON response |
@@ -22,8 +24,7 @@ High-performance Go HTTP server using fasthttp with zero-allocation design and b
 
 ## Notes
 
-- One goroutine listener per CPU core via `SO_REUSEPORT`
-- `modernc.org/sqlite` for CGO-free database access
-- Compression via `compress/flate` (level 1)
-- Zero-copy query parameter iteration with `VisitAll`
-- Baseline11 is the default route handler
+- Workers = `os.sched_getaffinity(0) * 2` (respects Docker CPU limits)
+- Thread-local SQLite connections via `threading.local()`
+- Gzip compression level 1
+- Keepalive timeout 120s

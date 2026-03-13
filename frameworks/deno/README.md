@@ -1,12 +1,13 @@
-# go-fasthttp
+# deno
 
-High-performance Go HTTP server using fasthttp with zero-allocation design and buffer reuse.
+Deno HTTP server using `deno serve --parallel` with a zero-dependency native fetch handler.
 
 ## Stack
 
-- **Language:** Go 1.24
-- **Framework:** fasthttp
-- **Build:** `golang:1.24-alpine` → `alpine:3.19` runtime
+- **Language:** TypeScript
+- **Runtime:** Deno 2.2.2
+- **Engine:** V8
+- **Build:** `denoland/deno:2.2.2` base
 
 ## Endpoints
 
@@ -15,6 +16,7 @@ High-performance Go HTTP server using fasthttp with zero-allocation design and b
 | `/pipeline` | GET | Returns `ok` (plain text) |
 | `/baseline11` | GET | Sums query parameter values |
 | `/baseline11` | POST | Sums query parameters + request body |
+| `/baseline2` | GET | Sums query parameter values (HTTP/2 variant) |
 | `/json` | GET | Processes 50-item dataset, serializes JSON |
 | `/compression` | GET | Gzip-compressed large JSON response |
 | `/db` | GET | SQLite range query with JSON response |
@@ -22,8 +24,7 @@ High-performance Go HTTP server using fasthttp with zero-allocation design and b
 
 ## Notes
 
-- One goroutine listener per CPU core via `SO_REUSEPORT`
-- `modernc.org/sqlite` for CGO-free database access
-- Compression via `compress/flate` (level 1)
-- Zero-copy query parameter iteration with `VisitAll`
-- Baseline11 is the default route handler
+- `deno serve --parallel` for multi-core scaling
+- SQLite via `jsr:@db/sqlite@0.12`
+- Gzip compression via Node.js zlib compat layer (level 1)
+- Thread-local database connections

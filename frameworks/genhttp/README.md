@@ -1,13 +1,13 @@
-# aspnet-minimal
+# genhttp
 
-Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal API routing.
+Lightweight embeddable C# web server using the GenHTTP library on the Kestrel engine.
 
 ## Stack
 
 - **Language:** C# / .NET 10 (preview, Alpine)
-- **Framework:** ASP.NET Core Minimal APIs
+- **Framework:** GenHTTP
 - **Engine:** Kestrel
-- **Build:** Self-contained publish, `aspnet:10.0-preview-alpine` runtime
+- **Build:** Self-contained musl publish, `runtime-deps:10.0-preview-alpine`
 
 ## Endpoints
 
@@ -25,8 +25,6 @@ Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal 
 
 ## Notes
 
-- HTTP/1.1 on port 8080, HTTP/1+2+3 on port 8443
-- Logging disabled (`ClearProviders()`) for throughput
-- Response compression middleware (gzip, fastest level)
-- HTTP/2 tuned: 256 max streams, 2 MB connection window
-- Split into Program.cs, Handlers.cs, AppData.cs, Models.cs
+- Functional routing via `Inline.Create()`
+- Compression and routing modules
+- Self-contained single-file deployment

@@ -1,13 +1,13 @@
-# aspnet-minimal
+# nginx
 
-Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal API routing.
+Nginx with a custom C handler module (`ngx_http_httparena_module`) compiled with `-O3 -march=native`. Supports HTTP/2 and HTTP/3 via quictls.
 
 ## Stack
 
-- **Language:** C# / .NET 10 (preview, Alpine)
-- **Framework:** ASP.NET Core Minimal APIs
-- **Engine:** Kestrel
-- **Build:** Self-contained publish, `aspnet:10.0-preview-alpine` runtime
+- **Language:** C
+- **Engine:** nginx 1.26.2
+- **TLS:** quictls (OpenSSL fork for QUIC)
+- **Build:** Debian bookworm, compiles nginx + quictls from source
 
 ## Endpoints
 
@@ -25,8 +25,9 @@ Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal 
 
 ## Notes
 
-- HTTP/1.1 on port 8080, HTTP/1+2+3 on port 8443
-- Logging disabled (`ClearProviders()`) for throughput
-- Response compression middleware (gzip, fastest level)
-- HTTP/2 tuned: 256 max streams, 2 MB connection window
-- Split into Program.cs, Handlers.cs, AppData.cs, Models.cs
+- Custom C module using cJSON for JSON serialization
+- Worker processes auto-configured to CPU count
+- 65536 worker connections per process
+- HTTP/1.1, HTTP/2, and HTTP/3 support
+- Read-only SQLite access
+- Gzip compression at server level
