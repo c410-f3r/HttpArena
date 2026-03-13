@@ -115,7 +115,12 @@ Framework A still leads because its raw throughput advantage outweighs B's CPU e
 
 ## Engine-level implementations
 
-Frameworks with type `engine` are excluded from the composite ranking and from the normalization pool. They can still be compared in individual test profiles. Only `framework` entries — those using standard, production-grade HTTP libraries — are scored here.
+Engines and frameworks are scored **separately** — each type has its own composite ranking and normalization pool. The scored profiles differ by type:
+
+- **Frameworks** are scored on all H1 profiles (Baseline, Pipelined, Short-lived, JSON, Upload, Compression, Noisy, Mixed) plus all H2/H3 profiles.
+- **Engines** are scored on a reduced H1 set (Baseline, Pipelined, Short-lived only) plus all H2/H3 profiles, since most engines don't implement the heavier endpoints (JSON, DB, upload, compression).
+
+The Type filter on the composite leaderboard switches between the two rankings.
 
 ## Why this approach
 
