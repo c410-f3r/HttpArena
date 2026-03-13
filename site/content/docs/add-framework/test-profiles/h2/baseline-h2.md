@@ -18,6 +18,19 @@ Same workload as the HTTP/1.1 baseline — query parameter parsing and sum compu
 - How frameworks handle many concurrent streams per connection
 - HPACK header compression performance
 
+## Expected request/response
+
+```
+GET /baseline2?a=1&b=1 HTTP/2
+```
+
+```
+HTTP/2 200 OK
+Content-Type: text/plain
+
+2
+```
+
 ## How it differs from baseline
 
 | | Baseline (HTTP/1.1) | Baseline (HTTP/2) |

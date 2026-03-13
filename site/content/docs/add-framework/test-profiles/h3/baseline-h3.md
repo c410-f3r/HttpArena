@@ -19,6 +19,19 @@ The HTTP/3 Baseline profile tests raw throughput over QUIC, the UDP-based transp
 - **TLS 1.3 integration** — QUIC mandates encryption
 - **Framework QUIC implementation quality** — varies significantly across frameworks
 
+## Expected request/response
+
+```
+GET /baseline2?a=1&b=1 HTTP/3
+```
+
+```
+HTTP/3 200 OK
+Content-Type: text/plain
+
+2
+```
+
 ## Parameters
 
 | Parameter | Value |

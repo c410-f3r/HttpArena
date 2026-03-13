@@ -6,6 +6,21 @@ Same workload as baseline, but each connection is closed and re-established afte
 
 **Connections:** 512, 4,096
 
+## Expected request/response
+
+Same as baseline — sum of query parameters:
+
+```
+GET /baseline11?a=13&b=42 HTTP/1.1
+```
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+55
+```
+
 ## What it measures
 
 - Socket creation and teardown overhead

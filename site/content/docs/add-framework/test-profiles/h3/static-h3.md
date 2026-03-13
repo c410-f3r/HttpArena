@@ -33,6 +33,19 @@ The HTTP/3 Static Files profile serves 20 static files of various types over QUI
 | WebP | 3 | `hero.webp`, `thumb1.webp`, `thumb2.webp` |
 | JSON | 1 | `manifest.json` |
 
+## Expected request/response
+
+```
+GET /static/logo.svg HTTP/3
+```
+
+```
+HTTP/3 200 OK
+Content-Type: image/svg+xml
+
+(file contents)
+```
+
 ## Parameters
 
 | Parameter | Value |

@@ -20,6 +20,31 @@ The Noisy profile measures how well a framework maintains throughput when valid 
 
 4. Only **2xx responses** (from valid requests) count toward RPS — all error responses are ignored in scoring
 
+## Expected request/response
+
+Valid requests — same as baseline:
+
+```
+GET /baseline11?a=13&b=42 HTTP/1.1
+```
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+55
+```
+
+Noise requests should return appropriate error codes:
+
+```
+GET /this/path/does/not/exist HTTP/1.1
+```
+
+```
+HTTP/1.1 404 Not Found
+```
+
 ## What it measures
 
 - **Error-handling overhead** — how much CPU the framework spends parsing and rejecting bad requests

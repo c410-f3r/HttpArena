@@ -29,6 +29,30 @@ Total payload: ~325 KB across 20 files.
 - Memory-mapped or pre-loaded file serving performance
 - TLS overhead with realistic mixed payloads
 
+## Expected request/response
+
+```
+GET /static/reset.css HTTP/2
+```
+
+```
+HTTP/2 200 OK
+Content-Type: text/css
+
+(file contents)
+```
+
+```
+GET /static/app.js HTTP/2
+```
+
+```
+HTTP/2 200 OK
+Content-Type: application/javascript
+
+(file contents)
+```
+
 ## How it differs from baseline-h2
 
 | | Baseline (HTTP/2) | Static Files (HTTP/2) |

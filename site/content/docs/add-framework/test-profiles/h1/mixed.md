@@ -19,6 +19,29 @@ The Mixed Workload profile measures overall framework performance under a divers
 3. Each connection sends 100 requests of its assigned type, then disconnects and **reconnects with the next template type** (round-robin rotation)
 4. This rotation ensures all frameworks face a roughly even distribution of request types — fast connections cycle through all templates rather than staying on one type
 
+## Expected request/response
+
+Each template type uses the same endpoint format as its standalone profile:
+
+```
+GET /baseline11?a=1&b=2 HTTP/1.1
+→ 3
+
+GET /json HTTP/1.1
+→ {"items": [...], "count": 50}
+
+GET /db?min=10&max=50 HTTP/1.1
+→ {"items": [...], "count": N}
+
+POST /upload HTTP/1.1
+Content-Length: 1048576
+→ 1048576
+
+GET /compression HTTP/1.1
+Accept-Encoding: gzip
+→ (gzip-compressed JSON)
+```
+
 ## Template rotation
 
 Without rotation, connections assigned to lightweight endpoints (baseline: ~2 byte response) would complete hundreds of reconnect cycles, while heavy endpoints (compression: ~234 KB response) complete only a few. This would skew the results — frameworks efficient at heavy endpoints would paradoxically show lower total RPS.

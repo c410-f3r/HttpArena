@@ -6,6 +6,19 @@ title: Pipelined (16x)
 
 **Connections:** 512, 4,096, 16,384
 
+## Expected request/response
+
+```
+GET /pipeline HTTP/1.1
+```
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+ok
+```
+
 ## What it measures
 
 - HTTP pipelining support and efficiency

@@ -16,6 +16,38 @@ A mix of three request types, rotated across connections:
 
 This exercises the full HTTP handling path: request line parsing, header parsing, query string extraction, body reading (both Content-Length and chunked), integer arithmetic, and response serialization.
 
+## Expected request/response
+
+GET — sum of query parameters:
+
+```
+GET /baseline11?a=13&b=42 HTTP/1.1
+```
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+55
+```
+
+POST with body — sum of query parameters + body:
+
+```
+POST /baseline11?a=13&b=42 HTTP/1.1
+Content-Type: text/plain
+Content-Length: 2
+
+20
+```
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+75
+```
+
 ## What it measures
 
 - Raw request throughput under ideal conditions

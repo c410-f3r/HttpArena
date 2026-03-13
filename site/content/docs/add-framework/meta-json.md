@@ -13,7 +13,7 @@ Create a `meta.json` file in your framework directory:
   "description": "Short description of the framework and its key features.",
   "repo": "https://github.com/org/repo",
   "enabled": true,
-  "tests": ["baseline", "pipelined", "limited-conn", "json", "upload", "compression", "noisy", "baseline-h2", "static-h2"]
+  "tests": ["baseline", "pipelined", "limited-conn", "json", "upload", "compression", "noisy", "mixed", "baseline-h2", "static-h2"]
 }
 ```
 
@@ -41,6 +41,7 @@ Create a `meta.json` file in your framework directory:
 | `upload` | HTTP/1.1 | `/upload` |
 | `compression` | HTTP/1.1 | `/compression` |
 | `noisy` | HTTP/1.1 | `/baseline11` |
+| `mixed` | HTTP/1.1 | `/baseline11`, `/json`, `/db`, `/upload`, `/compression` |
 | `baseline-h2` | HTTP/2 | `/baseline2` (TLS, port 8443) |
 | `static-h2` | HTTP/2 | `/static/*` (TLS, port 8443) |
 | `baseline-h3` | HTTP/3 | `/baseline2` (QUIC, port 8443) |
