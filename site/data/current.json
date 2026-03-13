@@ -1,7 +1,8 @@
 {
   "date": "2026-03-13",
   "cpu": "AMD Ryzen Threadripper PRO 3995WX 64-Cores",
-  "cores": "128",
+  "cores": "64",
+  "threads": "128",
   "ram": "251Gi",
   "os": "Ubuntu 24.04.4 LTS",
   "kernel": "6.17.0-14-generic",

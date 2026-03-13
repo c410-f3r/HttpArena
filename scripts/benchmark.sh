@@ -128,8 +128,12 @@ with open(data_file, 'w') as out:
 
     # Write current round system info
     local cpu=$(lscpu 2>/dev/null | awk -F: '/Model name/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
-    local cores=$(nproc 2>/dev/null || echo "unknown")
+    local threads=$(nproc 2>/dev/null || echo "unknown")
     local threads_per_core=$(lscpu 2>/dev/null | awk -F: '/Thread\(s\) per core/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+    local cores="$threads"
+    if [ "$threads_per_core" -gt 0 ] 2>/dev/null; then
+        cores=$((threads / threads_per_core))
+    fi
     local ram=$(free -h 2>/dev/null | awk '/Mem:/ {print $2}')
     local ram_speed=$(sudo dmidecode -t memory 2>/dev/null | awk '/Configured Memory Speed:/ && /MHz/ {print $4 " MHz"; exit}')
     [ -z "$ram_speed" ] && ram_speed="unknown"
@@ -145,6 +149,7 @@ with open(data_file, 'w') as out:
 import json, sys, subprocess
 
 d = {'date': sys.argv[1], 'cpu': sys.argv[2], 'cores': sys.argv[3],
+     'threads': sys.argv[15],
      'ram': sys.argv[4], 'os': sys.argv[5], 'kernel': sys.argv[6],
      'docker': sys.argv[7], 'commit': sys.argv[8],
      'governor': sys.argv[11], 'docker_runtime': sys.argv[12],
@@ -181,7 +186,7 @@ if tcp:
 
 with open(sys.argv[9], 'w') as f:
     json.dump(d, f, indent=2)
-" "$cur_date" "$cpu" "$cores" "$ram" "$os_info" "$kernel" "$docker_ver" "$commit" "$site_data/current.json" "$ram_speed" "$governor" "$docker_runtime" "$threads_per_core" "$lo_mtu"
+" "$cur_date" "$cpu" "$cores" "$ram" "$os_info" "$kernel" "$docker_ver" "$commit" "$site_data/current.json" "$ram_speed" "$governor" "$docker_runtime" "$threads_per_core" "$lo_mtu" "$threads"
     echo "[updated] site/data/current.json"
 }
 

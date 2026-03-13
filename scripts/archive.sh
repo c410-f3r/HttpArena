@@ -49,6 +49,7 @@ print(max(ids) if ids else 0)
     if [ -f "$CURRENT_JSON" ]; then
         CPU=$(python3 -c "import json; print(json.load(open('$CURRENT_JSON')).get('cpu','unknown'))")
         CORES=$(python3 -c "import json; print(json.load(open('$CURRENT_JSON')).get('cores','unknown'))")
+        THREADS=$(python3 -c "import json; print(json.load(open('$CURRENT_JSON')).get('threads','unknown'))")
         THREADS_PER_CORE=$(python3 -c "import json; print(json.load(open('$CURRENT_JSON')).get('threads_per_core','unknown'))")
         RAM=$(python3 -c "import json; print(json.load(open('$CURRENT_JSON')).get('ram','unknown'))")
         RAM_SPEED=$(python3 -c "import json; print(json.load(open('$CURRENT_JSON')).get('ram_speed','unknown'))")
@@ -61,8 +62,12 @@ print(max(ids) if ids else 0)
     else
         echo "Warning: site/data/current.json not found — run benchmark.sh --save first"
         CPU=$(lscpu 2>/dev/null | awk -F: '/Model name/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
-        CORES=$(nproc 2>/dev/null || echo "unknown")
+        THREADS=$(nproc 2>/dev/null || echo "unknown")
         THREADS_PER_CORE=$(lscpu 2>/dev/null | awk -F: '/Thread\(s\) per core/ {gsub(/^[ \t]+/, "", $2); print $2; exit}')
+        CORES="$THREADS"
+        if [ "$THREADS_PER_CORE" -gt 0 ] 2>/dev/null; then
+            CORES=$((THREADS / THREADS_PER_CORE))
+        fi
         RAM=$(free -h 2>/dev/null | awk '/Mem:/ {print $2}')
         RAM_SPEED=$(sudo dmidecode -t memory 2>/dev/null | awk '/Configured Memory Speed:/ && /MHz/ {print $4 " MHz"; exit}')
         [ -z "$RAM_SPEED" ] && RAM_SPEED="unknown"
@@ -122,6 +127,7 @@ governor = sys.argv[13]
 docker_runtime = sys.argv[14]
 threads_per_core = sys.argv[15]
 current_json = sys.argv[16]
+threads = sys.argv[17]
 
 rounds = []
 if os.path.exists(index_path):
@@ -136,6 +142,7 @@ entry = {
     'date': date,
     'cpu': cpu,
     'cores': cores,
+    'threads': threads,
     'ram': ram,
     'os': os_info,
     'kernel': kernel,
@@ -160,7 +167,7 @@ rounds.append(entry)
 
 with open(index_path, 'w') as f:
     json.dump(rounds, f, indent=2)
-" "$ROUNDS_DIR/index.json" "$NEXT_ID" "$NAME" "$DATE" "$CPU" "$CORES" "$RAM" "$RAM_SPEED" "$OS_INFO" "$KERNEL" "$COMMIT" "$DOCKER" "$GOVERNOR" "$DOCKER_RUNTIME" "$THREADS_PER_CORE" "$CURRENT_JSON"
+" "$ROUNDS_DIR/index.json" "$NEXT_ID" "$NAME" "$DATE" "$CPU" "$CORES" "$RAM" "$RAM_SPEED" "$OS_INFO" "$KERNEL" "$COMMIT" "$DOCKER" "$GOVERNOR" "$DOCKER_RUNTIME" "$THREADS_PER_CORE" "$CURRENT_JSON" "$THREADS"
 
     # Clear current results so the new ongoing round starts fresh
     rm -rf "$ROOT_DIR/results"/*
@@ -177,7 +184,7 @@ with open(index_path, 'w') as f:
     rm -f "$SITE_DATA/current.json"
 
     echo "[archived] Round $NEXT_ID: $NAME ($DATE)"
-    echo "[hardware] $CPU ($CORES cores), $RAM RAM"
+    echo "[hardware] $CPU (${CORES}C/${THREADS}T), $RAM RAM"
     echo "[system]   $OS_INFO (kernel $KERNEL)"
     echo "[commit]   $COMMIT"
     echo "[file]     site/data/rounds/${NEXT_ID}.json"

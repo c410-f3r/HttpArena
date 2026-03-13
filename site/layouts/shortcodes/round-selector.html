@@ -109,8 +109,7 @@ html.dark .round-toggle:hover { color:#94a3b8; border-color:#475569; }
 
     // Always visible: commit + CPU
     commitEl.innerHTML = iconGit + ' <code style="font-size:0.75rem;background:rgba(124,58,237,0.08);padding:0.1rem 0.35rem;border-radius:3px;">' + meta.commit + '</code>';
-    var ramInfo = meta.cores + ' cores';
-    if (meta.smt) ramInfo += ' (SMT ' + meta.smt + ')';
+    var ramInfo = meta.cores + 'C/' + (meta.threads || meta.cores) + 'T';
     ramInfo += ', ' + meta.ram + ' RAM';
     if (meta.ram_speed) ramInfo += ' @ ' + meta.ram_speed;
     if (meta.governor) ramInfo += ', governor: ' + meta.governor;
