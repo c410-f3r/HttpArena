@@ -180,6 +180,26 @@
     "status_5xx": 0
   },
   {
+    "framework": "h2o-mruby",
+    "language": "Ruby",
+    "rps": 373,
+    "avg_latency": "169.89ms",
+    "p99_latency": "333.10ms",
+    "cpu": "6244.4%",
+    "memory": "67.7GiB",
+    "connections": 64,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "59.84KB/s",
+    "input_bw": "7.29GB/s",
+    "reconnects": 0,
+    "status_2xx": 1879,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "h2o",
     "language": "C",
     "rps": 457,

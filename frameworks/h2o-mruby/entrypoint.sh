@@ -77,6 +77,14 @@ hosts:
             [200, {"content-type" => "text/plain"}, [sum.to_s]]
           end
 
+      "/upload":
+        mruby.handler: |
+          Proc.new do |env|
+            input = env["rack.input"]
+            body = input ? input.read : ""
+            [200, {"content-type" => "text/plain"}, [body.bytesize.to_s]]
+          end
+
       "/json":
         mruby.handler: |
           \$dataset = nil

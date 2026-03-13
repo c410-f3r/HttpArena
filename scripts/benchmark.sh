@@ -563,7 +563,7 @@ else: print(f'{bps}B/s')
     # Parse per-template response counts (gcannon mixed/multi-template output)
     tpl_json=""
     if [ "$USE_H2LOAD" = "false" ] && [ "$USE_OHA" = "false" ]; then
-        tpl_line=$(echo "$best_output" | grep -oP 'Per-template: \K.*' || echo "")
+        tpl_line=$(echo "$best_output" | grep -oP 'Per-template-ok: \K.*' || echo "")
         if [ -n "$tpl_line" ] && [ "$endpoint" = "mixed" ]; then
             # Mixed templates: get×3, post_cl×2, json-get×1, db-get×1, upload-small×1, json-gzip×2
             IFS=',' read -ra tpl_counts <<< "$tpl_line"
