@@ -8,6 +8,7 @@ cd "$ROOT_DIR"
 GCANNON="${GCANNON:-gcannon}"
 H2LOAD="${H2LOAD:-h2load}"
 OHA="${OHA:-$HOME/.cargo/bin/oha}"
+GHZ="${GHZ:-ghz}"
 HARD_NOFILE=$(ulimit -Hn)
 ulimit -n "$HARD_NOFILE"
 THREADS="${THREADS:-64}"
@@ -22,7 +23,8 @@ CERTS_DIR="$ROOT_DIR/certs"
 
 # Profile definitions: pipeline|req_per_conn|cpu_limit|connections|endpoint
 # endpoint: empty = /baseline11 (raw), "json" = /json (GET), "compression" = /compression (GET+gzip), "pipeline" = /pipeline, "upload" = POST /upload (raw),
-#           "h2" = /baseline2 (h2load), "static-h2" = multi-URI h2load, "h3" = /baseline2 (oha HTTP/3), "static-h3" = multi-URI oha
+#           "h2" = /baseline2 (h2load), "static-h2" = multi-URI h2load, "h3" = /baseline2 (oha HTTP/3), "static-h3" = multi-URI oha,
+#           "grpc" = gRPC unary (ghz)
 declare -A PROFILES=(
     [baseline]="1|0||512,4096,16384|"
     [pipelined]="16|0||512,4096,16384|pipeline"
@@ -36,8 +38,9 @@ declare -A PROFILES=(
     [static-h2]="1|0||256,1024|static-h2"
     [baseline-h3]="32|0||256,512|h3"
     [static-h3]="32|0||256,512|static-h3"
+    [baseline-grpc]="1|0||256,1024|grpc"
 )
-PROFILE_ORDER=(baseline pipelined limited-conn json upload compression noisy mixed baseline-h2 static-h2 baseline-h3 static-h3)
+PROFILE_ORDER=(baseline pipelined limited-conn json upload compression noisy mixed baseline-h2 static-h2 baseline-h3 static-h3 baseline-grpc)
 
 # Parse flags
 SAVE_RESULTS=false
@@ -337,38 +340,65 @@ for profile in "${profiles_to_run[@]}"; do
 
     # Wait for server
     echo "[wait] Waiting for server..."
-    if [ "$endpoint" = "h3" ] || [ "$endpoint" = "static-h3" ]; then
-        local_check_url="https://localhost:$H2PORT/baseline2?a=1&b=1"
-    elif [ "$endpoint" = "h2" ] || [ "$endpoint" = "static-h2" ]; then
-        local_check_url="https://localhost:$H2PORT/static/reset.css"
-        [ "$endpoint" = "h2" ] && local_check_url="https://localhost:$H2PORT/baseline2?a=1&b=1"
-    elif [ "$endpoint" = "upload" ]; then
-        local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
-    elif [ "$endpoint" = "noisy" ]; then
-        local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
-    elif [ "$endpoint" = "json" ]; then
-        local_check_url="http://localhost:$PORT/json"
+    if [ "$endpoint" = "grpc" ]; then
+        PROTO_FILE=$(find "$ROOT_DIR/frameworks/$FRAMEWORK" -name 'benchmark.proto' -type f | head -1)
+        for i in $(seq 1 30); do
+            if $GHZ --insecure --proto "$PROTO_FILE" \
+                --call benchmark.BenchmarkService/GetSum \
+                -d '{"a":1,"b":2}' -c 1 -n 1 \
+                "localhost:$PORT" >/dev/null 2>&1; then
+                break
+            fi
+            if [ "$i" -eq 30 ]; then
+                echo "FAIL: gRPC server did not start within 30s — skipping"
+                docker stop -t 5 "$CONTAINER_NAME" 2>/dev/null || true
+                docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+                continue 2
+            fi
+            sleep 1
+        done
     else
-        local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
+        if [ "$endpoint" = "h3" ] || [ "$endpoint" = "static-h3" ]; then
+            local_check_url="https://localhost:$H2PORT/baseline2?a=1&b=1"
+        elif [ "$endpoint" = "h2" ] || [ "$endpoint" = "static-h2" ]; then
+            local_check_url="https://localhost:$H2PORT/static/reset.css"
+            [ "$endpoint" = "h2" ] && local_check_url="https://localhost:$H2PORT/baseline2?a=1&b=1"
+        elif [ "$endpoint" = "upload" ]; then
+            local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
+        elif [ "$endpoint" = "noisy" ]; then
+            local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
+        elif [ "$endpoint" = "json" ]; then
+            local_check_url="http://localhost:$PORT/json"
+        else
+            local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
+        fi
+        for i in $(seq 1 30); do
+            if curl -sk -o /dev/null --max-time 2 "$local_check_url" 2>/dev/null; then
+                break
+            fi
+            if [ "$i" -eq 30 ]; then
+                echo "FAIL: Server did not start within 30s — skipping"
+                docker stop -t 5 "$CONTAINER_NAME" 2>/dev/null || true
+                docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+                continue 2
+            fi
+            sleep 1
+        done
     fi
-    for i in $(seq 1 30); do
-        if curl -sk -o /dev/null --max-time 2 "$local_check_url" 2>/dev/null; then
-            break
-        fi
-        if [ "$i" -eq 30 ]; then
-            echo "FAIL: Server did not start within 30s — skipping"
-            docker stop -t 5 "$CONTAINER_NAME" 2>/dev/null || true
-            docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
-            continue 2
-        fi
-        sleep 1
-    done
     echo "[ready] Server is up"
 
     # Build load generator args based on profile endpoint
     USE_H2LOAD=false
     USE_OHA=false
-    if [ "$endpoint" = "static-h3" ]; then
+    if [ "$endpoint" = "grpc" ]; then
+        USE_H2LOAD=true
+        gc_args=("$H2LOAD"
+            "http://localhost:$PORT/benchmark.BenchmarkService/GetSum"
+            -d "$REQUESTS_DIR/grpc-sum.bin"
+            -H 'content-type: application/grpc'
+            -H 'te: trailers'
+            -c "$CONNS" -m 100 -t "$H2THREADS" -D "$DURATION")
+    elif [ "$endpoint" = "static-h3" ]; then
         USE_OHA=true
         oha_out=$(mktemp)
         gc_args=("$OHA"

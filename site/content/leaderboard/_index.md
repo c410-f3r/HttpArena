@@ -21,6 +21,7 @@ article { max-width: 100% !important; }
 <span class="http-ver" data-ver="h1">HTTP/1.1</span>
 <span class="http-ver" data-ver="h2">HTTP/2</span>
 <span class="http-ver" data-ver="h3">HTTP/3</span>
+<span class="http-ver" data-ver="grpc">gRPC</span>
 </div>
 </div>
 <style>
@@ -43,12 +44,15 @@ article { max-width: 100% !important; }
 .http-ver[data-ver="h2"].active { color: #92400e; background: rgba(234,179,8,0.12); box-shadow: 0 2px 8px rgba(234,179,8,0.15), 0 1px 3px rgba(0,0,0,0.08); font-weight: 700; }
 .http-ver[data-ver="h3"].active { color: #166534; background: rgba(34,197,94,0.12); box-shadow: 0 2px 8px rgba(34,197,94,0.15), 0 1px 3px rgba(0,0,0,0.08); font-weight: 700; }
 .http-ver[data-ver="composite"].active { color: #9a3412; background: rgba(249,115,22,0.12); box-shadow: 0 2px 8px rgba(249,115,22,0.15), 0 1px 3px rgba(0,0,0,0.08); font-weight: 700; }
+.http-ver[data-ver="grpc"].active { color: #7c3aed; background: rgba(124,58,237,0.12); box-shadow: 0 2px 8px rgba(124,58,237,0.15), 0 1px 3px rgba(0,0,0,0.08); font-weight: 700; }
 html.dark .http-ver { color: #64748b; }
 html.dark .http-ver:hover { color: #94a3b8; background: rgba(255,255,255,0.03); }
 html.dark .http-ver[data-ver="h1"].active { color: #60a5fa; background: rgba(59,130,246,0.15); }
 html.dark .http-ver[data-ver="h2"].active { color: #fbbf24; background: rgba(234,179,8,0.15); }
 html.dark .http-ver[data-ver="h3"].active { color: #4ade80; background: rgba(34,197,94,0.15); }
 html.dark .http-ver[data-ver="composite"].active { color: #fb923c; background: rgba(249,115,22,0.15); }
+.http-ver[data-ver="grpc"].active { color: #7c3aed; background: rgba(124,58,237,0.12); box-shadow: 0 2px 8px rgba(124,58,237,0.15), 0 1px 3px rgba(0,0,0,0.08); font-weight: 700; }
+html.dark .http-ver[data-ver="grpc"].active { color: #a78bfa; background: rgba(124,58,237,0.15); }
 </style>
 <script>
 (function() {
@@ -62,6 +66,7 @@ html.dark .http-ver[data-ver="composite"].active { color: #fb923c; background: r
       document.getElementById('lb-h2-wrapper').style.display = ver === 'h2' ? '' : 'none';
       document.getElementById('lb-h3-wrapper').style.display = ver === 'h3' ? '' : 'none';
       document.getElementById('lb-composite-wrapper').style.display = ver === 'composite' ? '' : 'none';
+      document.getElementById('lb-grpc-wrapper').style.display = ver === 'grpc' ? '' : 'none';
     });
   });
 })();
@@ -78,6 +83,10 @@ html.dark .http-ver[data-ver="composite"].active { color: #fb923c; background: r
 
 <div id="lb-h3-wrapper" style="display:none;">
 {{< leaderboard-h3 >}}
+</div>
+
+<div id="lb-grpc-wrapper" style="display:none;">
+{{< leaderboard-grpc >}}
 </div>
 
 <div id="lb-composite-wrapper">
