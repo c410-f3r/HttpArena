@@ -16,7 +16,7 @@ layout: hextra-home
 
 <div class="hx-mb-12">
 {{< hextra/hero-subtitle >}}
-  An open benchmarking platform that measures HTTP framework performance under realistic workloads using io_uring-based load generation. Add your framework, get results automatically.
+  An open benchmarking platform that measures HTTP, gRPC, and WebSocket framework performance under realistic workloads using io_uring-based load generation. Add your framework, get results automatically.
 {{< /hextra/hero-subtitle >}}
 </div>
 
@@ -44,6 +44,10 @@ html.dark .tests-section .tests-sub { color: #94a3b8; }
 html.dark .tests-proto-h1 { background: rgba(59,130,246,0.15); color: #60a5fa; }
 html.dark .tests-proto-h2 { background: rgba(234,179,8,0.15); color: #fbbf24; }
 html.dark .tests-proto-h3 { background: rgba(34,197,94,0.15); color: #4ade80; }
+.tests-proto-grpc { background: rgba(124,58,237,0.1); color: #7c3aed; }
+.tests-proto-ws { background: rgba(8,145,178,0.1); color: #0891b2; }
+html.dark .tests-proto-grpc { background: rgba(124,58,237,0.15); color: #a78bfa; }
+html.dark .tests-proto-ws { background: rgba(8,145,178,0.15); color: #22d3ee; }
 .tests-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.75rem; }
 .test-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem 1.1rem; transition: all 0.15s ease; text-decoration: none !important; display: block; }
 .test-card:hover { border-color: #94a3b8; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transform: translateY(-1px); }
@@ -58,8 +62,8 @@ html.dark .test-card-endpoint { color: #64748b; }
 </style>
 
 <div class="tests-section">
-<h2>12 Test Profiles Across HTTP/1.1, HTTP/2 and HTTP/3</h2>
-<p class="tests-sub">Every framework is tested under diverse, realistic workloads — from raw throughput to compression, caching, and file serving.</p>
+<h2>15 Test Profiles Across HTTP/1.1, HTTP/2, HTTP/3, gRPC and WebSocket</h2>
+<p class="tests-sub">Every framework is tested under diverse, realistic workloads — from raw throughput to compression, gRPC unary calls, and WebSocket echo.</p>
 
 <div class="tests-proto">
 <span class="tests-proto-label tests-proto-h1">HTTP/1.1</span>
@@ -135,6 +139,33 @@ html.dark .test-card-endpoint { color: #64748b; }
     <div class="test-card-title">Static Files</div>
     <div class="test-card-desc">Multi-URI static file serving over QUIC with parallel streams.</div>
     <div class="test-card-endpoint">GET /static/* (h3)</div>
+  </a>
+</div>
+</div>
+
+<div class="tests-proto">
+<span class="tests-proto-label tests-proto-grpc">gRPC</span>
+<div class="tests-grid">
+  <a class="test-card" href="docs/add-framework/test-profiles/grpc/unary">
+    <div class="test-card-title">Unary (h2c)</div>
+    <div class="test-card-desc">Unary gRPC call over cleartext HTTP/2 — raw Protocol Buffers throughput without TLS overhead.</div>
+    <div class="test-card-endpoint">BenchmarkService/GetSum (h2c)</div>
+  </a>
+  <a class="test-card" href="docs/add-framework/test-profiles/grpc/unary">
+    <div class="test-card-title">Unary (TLS)</div>
+    <div class="test-card-desc">Same unary gRPC call over encrypted HTTP/2 with TLS 1.3.</div>
+    <div class="test-card-endpoint">BenchmarkService/GetSum (TLS)</div>
+  </a>
+</div>
+</div>
+
+<div class="tests-proto">
+<span class="tests-proto-label tests-proto-ws">WebSocket</span>
+<div class="tests-grid">
+  <a class="test-card" href="docs/add-framework/test-profiles/ws/echo">
+    <div class="test-card-title">Echo</div>
+    <div class="test-card-desc">WebSocket echo throughput — upgrade, send pipelined text messages, receive echoes. Measures frame processing performance.</div>
+    <div class="test-card-endpoint">WS /ws (echo)</div>
   </a>
 </div>
 </div>
