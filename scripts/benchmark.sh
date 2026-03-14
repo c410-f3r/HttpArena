@@ -24,7 +24,8 @@ CERTS_DIR="$ROOT_DIR/certs"
 # Profile definitions: pipeline|req_per_conn|cpu_limit|connections|endpoint
 # endpoint: empty = /baseline11 (raw), "json" = /json (GET), "compression" = /compression (GET+gzip), "pipeline" = /pipeline, "upload" = POST /upload (raw),
 #           "h2" = /baseline2 (h2load), "static-h2" = multi-URI h2load, "h3" = /baseline2 (oha HTTP/3), "static-h3" = multi-URI oha,
-#           "grpc" = gRPC unary (h2load h2c), "grpc-tls" = gRPC unary (h2load TLS)
+#           "grpc" = gRPC unary (h2load h2c), "grpc-tls" = gRPC unary (h2load TLS),
+#           "ws-echo" = WebSocket echo (gcannon --ws)
 declare -A PROFILES=(
     [baseline]="1|0||512,4096,16384|"
     [pipelined]="16|0||512,4096,16384|pipeline"
@@ -40,8 +41,9 @@ declare -A PROFILES=(
     [static-h3]="32|0||256,512|static-h3"
     [unary-grpc]="1|0||256,1024|grpc"
     [unary-grpc-tls]="1|0||256,1024|grpc-tls"
+    [echo-ws]="16|0||512,4096,16384|ws-echo"
 )
-PROFILE_ORDER=(baseline pipelined limited-conn json upload compression noisy mixed baseline-h2 static-h2 baseline-h3 static-h3 unary-grpc unary-grpc-tls)
+PROFILE_ORDER=(baseline pipelined limited-conn json upload compression noisy mixed baseline-h2 static-h2 baseline-h3 static-h3 unary-grpc unary-grpc-tls echo-ws)
 
 # Parse flags
 SAVE_RESULTS=false
@@ -375,6 +377,8 @@ for profile in "${profiles_to_run[@]}"; do
             local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
         elif [ "$endpoint" = "json" ]; then
             local_check_url="http://localhost:$PORT/json"
+        elif [ "$endpoint" = "ws-echo" ]; then
+            local_check_url="http://localhost:$PORT/ws"
         else
             local_check_url="http://localhost:$PORT/baseline11?a=1&b=1"
         fi
@@ -396,7 +400,11 @@ for profile in "${profiles_to_run[@]}"; do
     # Build load generator args based on profile endpoint
     USE_H2LOAD=false
     USE_OHA=false
-    if [ "$endpoint" = "grpc" ]; then
+    if [ "$endpoint" = "ws-echo" ]; then
+        gc_args=("http://localhost:$PORT/ws"
+            --ws
+            -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
+    elif [ "$endpoint" = "grpc" ]; then
         USE_H2LOAD=true
         gc_args=("$H2LOAD"
             "http://localhost:$PORT/benchmark.BenchmarkService/GetSum"

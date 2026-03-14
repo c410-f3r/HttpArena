@@ -13,6 +13,7 @@
   (dict "id" "unary-grpc-tls" "label" "Unary TLS" "sublabel" "gRPC" "proto" "grpc" "conns" (slice 256 1024) "scored" true "engineScored" true)
   (dict "id" "baseline-h3" "label" "Baseline" "sublabel" "HTTP/3" "proto" "h3" "conns" (slice 256 512) "scored" true "engineScored" true)
   (dict "id" "static-h3" "label" "Static" "sublabel" "HTTP/3" "proto" "h3" "conns" (slice 256 512) "scored" true "engineScored" true)
+  (dict "id" "echo-ws" "label" "Echo" "sublabel" "WebSocket" "proto" "ws" "conns" (slice 512 4096 16384) "scored" true "engineScored" true)
 }}
 
 {{/* Build a clean JSON blob: array of {profile, framework, rps, language} entries */}}
@@ -75,6 +76,7 @@ html.dark .composite-disclaimer { color: #fff !important; background: rgba(234,1
       <div class="composite-proto-select" data-proto="h2">HTTP/2</div>
       <div class="composite-proto-select" data-proto="h3">HTTP/3</div>
       <div class="composite-proto-select" data-proto="grpc">gRPC</div>
+      <div class="composite-proto-select" data-proto="ws">WebSocket</div>
     </div>
     <div class="lb-filters" style="margin:0; padding:0;">
       <span class="lb-filters-label">Tests</span>
@@ -92,12 +94,14 @@ html.dark .composite-disclaimer { color: #fff !important; background: rgba(234,1
   .composite-proto-select.active[data-proto="h2"] { color:#d97706; border-color:#d97706; background:rgba(217,119,6,0.06); font-weight:600; }
   .composite-proto-select.active[data-proto="h3"] { color:#16a34a; border-color:#16a34a; background:rgba(22,163,74,0.06); font-weight:600; }
   .composite-proto-select.active[data-proto="grpc"] { color:#7c3aed; border-color:#7c3aed; background:rgba(124,58,237,0.06); font-weight:600; }
+  .composite-proto-select.active[data-proto="ws"] { color:#0891b2; border-color:#0891b2; background:rgba(8,145,178,0.06); font-weight:600; }
   html.dark .composite-proto-select { color:#64748b; border-color:#334155; }
   html.dark .composite-proto-select:hover { color:#94a3b8; border-color:#475569; }
   html.dark .composite-proto-select.active[data-proto="h1"] { color:#60a5fa; border-color:#3b82f6; background:rgba(59,130,246,0.12); }
   html.dark .composite-proto-select.active[data-proto="h2"] { color:#fbbf24; border-color:#d97706; background:rgba(217,119,6,0.12); }
   html.dark .composite-proto-select.active[data-proto="h3"] { color:#4ade80; border-color:#16a34a; background:rgba(22,163,74,0.12); }
   html.dark .composite-proto-select.active[data-proto="grpc"] { color:#a78bfa; border-color:#7c3aed; background:rgba(124,58,237,0.12); }
+  html.dark .composite-proto-select.active[data-proto="ws"] { color:#22d3ee; border-color:#0891b2; background:rgba(8,145,178,0.12); }
   .composite-profile-filter { padding:0.3rem 0.75rem; font-size:0.8rem; font-weight:500; color:#94a3b8; cursor:pointer; border-radius:6px; border:1.5px solid #e2e8f0; background:transparent; transition:all 0.15s ease; user-select:none; }
   .composite-profile-filter:hover { color:#475569; border-color:#cbd5e1; transform:translateY(-1px); box-shadow:0 2px 4px rgba(0,0,0,0.08); }
   .composite-profile-filter[data-profile="all"].active { color:#8b5cf6; border-color:#8b5cf6; background:rgba(139,92,246,0.06); font-weight:600; }
@@ -105,10 +109,12 @@ html.dark .composite-disclaimer { color: #fff !important; background: rgba(234,1
   .composite-profile-filter.active.cp-h2 { color:#d97706; border-color:#d97706; background:rgba(217,119,6,0.06); font-weight:600; }
   .composite-profile-filter.active.cp-h3 { color:#16a34a; border-color:#16a34a; background:rgba(22,163,74,0.06); font-weight:600; }
   .composite-profile-filter.active.cp-grpc { color:#7c3aed; border-color:#7c3aed; background:rgba(124,58,237,0.06); font-weight:600; }
+  .composite-profile-filter.active.cp-ws { color:#0891b2; border-color:#0891b2; background:rgba(8,145,178,0.06); font-weight:600; }
   .composite-profile-filter.cp-h1:hover { background:rgba(59,130,246,0.06); }
   .composite-profile-filter.cp-h2:hover { background:rgba(217,119,6,0.06); }
   .composite-profile-filter.cp-h3:hover { background:rgba(22,163,74,0.06); }
   .composite-profile-filter.cp-grpc:hover { background:rgba(124,58,237,0.06); }
+  .composite-profile-filter.cp-ws:hover { background:rgba(8,145,178,0.06); }
   html.dark .composite-profiles-wrap { background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.10); }
   html.dark .composite-profile-filter { color:#64748b; border-color:#334155; }
   html.dark .composite-profile-filter:hover { color:#94a3b8; border-color:#475569; }
@@ -117,6 +123,7 @@ html.dark .composite-disclaimer { color: #fff !important; background: rgba(234,1
   html.dark .composite-profile-filter.active.cp-h2 { color:#fbbf24; border-color:#d97706; background:rgba(217,119,6,0.12); }
   html.dark .composite-profile-filter.active.cp-h3 { color:#4ade80; border-color:#16a34a; background:rgba(22,163,74,0.12); }
   html.dark .composite-profile-filter.active.cp-grpc { color:#a78bfa; border-color:#7c3aed; background:rgba(124,58,237,0.12); }
+  html.dark .composite-profile-filter.active.cp-ws { color:#22d3ee; border-color:#0891b2; background:rgba(8,145,178,0.12); }
   </style>
 
   <div class="lb-filters composite-resource-wrap" style="margin:0.5rem 0 0 0; padding:0.5rem 1rem; background:rgba(0,0,0,0.02); border-radius:8px; border:1px solid rgba(0,0,0,0.06);">
@@ -454,6 +461,8 @@ function renderComposite() {
       bgStyle = ' background:rgba(234,179,8,0.12); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
     } else if (proto === 'grpc') {
       bgStyle = ' background:rgba(124,58,237,0.10); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
+    } else if (proto === 'ws') {
+      bgStyle = ' background:rgba(8,145,178,0.10); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
     } else {
       bgStyle = ' background:rgba(59,130,246,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
     }
@@ -496,6 +505,8 @@ function renderComposite() {
         bgStyle = ' background:rgba(234,179,8,0.12); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
       } else if (proto === 'grpc') {
         bgStyle = ' background:rgba(124,58,237,0.10); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
+      } else if (proto === 'ws') {
+        bgStyle = ' background:rgba(8,145,178,0.10); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
       } else {
         bgStyle = ' background:rgba(59,130,246,0.08); margin:-0.5rem -0.25rem; padding:0.5rem 0.25rem; border-radius:4px;';
       }

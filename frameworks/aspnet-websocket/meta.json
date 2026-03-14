@@ -1,0 +1,12 @@
+{
+  "display_name": "aspnet-websocket",
+  "language": "C#",
+  "type": "framework",
+  "engine": "Kestrel",
+  "description": "ASP.NET Core WebSocket echo server using .NET 10 preview with Kestrel and minimal API.",
+  "repo": "https://github.com/dotnet/aspnetcore",
+  "enabled": true,
+  "tests": [
+    "echo-ws"
+  ]
+}

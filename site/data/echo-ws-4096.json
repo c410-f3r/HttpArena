@@ -1,0 +1,22 @@
+[
+  {
+    "framework": "aspnet-websocket",
+    "language": "C#",
+    "rps": 22165396,
+    "avg_latency": "2.29ms",
+    "p99_latency": "12.90ms",
+    "cpu": "6943.6%",
+    "memory": "476.3MiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 16,
+    "bandwidth": "148.02MB/s",
+    "input_bw": "",
+    "reconnects": 0,
+    "status_2xx": 110826981,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  }
+]

@@ -2,6 +2,7 @@
   "actix": {"description": "Actix-web 4 with rustls for HTTP/2 support, compiled with -O3 and thin LTO.", "repo": "https://github.com/actix/actix-web", "type": "framework", "engine": "actix"},
   "aspnet-grpc": {"description": "ASP.NET Core gRPC server using .NET 10 preview with Kestrel.", "repo": "https://github.com/dotnet/aspnetcore", "type": "framework", "engine": "Kestrel"},
   "aspnet-minimal": {"description": "Minimal ASP.NET Core server using .NET 10 preview with Kestrel and minimal API routing.", "repo": "https://github.com/dotnet/aspnetcore", "type": "framework", "engine": "Kestrel"},
+  "aspnet-websocket": {"description": "ASP.NET Core WebSocket echo server using .NET 10 preview with Kestrel and minimal API.", "repo": "https://github.com/dotnet/aspnetcore", "type": "framework", "engine": "Kestrel"},
   "bun": {"description": "Bun's built-in HTTP server using JavaScriptCore engine with multi-core clustering.", "repo": "https://github.com/oven-sh/bun", "type": "framework", "engine": "JSC"},
   "caddy": {"description": "Caddy web server with a custom handler module for benchmark endpoints, native HTTP/2 support.", "repo": "https://github.com/caddyserver/caddy", "type": "framework", "engine": "caddy"},
   "deno": {"description": "Deno HTTP server using deno serve --parallel with zero-dependency native fetch handler.", "repo": "https://github.com/denoland/deno", "type": "framework", "engine": "V8"},

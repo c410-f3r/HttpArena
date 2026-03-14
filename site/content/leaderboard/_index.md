@@ -22,6 +22,7 @@ article { max-width: 100% !important; }
 <span class="http-ver" data-ver="h2">HTTP/2</span>
 <span class="http-ver" data-ver="h3">HTTP/3</span>
 <span class="http-ver" data-ver="grpc">gRPC</span>
+<span class="http-ver" data-ver="ws">WebSocket</span>
 </div>
 </div>
 <style>
@@ -53,6 +54,8 @@ html.dark .http-ver[data-ver="h3"].active { color: #4ade80; background: rgba(34,
 html.dark .http-ver[data-ver="composite"].active { color: #fb923c; background: rgba(249,115,22,0.15); }
 .http-ver[data-ver="grpc"].active { color: #7c3aed; background: rgba(124,58,237,0.12); box-shadow: 0 2px 8px rgba(124,58,237,0.15), 0 1px 3px rgba(0,0,0,0.08); font-weight: 700; }
 html.dark .http-ver[data-ver="grpc"].active { color: #a78bfa; background: rgba(124,58,237,0.15); }
+.http-ver[data-ver="ws"].active { color: #0891b2; background: rgba(8,145,178,0.12); box-shadow: 0 2px 8px rgba(8,145,178,0.15), 0 1px 3px rgba(0,0,0,0.08); font-weight: 700; }
+html.dark .http-ver[data-ver="ws"].active { color: #22d3ee; background: rgba(8,145,178,0.15); }
 </style>
 <script>
 (function() {
@@ -67,6 +70,7 @@ html.dark .http-ver[data-ver="grpc"].active { color: #a78bfa; background: rgba(1
       document.getElementById('lb-h3-wrapper').style.display = ver === 'h3' ? '' : 'none';
       document.getElementById('lb-composite-wrapper').style.display = ver === 'composite' ? '' : 'none';
       document.getElementById('lb-grpc-wrapper').style.display = ver === 'grpc' ? '' : 'none';
+      document.getElementById('lb-ws-wrapper').style.display = ver === 'ws' ? '' : 'none';
     });
   });
 })();
@@ -87,6 +91,10 @@ html.dark .http-ver[data-ver="grpc"].active { color: #a78bfa; background: rgba(1
 
 <div id="lb-grpc-wrapper" style="display:none;">
 {{< leaderboard-grpc >}}
+</div>
+
+<div id="lb-ws-wrapper" style="display:none;">
+{{< leaderboard-ws >}}
 </div>
 
 <div id="lb-composite-wrapper">
