@@ -379,5 +379,25 @@
     "status_3xx": 0,
     "status_4xx": 0,
     "status_5xx": 0
+  },
+  {
+    "framework": "blitz",
+    "language": "Zig",
+    "rps": 910231,
+    "avg_latency": "868us",
+    "p99_latency": "4.86ms",
+    "cpu": "3166.5%",
+    "memory": "163.7MiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "7.18GB/s",
+    "input_bw": "",
+    "reconnects": 0,
+    "status_2xx": 4551159,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
   }
 ]

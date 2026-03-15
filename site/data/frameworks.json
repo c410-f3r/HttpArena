@@ -4,6 +4,7 @@
   "aspnet-grpc": {"description": "ASP.NET Core gRPC server using .NET 10 preview with Kestrel.", "repo": "https://github.com/dotnet/aspnetcore", "type": "framework", "engine": "Kestrel"},
   "aspnet-minimal": {"description": "Minimal ASP.NET Core server using .NET 10 preview with Kestrel and minimal API routing.", "repo": "https://github.com/dotnet/aspnetcore", "type": "framework", "engine": "Kestrel"},
   "aspnet-websocket": {"description": "ASP.NET Core WebSocket echo server using .NET 10 preview with Kestrel and minimal API.", "repo": "https://github.com/dotnet/aspnetcore", "type": "framework", "engine": "Kestrel"},
+  "blitz": {"description": "Custom Zig HTTP server built on epoll with SO_REUSEPORT multi-threading. Zero allocations in the hot path, pre-computed responses, pipeline batching.", "repo": "https://github.com/BennyFranciscus/blitz", "type": "engine", "engine": "epoll"},
   "bun": {"description": "Bun's built-in HTTP server using JavaScriptCore engine with multi-core clustering.", "repo": "https://github.com/oven-sh/bun", "type": "framework", "engine": "JSC"},
   "bun-websocket": {"description": "Bun WebSocket echo server", "repo": "https://github.com/oven-sh/bun", "type": "framework", "engine": "Bun"},
   "caddy": {"description": "Caddy web server with a custom handler module for benchmark endpoints, native HTTP/2 support.", "repo": "https://github.com/caddyserver/caddy", "type": "framework", "engine": "caddy"},
