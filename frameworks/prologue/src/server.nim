@@ -125,6 +125,37 @@ proc loadDb() =
   except:
     dbAvailable = false
 
+const validMethodStrs = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
+
+proc decodeChunkedBody(raw: string): string =
+  ## Decode HTTP chunked transfer-encoding body
+  var pos = 0
+  var decoded = ""
+  while pos < raw.len:
+    # Find the end of chunk size line
+    let crlfPos = raw.find("\r\n", pos)
+    if crlfPos < 0: break
+    let sizeStr = raw[pos ..< crlfPos].strip()
+    if sizeStr.len == 0: break
+    let chunkSize = try: parseHexInt(sizeStr) except ValueError: 0
+    if chunkSize == 0: break
+    let dataStart = crlfPos + 2
+    if dataStart + chunkSize > raw.len: break
+    decoded.add(raw[dataStart ..< dataStart + chunkSize])
+    pos = dataStart + chunkSize + 2  # skip chunk data + trailing CRLF
+  return decoded
+
+proc getBody(ctx: Context): string =
+  ## Get request body, decoding chunked transfer-encoding if needed
+  let body = ctx.request.body
+  let te = if ctx.request.headers.hasKey("Transfer-Encoding"):
+    $ctx.request.headers["Transfer-Encoding"]
+  else:
+    ""
+  if "chunked" in te.toLowerAscii():
+    return decodeChunkedBody(body)
+  return body
+
 proc parseQuerySum(query: string): int =
   result = 0
   for pair in query.split('&'):
@@ -145,7 +176,7 @@ let baseline11Handler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsaf
   if query.len > 0:
     sum = parseQuerySum(query)
 
-  let body = ctx.request.body
+  let body = getBody(ctx)
   if body.len > 0:
     try:
       sum += parseInt(body.strip())
@@ -186,7 +217,7 @@ let compressionHandler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsa
       resp jsonLargeResponse
 
 let uploadHandler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
-  let body = ctx.request.body
+  let body = getBody(ctx)
   ctx.response.setHeader("Content-Type", "text/plain")
   resp $body.len
 
@@ -246,10 +277,19 @@ let settings = newSettings(
 
 var app = newApp(settings = settings)
 
+let methodValidationMiddleware: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
+  let methStr = $ctx.request.reqMethod
+  if methStr notin validMethodStrs:
+    ctx.response.setHeader("Content-Type", "text/plain")
+    resp "Method Not Allowed", Http405
+    return
+  await switch(ctx)
+
 let serverHeaderMiddleware: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   ctx.response.setHeader("Server", "prologue")
   await switch(ctx)
 
+app.use(methodValidationMiddleware)
 app.use(serverHeaderMiddleware)
 
 app.addRoute("/pipeline", pipelineHandler, HttpGet)
