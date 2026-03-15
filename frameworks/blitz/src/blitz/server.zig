@@ -304,7 +304,21 @@ fn workerThread(router: *Router, config: Config, is_primary: bool) void {
                 const logging = log_config.enabled;
                 var off: usize = 0;
                 while (off < st.read_len) {
-                    const result = parser.parse(st.read_buf[off..st.read_len]) orelse break;
+                    const result = parser.parse(st.read_buf[off..st.read_len]) orelse {
+                        // Distinguish incomplete data from bad request:
+                        // If we can see complete headers (\r\n\r\n) but parse failed,
+                        // it's a malformed request (bad method, bad URI, etc.) → 400.
+                        const remaining = st.read_buf[off..st.read_len];
+                        if (mem.indexOf(u8, remaining, "\r\n\r\n")) |hdr_end| {
+                            // Headers complete but unparseable — send 400 Bad Request
+                            const bad_resp = "HTTP/1.1 400 Bad Request\r\nServer: blitz\r\nContent-Length: 11\r\nConnection: close\r\n\r\nBad Request";
+                            st.write_list.appendSlice(bad_resp) catch {};
+                            off += hdr_end + 4; // skip past the bad request
+                            should_close = true;
+                            break;
+                        }
+                        break; // Incomplete data — wait for more
+                    };
                     var req = result.request;
                     var res = Response{};
 
