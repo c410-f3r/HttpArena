@@ -1,7 +1,7 @@
 import prologue
 import std/[json, strutils, math, os, tables]
 import db_connector/db_sqlite
-import std/zippy
+import zippy
 
 type
   Rating = object
