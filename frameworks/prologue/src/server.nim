@@ -328,8 +328,12 @@ if workerCount > 1:
       quit(1)
 
   # Parent process — handle signals and wait for children
-  discard signal(SIGINT, handleSignal)
-  discard signal(SIGTERM, handleSignal)
+  var sa: Sigaction
+  sa.sa_handler = handleSignal
+  discard sigemptyset(sa.sa_mask)
+  sa.sa_flags = 0
+  discard sigaction(SIGINT, sa, nil)
+  discard sigaction(SIGTERM, sa, nil)
 
   while true:
     var status: cint
