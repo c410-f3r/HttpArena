@@ -226,7 +226,7 @@ proc staticHandler(ctx: Context) {.async.} =
     ctx.response.setHeader("Content-Type", ct)
     resp data
   else:
-    resp Http404
+    resp "Not Found", Http404
 
 # Set up and run
 loadDataset()
