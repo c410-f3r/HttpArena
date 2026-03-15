@@ -10,6 +10,7 @@ const CT_PLAIN = "Content-Type: text/plain\r\n";
 const CT_JSON = "Content-Type: application/json\r\n";
 const PIPELINE_RESP = "HTTP/1.1 200 OK\r\n" ++ SERVER_HDR ++ CT_PLAIN ++ "Content-Length: 2\r\n\r\nok";
 const NOT_FOUND_RESP = "HTTP/1.1 404 Not Found\r\n" ++ SERVER_HDR ++ "Content-Length: 0\r\n\r\n";
+const METHOD_NOT_ALLOWED_RESP = "HTTP/1.1 405 Method Not Allowed\r\n" ++ SERVER_HDR ++ "Content-Length: 0\r\n\r\n";
 
 const PORT: u16 = 8080;
 const MAX_EVENTS: usize = 512;
@@ -197,20 +198,31 @@ fn asciiEqlIgnoreCase(a: []const u8, b: []const u8) bool {
 
 // ── Request handling ────────────────────────────────────────────────
 
+fn isGetOrPost(method: []const u8) bool {
+    return mem.eql(u8, method, "GET") or mem.eql(u8, method, "POST");
+}
+
+fn isGet(method: []const u8) bool {
+    return mem.eql(u8, method, "GET");
+}
+
 fn handleRequest(req: *const Request, out: *std.ArrayList(u8)) void {
     const path = req.path;
 
     if (path.len == 9 and mem.eql(u8, path, "/pipeline")) {
+        if (!isGet(req.method)) { out.appendSlice(METHOD_NOT_ALLOWED_RESP) catch return; return; }
         out.appendSlice(PIPELINE_RESP) catch return;
         return;
     }
 
     if (path.len == 11 and mem.eql(u8, path, "/baseline11")) {
+        if (!isGetOrPost(req.method)) { out.appendSlice(METHOD_NOT_ALLOWED_RESP) catch return; return; }
         handleBaseline(req, out);
         return;
     }
 
     if (path.len == 10 and mem.eql(u8, path, "/baseline2")) {
+        if (!isGetOrPost(req.method)) { out.appendSlice(METHOD_NOT_ALLOWED_RESP) catch return; return; }
         var sum: i64 = 0;
         if (req.query) |q| sum = parseQuerySum(q);
         var nb: [32]u8 = undefined;
@@ -219,11 +231,13 @@ fn handleRequest(req: *const Request, out: *std.ArrayList(u8)) void {
     }
 
     if (path.len == 5 and mem.eql(u8, path, "/json")) {
+        if (!isGet(req.method)) { out.appendSlice(METHOD_NOT_ALLOWED_RESP) catch return; return; }
         writeRawResponse(out, dataset_json_resp);
         return;
     }
 
     if (path.len == 7 and mem.eql(u8, path, "/upload")) {
+        if (!isGetOrPost(req.method)) { out.appendSlice(METHOD_NOT_ALLOWED_RESP) catch return; return; }
         if (req.body) |body| {
             var nb: [32]u8 = undefined;
             writeTextResponse(out, writeUsize(&nb, body.len));
@@ -234,6 +248,7 @@ fn handleRequest(req: *const Request, out: *std.ArrayList(u8)) void {
     }
 
     if (mem.startsWith(u8, path, "/static/") and path.len > 8) {
+        if (!isGet(req.method)) { out.appendSlice(METHOD_NOT_ALLOWED_RESP) catch return; return; }
         if (findStaticFile(path[8..])) |resp| {
             out.appendSlice(resp) catch return;
             return;
