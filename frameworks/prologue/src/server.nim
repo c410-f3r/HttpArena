@@ -270,9 +270,11 @@ proc startWorker() =
     port = Port(8080),
     debug = false,
     reusePort = true,
-    address = "0.0.0.0",
-    data = %*{"maxBody": 33554432}  # 32MB for upload benchmark (~20MB payload)
+    address = "0.0.0.0"
   )
+  # Set maxBody under the "prologue" key where asynchttpserver reads it
+  # Default is 8MB (8388608) which is too small for the ~20MB upload benchmark
+  settings["prologue"]["maxBody"] = newJInt(33554432)  # 32MB
 
   var app = newApp(settings = settings)
 
