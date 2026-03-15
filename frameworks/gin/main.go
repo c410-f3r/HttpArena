@@ -187,7 +187,9 @@ func main() {
 			}
 		}
 		c.Header("Server", "gin")
-		c.JSON(http.StatusOK, ProcessResponse{Items: items, Count: len(items)})
+		c.Header("Content-Type", "application/json")
+		data, _ := json.Marshal(ProcessResponse{Items: items, Count: len(items)})
+		c.Data(http.StatusOK, "application/json", data)
 	})
 
 	r.GET("/compression", func(c *gin.Context) {
@@ -263,7 +265,9 @@ func main() {
 			})
 		}
 		c.Header("Server", "gin")
-		c.JSON(http.StatusOK, gin.H{"items": items, "count": len(items)})
+		c.Header("Content-Type", "application/json")
+		data, _ := json.Marshal(gin.H{"items": items, "count": len(items)})
+		c.Data(http.StatusOK, "application/json", data)
 	})
 
 	r.GET("/static/:filename", func(c *gin.Context) {
