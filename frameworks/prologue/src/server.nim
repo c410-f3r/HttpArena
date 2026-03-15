@@ -247,7 +247,8 @@ loadDb()
 let settings = newSettings(
   port = Port(8080),
   debug = false,
-  address = "0.0.0.0"
+  address = "0.0.0.0",
+  data = %*{"maxBody": 33554432}  # 32MB for upload benchmark (~20MB payload)
 )
 
 var app = newApp(settings = settings)
