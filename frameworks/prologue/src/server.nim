@@ -135,11 +135,11 @@ proc parseQuerySum(query: string): int =
       except ValueError:
         discard
 
-proc pipelineHandler(ctx: Context) {.async.} =
+let pipelineHandler: HandlerAsync = proc(ctx: Context) {.async.} =
   ctx.response.setHeader("Content-Type", "text/plain")
   resp "ok"
 
-proc baseline11Handler(ctx: Context) {.async.} =
+let baseline11Handler: HandlerAsync = proc(ctx: Context) {.async.} =
   var sum = 0
   let query = ctx.request.query
   if query.len > 0:
@@ -155,7 +155,7 @@ proc baseline11Handler(ctx: Context) {.async.} =
   ctx.response.setHeader("Content-Type", "text/plain")
   resp $sum
 
-proc baseline2Handler(ctx: Context) {.async.} =
+let baseline2Handler: HandlerAsync = proc(ctx: Context) {.async.} =
   var sum = 0
   let query = ctx.request.query
   if query.len > 0:
@@ -163,12 +163,12 @@ proc baseline2Handler(ctx: Context) {.async.} =
   ctx.response.setHeader("Content-Type", "text/plain")
   resp $sum
 
-proc jsonHandler(ctx: Context) {.async.} =
+let jsonHandler: HandlerAsync = proc(ctx: Context) {.async.} =
   let jsonStr = buildProcessedJson(dataset)
   ctx.response.setHeader("Content-Type", "application/json")
   resp jsonStr
 
-proc compressionHandler(ctx: Context) {.async.} =
+let compressionHandler: HandlerAsync = proc(ctx: Context) {.async.} =
   let headers = ctx.request.headers
   let acceptEncoding = if headers.hasKey("Accept-Encoding"): $headers["Accept-Encoding"] else: ""
   ctx.response.setHeader("Content-Type", "application/json")
@@ -183,12 +183,12 @@ proc compressionHandler(ctx: Context) {.async.} =
   else:
     resp jsonLargeResponse
 
-proc uploadHandler(ctx: Context) {.async.} =
+let uploadHandler: HandlerAsync = proc(ctx: Context) {.async.} =
   let body = ctx.request.body
   ctx.response.setHeader("Content-Type", "text/plain")
   resp $body.len
 
-proc dbHandler(ctx: Context) {.async.} =
+let dbHandler: HandlerAsync = proc(ctx: Context) {.async.} =
   if not dbAvailable:
     ctx.response.setHeader("Content-Type", "application/json")
     resp "{\"items\":[],\"count\":0}"
@@ -219,7 +219,7 @@ proc dbHandler(ctx: Context) {.async.} =
   ctx.response.setHeader("Content-Type", "application/json")
   resp $(%*{"items": items, "count": items.len})
 
-proc staticHandler(ctx: Context) {.async.} =
+let staticHandler: HandlerAsync = proc(ctx: Context) {.async.} =
   let filename = ctx.getPathParams("filename")
   if filename in staticFiles:
     let (data, ct) = staticFiles[filename]
