@@ -1,6 +1,6 @@
 import prologue
 import std/[json, strutils, math, os, tables]
-import std/db_sqlite
+import db_connector/db_sqlite
 import std/zippy
 
 type
