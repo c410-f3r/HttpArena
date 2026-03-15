@@ -15,7 +15,7 @@ const METHOD_NOT_ALLOWED_RESP = "HTTP/1.1 405 Method Not Allowed\r\n" ++ SERVER_
 const PORT: u16 = 8080;
 const MAX_EVENTS: usize = 512;
 const BUF_SIZE: usize = 65536;
-const MAX_REQUEST_SIZE: usize = 4 * 1024 * 1024; // 4MB max request
+const MAX_REQUEST_SIZE: usize = 32 * 1024 * 1024; // 32MB max request (upload bodies can be ~20MB)
 const MAX_CONNS: usize = 65536;
 
 // Linux socket constants
