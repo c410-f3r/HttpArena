@@ -1,6 +1,7 @@
 #include <ulfius.h>
 #include <jansson.h>
 #include <sqlite3.h>
+#include <zlib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +20,8 @@
 static json_t *dataset_items = NULL;
 static char *json_large_response = NULL;
 static size_t json_large_len = 0;
+static unsigned char *json_large_gzipped = NULL;
+static size_t json_large_gzip_len = 0;
 
 typedef struct {
     char name[256];
@@ -99,6 +102,26 @@ static void load_dataset(void) {
     dataset_items = root;
 }
 
+static unsigned char *gzip_compress(const char *input, size_t in_len, size_t *out_len) {
+    uLongf bound = compressBound(in_len) + 32;
+    unsigned char *buf = malloc(bound);
+    if (!buf) return NULL;
+
+    z_stream strm = {0};
+    if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+        free(buf);
+        return NULL;
+    }
+    strm.next_in = (Bytef *)input;
+    strm.avail_in = in_len;
+    strm.next_out = buf;
+    strm.avail_out = bound;
+    deflate(&strm, Z_FINISH);
+    *out_len = strm.total_out;
+    deflateEnd(&strm);
+    return buf;
+}
+
 static void load_dataset_large(void) {
     size_t len;
     char *data = read_file("/data/dataset-large.json", &len);
@@ -123,6 +146,9 @@ static void load_dataset_large(void) {
     json_large_response = json_dumps(resp, JSON_COMPACT);
     json_large_len = strlen(json_large_response);
     json_decref(resp);
+
+    /* Pre-compress for /compression endpoint */
+    json_large_gzipped = gzip_compress(json_large_response, json_large_len, &json_large_gzip_len);
 }
 
 static const char *mime_for_ext(const char *ext) {
@@ -206,7 +232,14 @@ int cb_compression(const struct _u_request *request, struct _u_response *respons
         ulfius_set_string_body_response(response, 500, "No dataset");
         return U_CALLBACK_CONTINUE;
     }
-    ulfius_set_binary_body_response(response, 200, json_large_response, json_large_len);
+    /* Serve gzip if client accepts it and we have a pre-compressed version */
+    const char *accept_enc = u_map_get(request->map_header, "Accept-Encoding");
+    if (json_large_gzipped && accept_enc && strstr(accept_enc, "gzip")) {
+        ulfius_set_binary_body_response(response, 200, (const char *)json_large_gzipped, json_large_gzip_len);
+        u_map_put(response->map_header, "Content-Encoding", "gzip");
+    } else {
+        ulfius_set_binary_body_response(response, 200, json_large_response, json_large_len);
+    }
     u_map_put(response->map_header, "Content-Type", "application/json");
     return U_CALLBACK_CONTINUE;
 }

@@ -30,11 +30,11 @@ WORKDIR /app
 COPY src/server.c ./
 RUN gcc -O3 -flto -march=native -o server server.c \
     $(pkg-config --cflags --libs libulfius) \
-    -ljansson -lsqlite3 -lm -lpthread
+    -ljansson -lsqlite3 -lz -lm -lpthread
 
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libmicrohttpd12t64 libjansson4 libgnutls30t64 libsqlite3-0 && \
+    libmicrohttpd12t64 libjansson4 libgnutls30t64 libsqlite3-0 zlib1g && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=build /usr/local/lib/libulfius.so* /usr/local/lib/
 COPY --from=build /usr/local/lib/liborcania.so* /usr/local/lib/
