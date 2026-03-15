@@ -6,7 +6,7 @@ RUN gleam deps download
 COPY src ./src
 RUN gleam export erlang-shipment
 
-FROM erlang:27-alpine
+FROM erlang:28-alpine
 RUN apk add --no-cache sqlite-libs
 WORKDIR /app
 COPY --from=build /app/build/erlang-shipment /app

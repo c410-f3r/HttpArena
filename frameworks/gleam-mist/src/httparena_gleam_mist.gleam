@@ -575,6 +575,7 @@ pub fn main() {
     }
     |> mist.new
     |> mist.port(8080)
+    |> mist.bind("0.0.0.0")
     |> mist.start
 
   process.sleep_forever()
