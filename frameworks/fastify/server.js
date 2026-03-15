@@ -74,7 +74,12 @@ function startWorker() {
     loadDatabase();
 
     const Fastify = require('fastify');
-    const app = Fastify({ logger: false });
+    const app = Fastify({ logger: false, bodyLimit: 50 * 1024 * 1024 });
+
+    // Register raw body parsers so req.body is available without manual stream reading
+    app.addContentTypeParser('text/plain', { parseAs: 'string' }, (req, body, done) => done(null, body));
+    app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer' }, (req, body, done) => done(null, body));
+    app.addContentTypeParser('*', { parseAs: 'buffer' }, (req, body, done) => done(null, body));
 
     // --- /pipeline ---
     app.get('/pipeline', (req, reply) => {
@@ -87,10 +92,9 @@ function startWorker() {
         reply.header('server', SERVER_NAME).type('text/plain').send(String(s));
     });
 
-    app.post('/baseline11', async (req, reply) => {
+    app.post('/baseline11', (req, reply) => {
         const querySum = sumQuery(req.query);
-        // Fastify parses body based on content-type; for raw/text we collect manually
-        const body = await collectBody(req.raw);
+        const body = typeof req.body === 'string' ? req.body : (req.body ? req.body.toString() : '');
         let total = querySum;
         const n = parseInt(body.trim(), 10);
         if (n === n) total += n;
@@ -163,28 +167,10 @@ function startWorker() {
     });
 
     // --- /upload ---
-    app.post('/upload', async (req, reply) => {
-        const body = await collectRawBody(req.raw);
+    app.post('/upload', (req, reply) => {
+        const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || '');
         reply.header('server', SERVER_NAME).type('text/plain').send(String(body.length));
     });
-
-    // Helper: collect raw body as string
-    function collectBody(raw) {
-        return new Promise((resolve) => {
-            let body = '';
-            raw.on('data', chunk => body += chunk);
-            raw.on('end', () => resolve(body));
-        });
-    }
-
-    // Helper: collect raw body as buffer
-    function collectRawBody(raw) {
-        return new Promise((resolve) => {
-            const chunks = [];
-            raw.on('data', chunk => chunks.push(chunk));
-            raw.on('end', () => resolve(Buffer.concat(chunks)));
-        });
-    }
 
     // Start HTTP/1.1 server
     app.listen({ port: 8080, host: '0.0.0.0' }).then(() => {
