@@ -135,11 +135,11 @@ proc parseQuerySum(query: string): int =
       except ValueError:
         discard
 
-let pipelineHandler: HandlerAsync = proc(ctx: Context) {.async.} =
+let pipelineHandler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   ctx.response.setHeader("Content-Type", "text/plain")
   resp "ok"
 
-let baseline11Handler: HandlerAsync = proc(ctx: Context) {.async.} =
+let baseline11Handler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   var sum = 0
   let query = ctx.request.query
   if query.len > 0:
@@ -155,7 +155,7 @@ let baseline11Handler: HandlerAsync = proc(ctx: Context) {.async.} =
   ctx.response.setHeader("Content-Type", "text/plain")
   resp $sum
 
-let baseline2Handler: HandlerAsync = proc(ctx: Context) {.async.} =
+let baseline2Handler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   var sum = 0
   let query = ctx.request.query
   if query.len > 0:
@@ -163,12 +163,12 @@ let baseline2Handler: HandlerAsync = proc(ctx: Context) {.async.} =
   ctx.response.setHeader("Content-Type", "text/plain")
   resp $sum
 
-let jsonHandler: HandlerAsync = proc(ctx: Context) {.async.} =
+let jsonHandler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   let jsonStr = buildProcessedJson(dataset)
   ctx.response.setHeader("Content-Type", "application/json")
   resp jsonStr
 
-let compressionHandler: HandlerAsync = proc(ctx: Context) {.async.} =
+let compressionHandler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   let headers = ctx.request.headers
   let acceptEncoding = if headers.hasKey("Accept-Encoding"): $headers["Accept-Encoding"] else: ""
   ctx.response.setHeader("Content-Type", "application/json")
@@ -183,12 +183,12 @@ let compressionHandler: HandlerAsync = proc(ctx: Context) {.async.} =
   else:
     resp jsonLargeResponse
 
-let uploadHandler: HandlerAsync = proc(ctx: Context) {.async.} =
+let uploadHandler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   let body = ctx.request.body
   ctx.response.setHeader("Content-Type", "text/plain")
   resp $body.len
 
-let dbHandler: HandlerAsync = proc(ctx: Context) {.async.} =
+let dbHandler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   if not dbAvailable:
     ctx.response.setHeader("Content-Type", "application/json")
     resp "{\"items\":[],\"count\":0}"
@@ -219,7 +219,7 @@ let dbHandler: HandlerAsync = proc(ctx: Context) {.async.} =
   ctx.response.setHeader("Content-Type", "application/json")
   resp $(%*{"items": items, "count": items.len})
 
-let staticHandler: HandlerAsync = proc(ctx: Context) {.async.} =
+let staticHandler: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   let filename = ctx.getPathParams("filename")
   if filename in staticFiles:
     let (data, ct) = staticFiles[filename]
@@ -242,7 +242,7 @@ let settings = newSettings(
 
 var app = newApp(settings = settings)
 
-let serverHeaderMiddleware: HandlerAsync = proc(ctx: Context) {.async.} =
+let serverHeaderMiddleware: HandlerAsync = proc(ctx: Context) {.async, closure, gcsafe.} =
   ctx.response.setHeader("Server", "prologue")
   await switch(ctx)
 
