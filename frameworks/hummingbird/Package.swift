@@ -10,18 +10,24 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
     ],
     targets: [
+        .systemLibrary(
+            name: "CSQLite",
+            path: "Sources/CSQLite",
+            pkgConfig: "sqlite3",
+            providers: [
+                .apt(["libsqlite3-dev"]),
+            ]
+        ),
         .executableTarget(
             name: "Server",
             dependencies: [
+                "CSQLite",
                 .product(name: "Hummingbird", package: "hummingbird"),
                 .product(name: "HummingbirdCompression", package: "hummingbird-compression"),
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
             ],
-            path: "src",
-            linkerSettings: [
-                .linkedLibrary("sqlite3"),
-            ]
+            path: "src"
         ),
     ]
 )
