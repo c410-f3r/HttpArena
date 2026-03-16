@@ -10,8 +10,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="/src/zerg-repo/zerg/zerg.csproj" />
-    <ProjectReference Include="/src/zerg-repo/core/core.csproj" />
+    <PackageReference Include="zerg" Version="0.5.24" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.3" />
   </ItemGroup>
 </Project>

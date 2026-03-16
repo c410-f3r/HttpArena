@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
+using Zerg.Core;
 using zerg;
 using zerg.Engine;
 using zerg.Engine.Configs;
@@ -357,7 +358,7 @@ static class HttpResponse
             conn.Write(lenBuf[..lenWritten]);
             conn.Write("\r\n"u8);
             conn.Write(DateHelper.HeaderBytes);
-            conn.Write(compressed);
+            conn.Write((ReadOnlySpan<byte>)compressed);
         }
         else
         {
@@ -370,7 +371,7 @@ static class HttpResponse
             conn.Write(lenBuf[..lenWritten]);
             conn.Write("\r\n"u8);
             conn.Write(DateHelper.HeaderBytes);
-            conn.Write(body);
+            conn.Write((ReadOnlySpan<byte>)body);
         }
     }
 
@@ -382,12 +383,12 @@ static class HttpResponse
         conn.Write("HTTP/1.1 200 OK\r\n"u8);
         conn.Write(ServerHeader);
         conn.Write("Content-Type: "u8);
-        conn.Write(Encoding.UTF8.GetBytes(contentType));
+        conn.Write((ReadOnlySpan<byte>)Encoding.UTF8.GetBytes(contentType));
         conn.Write("\r\nContent-Length: "u8);
         conn.Write(lenBuf[..lenWritten]);
         conn.Write("\r\n"u8);
         conn.Write(DateHelper.HeaderBytes);
-        conn.Write(body);
+        conn.Write((ReadOnlySpan<byte>)body);
     }
 
     public static void Write404(Connection conn)
@@ -411,7 +412,7 @@ static class HttpResponse
         conn.Write(lenBuf[..lenWritten]);
         conn.Write("\r\n"u8);
         conn.Write(DateHelper.HeaderBytes);
-        conn.Write(body);
+        conn.Write((ReadOnlySpan<byte>)body);
     }
 }
 
