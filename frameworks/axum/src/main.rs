@@ -139,15 +139,19 @@ fn load_static_files() -> HashMap<String, StaticFile> {
 }
 
 fn open_db_pool(count: usize) -> Vec<Mutex<Connection>> {
+    let db_path = "/data/benchmark.db";
+    if !std::path::Path::new(db_path).exists() {
+        return Vec::new();
+    }
     (0..count)
-        .map(|_| {
+        .filter_map(|_| {
             let conn = Connection::open_with_flags(
-                "/data/benchmark.db",
+                db_path,
                 rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
             )
-            .expect("Failed to open database");
+            .ok()?;
             conn.execute_batch("PRAGMA mmap_size=268435456").ok();
-            Mutex::new(conn)
+            Some(Mutex::new(conn))
         })
         .collect()
 }
@@ -298,8 +302,14 @@ async fn db_endpoint(
         }
     }
 
+    if state.db_pool.is_empty() {
+        return server_header(
+            (StatusCode::SERVICE_UNAVAILABLE, "Database not available").into_response(),
+        );
+    }
+
     // Round-robin across DB connections
-    let idx = state.db_counter.fetch_add(1, Ordering::Relaxed) % state.db_pool.len().max(1);
+    let idx = state.db_counter.fetch_add(1, Ordering::Relaxed) % state.db_pool.len();
     let conn = state.db_pool[idx].lock().unwrap();
     let mut stmt = conn
         .prepare_cached(
