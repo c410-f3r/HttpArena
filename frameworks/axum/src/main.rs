@@ -394,6 +394,9 @@ fn load_tls_config() -> Option<rustls::ServerConfig> {
 
 #[tokio::main]
 async fn main() {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls CryptoProvider");
     let dataset = load_dataset();
     let large_dataset: Vec<DatasetItem> =
         match std::fs::read_to_string("/data/dataset-large.json") {
@@ -423,7 +426,11 @@ async fn main() {
         .layer(CompressionLayer::new())
         .with_state(state.clone());
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8080);
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = TcpListener::bind(addr).await.expect("Failed to bind");
 
     // Spawn TLS server if certs available
@@ -431,10 +438,12 @@ async fn main() {
         let tls_app = app.clone();
         let tls_addr = SocketAddr::from(([0, 0, 0, 0], 8443));
         tokio::spawn(async move {
-            axum_server::bind_rustls(tls_addr, axum_server::tls_rustls::RustlsConfig::from_config(Arc::new(tls_config)))
+            if let Err(e) = axum_server::bind_rustls(tls_addr, axum_server::tls_rustls::RustlsConfig::from_config(Arc::new(tls_config)))
                 .serve(tls_app.into_make_service())
                 .await
-                .expect("TLS server failed");
+            {
+                eprintln!("TLS server error: {e}");
+            }
         });
     }
 
