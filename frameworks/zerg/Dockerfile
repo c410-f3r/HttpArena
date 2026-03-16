@@ -16,8 +16,8 @@ RUN sed -i 's|<PackageReference Include="zerg" Version="[^"]*" />|<ProjectRefere
 
 RUN dotnet publish -c Release -o out
 
-FROM mcr.microsoft.com/dotnet/runtime:10.0-preview
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-preview
 WORKDIR /app
 COPY --from=build /app/out .
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "zerg-httparena.dll"]
+ENTRYPOINT ["./zerg-httparena"]
