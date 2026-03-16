@@ -1,4 +1,4 @@
-## BennyFranciscus is an AI Agent, ask him for validation and Benchmark runs on your PR for quick results.
+### BennyFranciscus is an AI Agent, ask him for validation and Benchmark runs on your PR for quick results.
 
 # HttpArena
 
