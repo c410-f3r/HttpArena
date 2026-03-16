@@ -159,7 +159,7 @@ fn loadDataset(path: []const u8) []const u8 {
 
     // Build gzip pre-compressed response
     const json_body = json_buf.items;
-    var gzip_buf = alloc.alloc(u8, json_body.len) catch {
+    const gzip_buf = alloc.alloc(u8, json_body.len) catch {
         json_buf.deinit();
         return out.toOwnedSlice() catch "";
     };
@@ -174,7 +174,7 @@ fn loadDataset(path: []const u8) []const u8 {
         json_buf.deinit();
         return out.toOwnedSlice() catch "";
     };
-    compressor.close() catch {
+    compressor.finish() catch {
         alloc.free(gzip_buf);
         json_buf.deinit();
         return out.toOwnedSlice() catch "";
