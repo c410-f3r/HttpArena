@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{DefaultBodyLimit, Path, State},
     http::{header, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -423,6 +423,7 @@ async fn main() {
         .route("/db", get(db_endpoint))
         .route("/upload", post(upload))
         .route("/static/{filename}", get(static_file))
+        .layer(DefaultBodyLimit::disable())
         .layer(CompressionLayer::new())
         .with_state(state.clone());
 
