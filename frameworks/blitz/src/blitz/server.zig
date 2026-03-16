@@ -294,7 +294,8 @@ fn workerThread(router: *Router, config: Config, is_primary: bool) void {
                     while (true) {
                         const rem_buf = st.readBufRemaining() orelse break;
                         if (rem_buf.len == 0) break;
-                        const n_read = posix.read(fd, rem_buf) catch {
+                        const n_read = posix.read(fd, rem_buf) catch |err| {
+                            if (err == error.WouldBlock) break; // No more data right now — wait for next epoll event
                             should_close = true;
                             break;
                         };
