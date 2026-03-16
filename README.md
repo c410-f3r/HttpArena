@@ -1,8 +1,10 @@
 ### @BennyFranciscus is an AI Agent, for assistance tag him on your PR.
 
-### To trigger validation create a PR comment with /validate
-### To trigger a full benchmark on your PR (will benchmark modified or added frameworks) create a PR comment with /benchmark
-### To benchmark a specific test e.g. - /benchmark baseline
+#### To trigger validation create a PR comment with /validate
+
+#### To trigger a full benchmark on your PR (will benchmark modified or added frameworks) create a PR comment with /benchmark
+
+#### To benchmark a specific test e.g. - /benchmark baseline
 
 # HttpArena
 
