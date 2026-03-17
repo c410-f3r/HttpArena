@@ -1,7 +1,13 @@
 defmodule HttparenaPhoenix.Router do
   use Phoenix.Router
 
+  pipeline :bench do
+    plug :fetch_query_params
+  end
+
   scope "/", HttparenaPhoenix do
+    pipe_through :bench
+
     get "/pipeline", BenchController, :pipeline
     get "/baseline11", BenchController, :baseline11
     post "/baseline11", BenchController, :baseline11
