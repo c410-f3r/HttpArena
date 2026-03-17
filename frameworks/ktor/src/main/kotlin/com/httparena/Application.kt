@@ -9,6 +9,7 @@ import io.ktor.server.plugins.defaultheaders.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.utils.io.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
@@ -243,8 +244,14 @@ fun main() {
             }
 
             post("/upload") {
-                val body = call.receive<ByteArray>()
-                call.respondText(body.size.toString(), ContentType.Text.Plain)
+                val channel = call.receiveChannel()
+                var totalBytes = 0L
+                val buf = ByteArray(65536)
+                while (!channel.isClosedForRead) {
+                    val read = channel.readAvailable(buf)
+                    if (read > 0) totalBytes += read
+                }
+                call.respondText(totalBytes.toString(), ContentType.Text.Plain)
             }
 
             get("/static/{filename}") {
