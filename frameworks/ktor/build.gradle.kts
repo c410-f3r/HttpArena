@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.1.20"
-    kotlin("plugin.serialization") version "2.1.20"
+    kotlin("jvm") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.0"
     id("io.ktor.plugin") version "3.4.1"
     application
 }
@@ -24,12 +24,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
     implementation("org.xerial:sqlite-jdbc:3.47.2.0")
     implementation("ch.qos.logback:logback-classic:1.5.15")
-}
-
-kotlin {
-    compilerOptions {
-        freeCompilerArgs.add("-Xskip-metadata-version-check")
-    }
 }
 
 ktor {
