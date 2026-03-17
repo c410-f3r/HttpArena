@@ -11,9 +11,10 @@ COPY --from=build /app/build/libs/ktor-httparena.jar .
 EXPOSE 8080
 ENTRYPOINT ["java", \
   "-server", \
-  "-XX:+UseParallelGC", \
+  "-XX:+UseG1GC", \
   "-XX:+UseNUMA", \
   "-XX:-StackTraceInThrowable", \
   "-Dio.netty.buffer.checkBounds=false", \
   "-Dio.netty.buffer.checkAccessible=false", \
+  "-Dio.netty.allocator.maxOrder=10", \
   "-jar", "ktor-httparena.jar"]
