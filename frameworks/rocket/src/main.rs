@@ -2,7 +2,7 @@ use flate2::write::GzEncoder;
 use flate2::Compression;
 use rocket::data::{Data, ToByteUnit};
 use rocket::http::{ContentType, Header, Status};
-use rocket::request::Request;
+use rocket::request::{self, FromRequest, Outcome, Request};
 use rocket::response::{self, Responder, Response};
 use rocket::{get, post, routes, State};
 use rusqlite::Connection;
@@ -11,6 +11,21 @@ use std::collections::HashMap;
 use std::io::{Cursor, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+
+// ─── Request guard to extract raw query string ───
+
+struct RawQuery(Option<String>);
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for RawQuery {
+    type Error = ();
+
+    async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        Outcome::Success(RawQuery(
+            req.uri().query().map(|q| q.as_str().to_string()),
+        ))
+    }
+}
 
 // ─── Custom responder that always sets Server header ───
 
@@ -262,15 +277,15 @@ fn pipeline() -> ServerResponse {
     ServerResponse::text("ok".to_string())
 }
 
-#[get("/baseline11?<_unused..>")]
-fn baseline11_get(uri: &rocket::http::uri::Origin<'_>) -> ServerResponse {
-    let sum = uri.query().map(|q| parse_query_sum(q.as_str())).unwrap_or(0);
+#[get("/baseline11")]
+fn baseline11_get(raw: RawQuery) -> ServerResponse {
+    let sum = raw.0.as_deref().map(parse_query_sum).unwrap_or(0);
     ServerResponse::text(sum.to_string())
 }
 
-#[post("/baseline11?<_unused..>", data = "<body>")]
-async fn baseline11_post(uri: &rocket::http::uri::Origin<'_>, body: Data<'_>) -> ServerResponse {
-    let mut sum = uri.query().map(|q| parse_query_sum(q.as_str())).unwrap_or(0);
+#[post("/baseline11", data = "<body>")]
+async fn baseline11_post(raw: RawQuery, body: Data<'_>) -> ServerResponse {
+    let mut sum = raw.0.as_deref().map(parse_query_sum).unwrap_or(0);
     if let Ok(bytes) = body.open(25.mebibytes()).into_bytes().await {
         if let Ok(s) = std::str::from_utf8(&bytes) {
             if let Ok(n) = s.trim().parse::<i64>() {
@@ -281,9 +296,9 @@ async fn baseline11_post(uri: &rocket::http::uri::Origin<'_>, body: Data<'_>) ->
     ServerResponse::text(sum.to_string())
 }
 
-#[get("/baseline2?<_unused..>")]
-fn baseline2(uri: &rocket::http::uri::Origin<'_>) -> ServerResponse {
-    let sum = uri.query().map(|q| parse_query_sum(q.as_str())).unwrap_or(0);
+#[get("/baseline2")]
+fn baseline2(raw: RawQuery) -> ServerResponse {
+    let sum = raw.0.as_deref().map(parse_query_sum).unwrap_or(0);
     ServerResponse::text(sum.to_string())
 }
 
@@ -311,9 +326,9 @@ fn compression_endpoint(state: &State<Arc<AppState>>) -> ServerResponse {
     .with_header("Content-Encoding", "gzip".to_string())
 }
 
-#[get("/db?<_unused..>")]
-fn db_endpoint(state: &State<Arc<AppState>>, uri: &rocket::http::uri::Origin<'_>) -> ServerResponse {
-    let query = uri.query().map(|q| q.as_str()).unwrap_or("");
+#[get("/db")]
+fn db_endpoint(state: &State<Arc<AppState>>, raw: RawQuery) -> ServerResponse {
+    let query = raw.0.as_deref().unwrap_or("");
     let min = parse_query_param(query, "min").unwrap_or(10.0);
     let max = parse_query_param(query, "max").unwrap_or(50.0);
 
@@ -393,7 +408,10 @@ fn method_not_allowed(_req: &Request<'_>) -> ServerResponse {
 
 // ─── Build Rocket instance ───
 
-fn build_rocket(state: Arc<AppState>, figment: rocket::figment::Figment) -> rocket::Rocket<rocket::Build> {
+fn build_rocket(
+    state: Arc<AppState>,
+    figment: rocket::figment::Figment,
+) -> rocket::Rocket<rocket::Build> {
     rocket::custom(figment)
         .manage(state)
         .mount(
@@ -438,8 +456,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cert_path = std::env::var("TLS_CERT").unwrap_or_else(|_| "/certs/server.crt".to_string());
     let key_path = std::env::var("TLS_KEY").unwrap_or_else(|_| "/certs/server.key".to_string());
-    let has_tls = std::path::Path::new(&cert_path).exists()
-        && std::path::Path::new(&key_path).exists();
+    let has_tls =
+        std::path::Path::new(&cert_path).exists() && std::path::Path::new(&key_path).exists();
 
     // HTTP server on port 8080
     let http_figment = rocket::Config::figment()
