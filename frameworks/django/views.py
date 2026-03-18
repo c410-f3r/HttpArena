@@ -3,7 +3,8 @@ import os
 import gzip
 import sqlite3
 import threading
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotAllowed
+from django.views.decorators.http import require_http_methods, require_GET
 
 # Load raw dataset for per-request processing
 dataset_items = None
@@ -54,12 +55,14 @@ def get_db():
     return _local.conn
 
 
+@require_GET
 def pipeline(request):
     resp = HttpResponse(b'ok', content_type='text/plain')
     resp['Server'] = 'django'
     return resp
 
 
+@require_http_methods(["GET", "POST"])
 def baseline11(request):
     total = 0
     for v in request.GET.values():
@@ -67,16 +70,19 @@ def baseline11(request):
             total += int(v)
         except ValueError:
             pass
-    if request.method == 'POST' and request.body:
-        try:
-            total += int(request.body.strip())
-        except ValueError:
-            pass
+    if request.method == 'POST':
+        body = request.read()
+        if body:
+            try:
+                total += int(body.strip())
+            except ValueError:
+                pass
     resp = HttpResponse(str(total), content_type='text/plain')
     resp['Server'] = 'django'
     return resp
 
 
+@require_GET
 def baseline2(request):
     total = 0
     for v in request.GET.values():
@@ -89,6 +95,7 @@ def baseline2(request):
     return resp
 
 
+@require_GET
 def json_endpoint(request):
     if json_response_buf:
         resp = HttpResponse(json_response_buf, content_type='application/json')
@@ -97,6 +104,7 @@ def json_endpoint(request):
     return HttpResponse('No dataset', status=500)
 
 
+@require_GET
 def compression_endpoint(request):
     if large_gzip_buf:
         resp = HttpResponse(large_gzip_buf, content_type='application/json')
@@ -106,6 +114,7 @@ def compression_endpoint(request):
     return HttpResponse('No dataset', status=500)
 
 
+@require_GET
 def db_endpoint(request):
     if not db_available:
         resp = HttpResponse(b'{"items":[],"count":0}', content_type='application/json')
@@ -129,6 +138,7 @@ def db_endpoint(request):
     return resp
 
 
+@require_http_methods(["POST"])
 def upload_endpoint(request):
     data = request.body
     resp = HttpResponse(str(len(data)), content_type='text/plain')
