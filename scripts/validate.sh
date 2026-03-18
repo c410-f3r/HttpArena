@@ -67,6 +67,7 @@ fi
 ENGINE=$(python3 -c "import json; print(json.load(open('$META_FILE')).get('engine',''))" 2>/dev/null || true)
 if [ "$ENGINE" = "io_uring" ]; then
     docker_args+=(--security-opt seccomp=unconfined)
+    docker_args+=(--ulimit memlock=-1:-1)
 fi
 
 docker run "${docker_args[@]}" "$IMAGE_NAME"
