@@ -18,6 +18,28 @@ class BenchmarkApp < Rails::Application
   config.middleware.delete Rails::Rack::Logger
   config.middleware.delete ActionDispatch::ShowExceptions
 
+  # Catch unknown HTTP methods and routing errors
+  config.middleware.insert_before 0, Class.new {
+    VALID_METHODS = %w[GET HEAD POST PUT DELETE PATCH OPTIONS TRACE].to_set.freeze
+
+    def initialize(app)
+      @app = app
+    end
+
+    def call(env)
+      unless VALID_METHODS.include?(env['REQUEST_METHOD'])
+        return [405, { 'Content-Type' => 'text/plain' }, ['Method Not Allowed']]
+      end
+      @app.call(env)
+    rescue => e
+      if e.class.name.include?('UnknownHttpMethod') || e.class.name.include?('RoutingError')
+        [400, { 'Content-Type' => 'text/plain' }, ['Bad Request']]
+      else
+        raise
+      end
+    end
+  }
+
   # Silence logging
   config.logger = Logger.new('/dev/null')
   config.log_level = :fatal

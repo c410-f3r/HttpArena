@@ -7,4 +7,7 @@ Rails.application.routes.draw do
   get  '/compression', to: 'benchmark#compression'
   get  '/db',          to: 'benchmark#db'
   post '/upload',      to: 'benchmark#upload'
+
+  # Catch-all for unknown paths → 404
+  match '*path', to: 'benchmark#not_found', via: :all
 end

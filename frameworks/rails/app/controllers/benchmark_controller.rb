@@ -108,6 +108,10 @@ class BenchmarkController < ActionController::API
     render plain: data.bytesize.to_s
   end
 
+  def not_found
+    head 404
+  end
+
   private
 
   def get_db
