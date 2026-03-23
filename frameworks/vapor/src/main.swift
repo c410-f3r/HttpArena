@@ -224,6 +224,19 @@ app.http.server.configuration.serverName = "vapor"
 // Enable response compression
 app.http.server.configuration.responseCompression = .enabled
 
+// Middleware to reject unknown HTTP methods with 405
+struct MethodFilterMiddleware: AsyncMiddleware {
+    static let allowedMethods: Set<HTTPMethod> = [.GET, .POST, .PUT, .DELETE, .PATCH, .HEAD, .OPTIONS]
+
+    func respond(to request: Request, chainingTo next: any AsyncResponder) async throws -> Response {
+        guard Self.allowedMethods.contains(request.method) else {
+            return Response(status: .methodNotAllowed)
+        }
+        return try await next.respond(to: request)
+    }
+}
+app.middleware.use(MethodFilterMiddleware())
+
 // Routes
 
 // GET /pipeline
