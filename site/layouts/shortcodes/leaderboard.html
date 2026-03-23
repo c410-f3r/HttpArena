@@ -212,7 +212,7 @@ html.dark .lb-sortable.sort-desc::after { color: #60a5fa; }
 .lb { width: 100%; font-family: inherit; }
 .lb-row {
   display: grid;
-  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 3.5rem 7rem 5.5rem 4rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
+  grid-template-columns: 2.5rem 11rem 5.5rem 4.95rem 3.5rem 7rem 5.5rem 4rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
   align-items: center;
   gap: 0.4rem;
   padding: 0.1rem 0.75rem;
@@ -220,21 +220,15 @@ html.dark .lb-sortable.sort-desc::after { color: #60a5fa; }
   transition: background 0.15s ease;
 }
 .lb-row.lb-row-reconn {
-  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 3.5rem 5.5rem 7rem 5.5rem 4rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
+  grid-template-columns: 2.5rem 11rem 5.5rem 4.95rem 3.5rem 5.5rem 7rem 5.5rem 4rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
 }
 .lb-row.lb-row-noisy {
-  grid-template-columns: 2.5rem 11rem 5.5rem 4.5rem 3.5rem 5.5rem 7rem 5.5rem 4rem 5.5rem 5rem 5.5rem 4.5rem;
+  grid-template-columns: 2.5rem 11rem 5.5rem 4.95rem 3.5rem 5.5rem 7rem 5.5rem 4rem 5.5rem 5rem 5.5rem 4.5rem;
 }
 .lb-row.lb-row-noisy .lb-bar-cell { display: none; }
-.lb-row:not(.lb-header) { cursor: pointer; }
-.lb-row:not(.lb-header):hover { background: rgba(59, 130, 246, 0.04); }
+.lb-row:not(.lb-header) { cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.lb-row:not(.lb-header):hover { background: rgba(0,0,0,0.03); }
 .lb-row.lb-hidden { display: none; }
-
-/* Language row backgrounds */
-{{ range $lang, $c := site.Data.langcolors }}
-.lb-row[data-lang="{{ $lang }}"]:not(.lb-header) { background: rgba({{ $c.rgb }},0.04); border-left: 3px solid rgba({{ $c.rgb }},0.4); }
-.lb-row[data-lang="{{ $lang }}"]:not(.lb-header):hover { background: rgba({{ $c.rgb }},0.08); }
-{{ end }}
 
 /* Popup */
 .lb-overlay {
@@ -287,14 +281,14 @@ html.dark .lb-popup-link { color: #60a5fa; }
   border-bottom: 2px solid #e5e7eb;
   padding-bottom: 0.4rem; border-radius: 0;
 }
-.lb-rank { font-weight: 800; font-size: 1.1rem; color: #3b82f6; }
-.lb-name { font-weight: 600; font-size: 1rem; }
-.lb-lang { font-size: 0.8rem; color: #9ca3af; }
-.lb-conns { font-size: 0.8rem; color: #9ca3af; text-align: right; font-variant-numeric: tabular-nums; }
-.lb-rps { font-weight: 700; font-size: 0.95rem; text-align: right; font-variant-numeric: tabular-nums; }
+.lb-rank { font-weight: 400; font-size: 0.85rem; color: #000; }
+.lb-name { font-weight: 400; font-size: 0.8rem; color: #000; text-transform: lowercase; }
+.lb-lang { font-size: 0.8rem; color: #000; }
+.lb-conns { font-size: 0.8rem; color: #000; text-align: right; font-variant-numeric: tabular-nums; }
+.lb-rps { font-weight: 700; font-size: 0.95rem; text-align: right; font-variant-numeric: tabular-nums; color: #000; }
 .lb-bar-cell { position: relative; height: 1.1rem; background: rgba(0,0,0,0.03); border-radius: 0; overflow: hidden; }
 .lb-bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0; transition: width 0.6s cubic-bezier(0.25,0.46,0.45,0.94); }
-.lb-stat { font-size: 0.85rem; text-align: right; color: #6b7280; font-variant-numeric: tabular-nums; }
+.lb-stat { font-size: 0.85rem; text-align: right; color: #000; font-variant-numeric: tabular-nums; }
 .lb-status { position: relative; font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; cursor: default; }
 .lb-status-ok { color: #22c55e; font-weight: 600; }
 .lb-status-err { color: #ef4444; font-weight: 600; }
@@ -322,16 +316,11 @@ html.dark .lb-status-na { color: #64748b; }
 .lb-bar-4 { background: linear-gradient(90deg, #93c5fd, #bfdbfe); }
 .lb-bar-5 { background: linear-gradient(90deg, #bfdbfe, #dbeafe); }
 
-/* Language bar and text colors */
+/* Language bar and lang-column colors */
 {{ range $lang, $c := site.Data.langcolors }}
 .lb-row[data-lang="{{ $lang }}"] .lb-bar { background: {{ $c.accent }}; }
-.lb-row[data-lang="{{ $lang }}"]:not(.lb-header) { color: {{ $c.text }}; }
+.lb-row[data-lang="{{ $lang }}"]:not(.lb-header) .lb-lang { color: {{ $c.text }}; }
 {{ end }}
-.lb-row[data-lang]:not(.lb-header) .lb-rank { color: inherit; }
-.lb-row[data-lang]:not(.lb-header) .lb-lang { color: inherit; }
-.lb-row[data-lang]:not(.lb-header) .lb-stat { color: inherit; }
-.lb-row[data-lang]:not(.lb-header) .lb-rps { color: inherit; }
-.lb-row[data-lang]:not(.lb-header) .lb-conns { color: inherit; }
 
 /* Dark mode */
 html.dark .lb-card { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(96, 165, 250, 0.15); box-shadow: 0 4px 16px rgba(96, 165, 250, 0.08), 0 1px 3px rgba(0, 0, 0, 0.3); }
@@ -352,12 +341,12 @@ html.dark .lb-search-input { color: #e2e8f0; border-color: #334155; }
 html.dark .lb-search-input::placeholder { color: #64748b; }
 html.dark .lb-search-input:focus { border-color: #3b82f6; }
 html.dark .lb-header { color: #6b7280; border-bottom-color: #1e293b; }
-html.dark .lb-row:not(.lb-header):hover { background: rgba(255, 255, 255, 0.03); }
 {{ range $lang, $c := site.Data.langcolors }}
-html.dark .lb-row[data-lang="{{ $lang }}"]:not(.lb-header) { background: rgba({{ $c.rgb }},0.06); border-left: 3px solid rgba({{ $c.rgb }},0.5); color: {{ $c.textDark }}; }
-html.dark .lb-row[data-lang="{{ $lang }}"]:not(.lb-header):hover { background: rgba({{ $c.rgb }},0.10); }
+html.dark .lb-row[data-lang="{{ $lang }}"]:not(.lb-header) .lb-lang { color: {{ $c.textDark }}; }
 {{ end }}
-html.dark .lb-stat { color: #94a3b8; }
+html.dark .lb-row:not(.lb-header) { border-bottom-color: rgba(255,255,255,0.08); }
+html.dark .lb-row:not(.lb-header):hover { background: rgba(255,255,255,0.04); }
+html.dark .lb-rank, html.dark .lb-name, html.dark .lb-stat, html.dark .lb-rps, html.dark .lb-conns { color: #fff; }
 html.dark .lb-bar-cell { background: rgba(255, 255, 255, 0.04); }
 html.dark .lb-conn-tab { color: #64748b; border-color: #334155; }
 html.dark .lb-conn-tab:hover { color: #94a3b8; border-color: #475569; background: rgba(255, 255, 255, 0.03); }
@@ -533,7 +522,7 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
     {{ $s2xx := int ($r.status_2xx | default 0) }}{{ $s3xx := int ($r.status_3xx | default 0) }}{{ $s4xx := int ($r.status_4xx | default 0) }}{{ $s5xx := int ($r.status_5xx | default 0) }}{{ $errs := add $s4xx $s5xx }}
     <div class="lb-row{{ if $isReconn }} lb-row-reconn{{ end }}{{ if $isNoisy }} lb-row-noisy{{ end }}" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-bandwidth="{{ $r.bandwidth | default "" }}" data-input-bw="{{ $r.input_bw | default "" }}" data-type="{{ with $meta }}{{ .type | default "framework" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}" data-s2xx="{{ $s2xx }}" data-s3xx="{{ $s3xx }}" data-s4xx="{{ $s4xx }}" data-s5xx="{{ $s5xx }}" {{ if $r.tpl_baseline }}data-tpl-baseline="{{ int $r.tpl_baseline }}" data-tpl-json="{{ int ($r.tpl_json | default 0) }}" data-tpl-db="{{ int ($r.tpl_db | default 0) }}" data-tpl-upload="{{ int ($r.tpl_upload | default 0) }}" data-tpl-compression="{{ int ($r.tpl_compression | default 0) }}"{{ end }}>
       {{ $ftype := "framework" }}{{ with $meta }}{{ $ftype = .type | default "framework" }}{{ end }}
-      <div class="lb-rank">{{ if eq $j 0 }}🥇{{ else if eq $j 1 }}🥈{{ else if eq $j 2 }}🥉{{ else }}{{ add $j 1 }}{{ end }}</div>
+      <div class="lb-rank">{{ add $j 1 }}</div>
       <div class="lb-name">{{ $r.framework }}</div>
       <div class="lb-lang">{{ $r.language | default "—" }}</div>
       <div class="lb-lang">{{ with $meta }}{{ .engine | default "—" }}{{ else }}—{{ end }}</div>
@@ -561,7 +550,6 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
 {{ end }}
 
 <script>
-var medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
 var barClasses = ['lb-bar-1', 'lb-bar-2', 'lb-bar-3', 'lb-bar-4', 'lb-bar-5'];
 
 /* Build "Best" panels — pick best RPS per framework across all conn counts */
@@ -594,7 +582,7 @@ function buildBestPanels() {
       clone.dataset.rps = entry.rps;
       clone.dataset.mixedDone = '';  /* allow applyMixedPanels to re-process clones */
       var rankEl = clone.querySelector('.lb-rank');
-      rankEl.textContent = idx < 3 ? medals[idx] : String(idx + 1);
+      rankEl.textContent = String(idx + 1);
       var bar = clone.querySelector('.lb-bar');
       if (bar) {
         barClasses.forEach(function(c) { bar.classList.remove(c); });
@@ -693,7 +681,7 @@ function applyFilters() {
       rows.forEach(function(row) {
         if (row.classList.contains('lb-hidden')) return;
         var rankEl = row.querySelector('.lb-rank');
-        rankEl.textContent = visibleIdx < 3 ? medals[visibleIdx] : String(visibleIdx + 1);
+        rankEl.textContent = String(visibleIdx + 1);
         var bar = row.querySelector('.lb-bar');
         if (bar) {
           barClasses.forEach(function(c) { bar.classList.remove(c); });
@@ -832,7 +820,7 @@ document.querySelectorAll('.lb-sortable').forEach(function(hdr) {
       rows.forEach(function(row) {
         if (row.classList.contains('lb-hidden')) return;
         var rankEl = row.querySelector('.lb-rank');
-        rankEl.textContent = visibleIdx < 3 ? medals[visibleIdx] : String(visibleIdx + 1);
+        rankEl.textContent = String(visibleIdx + 1);
         var bar = row.querySelector('.lb-bar');
         barClasses.forEach(function(c) { bar.classList.remove(c); });
         bar.classList.add(barClasses[Math.min(visibleIdx, barClasses.length - 1)]);
@@ -945,7 +933,7 @@ window.addEventListener('roundChanged', function(ev) {
       var m = fwMeta[r.framework] || {};
       var ftype = m.type || 'framework';
       var pct = (r.rps / maxRps * 100).toFixed(1);
-      var rank = j < 3 ? medals[j] : String(j + 1);
+      var rank = String(j + 1);
       var rs2 = r.status_2xx || 0, rs3 = r.status_3xx || 0, rs4 = r.status_4xx || 0, rs5 = r.status_5xx || 0;
       var rErrs = rs4 + rs5;
       var statusCell = (rs2 > 0 || rs3 > 0 || rErrs > 0)
@@ -1010,7 +998,7 @@ function parseBw(s) {
   return v;
 }
 
-var compressionGrid = '2.5rem 10rem 5.5rem 4.5rem 4.5rem 3.5rem 6.5rem 5rem 5rem 3.5rem 4.5rem 5.5rem 5rem 5rem 4rem';
+var compressionGrid = '2.5rem 10rem 5.5rem 4.95rem 4.5rem 3.5rem 6.5rem 5rem 5rem 3.5rem 4.5rem 5.5rem 5rem 5rem 4rem';
 
 function applyCompressionPanel(panel) {
   var rows = Array.from(panel.querySelectorAll('.lb-row:not(.lb-header)'));
@@ -1101,7 +1089,7 @@ function applyCompressionPanel(panel) {
     }
 
     var rankEl = d.row.querySelector('.lb-rank');
-    if (rankEl) rankEl.textContent = idx < 3 ? medals[idx] : String(idx + 1);
+    if (rankEl) rankEl.textContent = String(idx + 1);
     d.row.dataset.adjScore = score.toFixed(1);
     lb.appendChild(d.row);
   });
@@ -1159,7 +1147,7 @@ function applyCompressionScores() {
       clone.dataset.adjScore = entry.score;
       clone.style.gridTemplateColumns = compressionGrid;
       var rankEl = clone.querySelector('.lb-rank');
-      rankEl.textContent = idx < 3 ? medals[idx] : String(idx + 1);
+      rankEl.textContent = String(idx + 1);
       lb.appendChild(clone);
     });
   });
@@ -1179,7 +1167,7 @@ var mixedLabels = {baseline:'Baseline', json:'JSON', db:'DB', upload:'Upload', c
 var mixedKeys = ['baseline','json','db','upload','compression'];
 var mixedWeights = {baseline:0.15, json:1, db:10, upload:10, compression:7};
 
-var mixedGrid = '2.5rem 10rem 5.5rem 4.5rem 4.5rem 3.5rem 6rem 5rem 3.5rem 5rem 4.5rem 5.5rem 5rem 5rem 4rem';
+var mixedGrid = '2.5rem 10rem 5.5rem 4.95rem 4.5rem 3.5rem 6rem 5rem 3.5rem 5rem 4.5rem 5.5rem 5rem 5rem 4rem';
 
 function buildMixBar(d) {
   var total = d.baseline + d.json + d.db + d.upload + d.compression;
@@ -1264,7 +1252,7 @@ function applyMixedPanel(panel) {
 
     /* Update rank */
     var rankEl = row.querySelector('.lb-rank');
-    if (rankEl) rankEl.textContent = idx < 3 ? medals[idx] : String(idx + 1);
+    if (rankEl) rankEl.textContent = String(idx + 1);
 
     /* Replace bar cell with score */
     var barCell = row.querySelector('.lb-bar-cell');
@@ -1352,7 +1340,7 @@ function applyMixedScores() {
       clone.dataset.mixedScore = entry.score;
       clone.style.gridTemplateColumns = mixedGrid;
       var rankEl = clone.querySelector('.lb-rank');
-      rankEl.textContent = idx < 3 ? medals[idx] : String(idx + 1);
+      rankEl.textContent = String(idx + 1);
       lb.appendChild(clone);
     });
   });
