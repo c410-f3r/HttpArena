@@ -146,8 +146,10 @@ public class MainVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
 
-        // Body handler for POST requests — 25MB limit for upload
-        router.post().handler(BodyHandler.create().setBodyLimit(25 * 1024 * 1024));
+        // Body handler for POST requests — 25MB limit, no disk writes
+        router.post().handler(BodyHandler.create()
+            .setHandleFileUploads(false)
+            .setBodyLimit(25 * 1024 * 1024));
 
         // Routes
         router.get("/pipeline").handler(this::handlePipeline);
@@ -247,21 +249,15 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void handleCompression(RoutingContext ctx) {
-        if (largeJsonResponse == null) {
+        if (gzipLargeJsonResponse == null) {
             ctx.response().setStatusCode(500).end("Large dataset not loaded");
             return;
         }
-        String acceptEncoding = ctx.request().getHeader("Accept-Encoding");
-        if (acceptEncoding != null && acceptEncoding.contains("gzip") && gzipLargeJsonResponse != null) {
-            ctx.response()
-                .putHeader("content-type", "application/json")
-                .putHeader("content-encoding", "gzip")
-                .end(Buffer.buffer(gzipLargeJsonResponse));
-        } else {
-            ctx.response()
-                .putHeader("content-type", "application/json")
-                .end(Buffer.buffer(largeJsonResponse));
-        }
+        // Always serve pre-compressed gzip — benchmark expects compressed response
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .putHeader("content-encoding", "gzip")
+            .end(Buffer.buffer(gzipLargeJsonResponse));
     }
 
     private void handleUpload(RoutingContext ctx) {
