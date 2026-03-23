@@ -135,7 +135,7 @@ var lbGrpcProfiles = {{ $profiles | jsonify | safeJS }};
     {{ $s2xx := int ($r.status_2xx | default 0) }}{{ $s3xx := int ($r.status_3xx | default 0) }}{{ $s4xx := int ($r.status_4xx | default 0) }}{{ $s5xx := int ($r.status_5xx | default 0) }}{{ $errs := add $s4xx $s5xx }}
     <div class="lb-row" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-type="{{ with $meta }}{{ .type | default "framework" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}" data-s2xx="{{ $s2xx }}" data-s3xx="{{ $s3xx }}" data-s4xx="{{ $s4xx }}" data-s5xx="{{ $s5xx }}">
       {{ $ftype := "framework" }}{{ with $meta }}{{ $ftype = .type | default "framework" }}{{ end }}
-      <div class="lb-rank">{{ if eq $j 0 }}🥇{{ else if eq $j 1 }}🥈{{ else if eq $j 2 }}🥉{{ else }}{{ add $j 1 }}{{ end }}</div>
+      <div class="lb-rank">{{ add $j 1 }}</div>
       <div class="lb-name">{{ $r.framework }}</div>
       <div class="lb-lang">{{ $r.language | default "—" }}</div>
       <div class="lb-lang">{{ with $meta }}{{ .engine | default "—" }}{{ else }}—{{ end }}</div>
@@ -195,7 +195,6 @@ html.dark .lb-tab-grpc.active { color: #a78bfa; background: rgba(124, 58, 237, 0
 
 <script>
 (function() {
-var medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
 var barClasses = ['lb-bar-1', 'lb-bar-2', 'lb-bar-3', 'lb-bar-4', 'lb-bar-5'];
 var w = document.getElementById('lb-grpc-wrapper');
 
@@ -220,7 +219,7 @@ function buildBest() {
     entries.forEach(function(entry, idx) {
       var clone = entry.row.cloneNode(true);
       clone.dataset.rps = entry.rps;
-      clone.querySelector('.lb-rank').textContent = idx < 3 ? medals[idx] : String(idx + 1);
+      clone.querySelector('.lb-rank').textContent = String(idx + 1);
       var bar = clone.querySelector('.lb-bar');
       barClasses.forEach(function(c) { bar.classList.remove(c); });
       bar.classList.add(barClasses[Math.min(idx, barClasses.length - 1)]);
@@ -306,7 +305,7 @@ function applyFilters() {
     });
     rows.forEach(function(row) {
       if (row.classList.contains('lb-hidden')) return;
-      row.querySelector('.lb-rank').textContent = visibleIdx < 3 ? medals[visibleIdx] : String(visibleIdx + 1);
+      row.querySelector('.lb-rank').textContent = String(visibleIdx + 1);
       var bar = row.querySelector('.lb-bar');
       barClasses.forEach(function(c) { bar.classList.remove(c); });
       bar.classList.add(barClasses[Math.min(visibleIdx, barClasses.length - 1)]);
@@ -417,7 +416,7 @@ w.querySelectorAll('.lb-sortable').forEach(function(hdr) {
     });
     rows.forEach(function(row) {
       if (row.classList.contains('lb-hidden')) return;
-      row.querySelector('.lb-rank').textContent = visibleIdx < 3 ? medals[visibleIdx] : String(visibleIdx + 1);
+      row.querySelector('.lb-rank').textContent = String(visibleIdx + 1);
       var bar = row.querySelector('.lb-bar');
       barClasses.forEach(function(c) { bar.classList.remove(c); });
       bar.classList.add(barClasses[Math.min(visibleIdx, barClasses.length - 1)]);
@@ -512,7 +511,7 @@ window.addEventListener('roundChanged', function(ev) {
       var m = fwMeta[r.framework] || {};
       var ftype = m.type || 'framework';
       var pct = (r.rps / maxRps * 100).toFixed(1);
-      var rank = j < 3 ? medals[j] : String(j + 1);
+      var rank = String(j + 1);
       var rs2 = r.status_2xx || 0, rs3 = r.status_3xx || 0, rs4 = r.status_4xx || 0, rs5 = r.status_5xx || 0;
       var rErrs = rs4 + rs5;
       var statusCell = (rs2 > 0 || rErrs > 0)

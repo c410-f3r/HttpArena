@@ -2,7 +2,7 @@
   "display_name": "prologue",
   "language": "Nim",
   "type": "framework",
-  "engine": "asynchttpserver",
+  "engine": "asynchserver",
   "description": "Prologue web framework for Nim — compiles to native C with powerful routing and middleware support.",
   "repo": "https://github.com/planety/prologue",
   "enabled": true,
