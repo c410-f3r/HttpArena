@@ -53,28 +53,13 @@ defmodule HttparenaPhoenix.BenchController do
   end
 
   def compression(conn, _params) do
-    accepts_gzip =
-      case get_req_header(conn, "accept-encoding") do
-        [val | _] -> String.contains?(val, "gzip")
-        _ -> false
-      end
+    gzip_cache = :persistent_term.get(:gzip_large_cache)
 
-    if accepts_gzip do
-      gzip_cache = :persistent_term.get(:gzip_large_cache)
-
-      conn
-      |> put_resp_header("server", "phoenix")
-      |> put_resp_header("content-encoding", "gzip")
-      |> put_resp_header("content-type", "application/json")
-      |> send_resp(200, gzip_cache)
-    else
-      json_large_cache = :persistent_term.get(:json_large_cache)
-
-      conn
-      |> put_resp_header("server", "phoenix")
-      |> put_resp_header("content-type", "application/json")
-      |> send_resp(200, json_large_cache)
-    end
+    conn
+    |> put_resp_header("server", "phoenix")
+    |> put_resp_header("content-encoding", "gzip")
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, gzip_cache)
   end
 
   def upload(conn, _params) do
