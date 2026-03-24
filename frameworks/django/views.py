@@ -146,7 +146,25 @@ def db_endpoint(request):
 
 @require_http_methods(["POST"])
 def upload_endpoint(request):
-    data = request.body
-    resp = HttpResponse(str(len(data)), content_type='text/plain')
+    # Stream from wsgi.input directly to avoid buffering the entire body
+    # Also handles chunked Transfer-Encoding where CONTENT_LENGTH is absent
+    content_length = request.META.get('CONTENT_LENGTH')
+    stream = request.META['wsgi.input']
+    total = 0
+    if content_length:
+        remaining = int(content_length)
+        while remaining > 0:
+            chunk = stream.read(min(65536, remaining))
+            if not chunk:
+                break
+            total += len(chunk)
+            remaining -= len(chunk)
+    else:
+        while True:
+            chunk = stream.read(65536)
+            if not chunk:
+                break
+            total += len(chunk)
+    resp = HttpResponse(str(total), content_type='text/plain')
     resp['Server'] = 'django'
     return resp

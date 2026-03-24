@@ -6,3 +6,4 @@ MIDDLEWARE = []
 ROOT_URLCONF = 'urls'
 USE_TZ = False
 LOGGING_CONFIG = None
+DATA_UPLOAD_MAX_MEMORY_SIZE = None  # No limit — benchmark uploads 20MB
