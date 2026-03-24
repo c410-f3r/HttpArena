@@ -28,7 +28,6 @@ const largeItems = largeData.map((d: any) => ({
   total: Math.round(d.price * d.quantity * 100) / 100,
 }));
 const largeJsonBuf = Buffer.from(JSON.stringify({ items: largeItems, count: largeItems.length }));
-const largeJsonGz = Buffer.from(Bun.gzipSync(largeJsonBuf, { level: 1 }));
 
 // Open SQLite database read-only
 let dbStmt: any = null;
@@ -120,11 +119,12 @@ app.get("/json", (c) => {
 
 // --- /compression ---
 app.get("/compression", (c) => {
-  return new Response(largeJsonGz, {
+  const gz = Buffer.from(Bun.gzipSync(largeJsonBuf, { level: 1 }));
+  return new Response(gz, {
     headers: {
       "content-type": "application/json",
       "content-encoding": "gzip",
-      "content-length": String(largeJsonGz.length),
+      "content-length": String(gz.length),
       server: SERVER_NAME,
     },
   });
