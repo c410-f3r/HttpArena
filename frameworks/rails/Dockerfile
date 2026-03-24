@@ -4,6 +4,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential libsqlite3-dev libyaml-dev && \
     rm -rf /var/lib/apt/lists/*
 
+ENV RUBY_YJIT_ENABLE=1
+
 WORKDIR /app
 
 COPY Gemfile .
