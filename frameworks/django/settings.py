@@ -1,0 +1,9 @@
+SECRET_KEY = 'httparena-benchmark'
+DEBUG = False
+ALLOWED_HOSTS = ['*']
+INSTALLED_APPS = []
+MIDDLEWARE = []
+ROOT_URLCONF = 'urls'
+USE_TZ = False
+LOGGING_CONFIG = None
+DATA_UPLOAD_MAX_MEMORY_SIZE = None  # No limit — benchmark uploads 20MB
