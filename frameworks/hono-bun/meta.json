@@ -1,0 +1,18 @@
+{
+  "display_name": "Hono (Bun)",
+  "language": "TS",
+  "type": "framework",
+  "engine": "JSC",
+  "description": "Ultrafast Web Standards framework running natively on Bun — no adapter overhead.",
+  "repo": "https://github.com/honojs/hono",
+  "enabled": true,
+  "tests": [
+    "baseline",
+    "pipelined",
+    "limited-conn",
+    "json",
+    "upload",
+    "compression",
+    "mixed"
+  ]
+}
