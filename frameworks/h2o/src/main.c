@@ -57,11 +57,33 @@ static int64_t sum_query_values(h2o_req_t *req)
     return sum;
 }
 
+/* Method check helper — returns true if method is not GET/HEAD/POST */
+static inline int reject_bad_method(h2o_req_t *req)
+{
+    if (h2o_memis(req->method.base, req->method.len, H2O_STRLIT("GET"))
+        || h2o_memis(req->method.base, req->method.len, H2O_STRLIT("HEAD"))
+        || h2o_memis(req->method.base, req->method.len, H2O_STRLIT("POST"))) {
+        return 0;
+    }
+    req->res.status = 405;
+    req->res.reason = "Method Not Allowed";
+    req->res.content_length = 18;
+    h2o_add_header(&req->pool, &req->res.headers, H2O_TOKEN_CONTENT_TYPE,
+                   NULL, H2O_STRLIT("text/plain"));
+    h2o_generator_t gen;
+    memset(&gen, 0, sizeof(gen));
+    h2o_iovec_t body = {H2O_STRLIT("Method Not Allowed")};
+    h2o_start_response(req, &gen);
+    h2o_send(req, &body, 1, H2O_SEND_STATE_FINAL);
+    return 1;
+}
+
 /* GET /pipeline — return "ok" (zero-copy static response) */
 static int on_pipeline(h2o_handler_t *h, h2o_req_t *req)
 {
     static h2o_iovec_t body = {H2O_STRLIT("ok")};
     (void)h;
+    if (reject_bad_method(req)) return 0;
     h2o_generator_t gen;
     memset(&gen, 0, sizeof(gen));
     req->res.status = 200;
@@ -78,6 +100,7 @@ static int on_pipeline(h2o_handler_t *h, h2o_req_t *req)
 static int on_baseline11(h2o_handler_t *h, h2o_req_t *req)
 {
     (void)h;
+    if (reject_bad_method(req)) return 0;
     int64_t sum = sum_query_values(req);
     if (h2o_memis(req->method.base, req->method.len, H2O_STRLIT("POST"))
         && req->entity.len > 0) {
@@ -107,6 +130,7 @@ static int on_baseline11(h2o_handler_t *h, h2o_req_t *req)
 static int on_baseline2(h2o_handler_t *h, h2o_req_t *req)
 {
     (void)h;
+    if (reject_bad_method(req)) return 0;
     int64_t sum = sum_query_values(req);
     char buf[32];
     int len = snprintf(buf, sizeof(buf), "%lld", (long long)sum);
@@ -127,6 +151,7 @@ static int on_baseline2(h2o_handler_t *h, h2o_req_t *req)
 static int on_json(h2o_handler_t *h, h2o_req_t *req)
 {
     (void)h;
+    if (reject_bad_method(req)) return 0;
     if (!dataset_tree) {
         h2o_send_error_500(req, "Error", "No dataset", 0);
         return 0;
@@ -246,6 +271,7 @@ static int on_json(h2o_handler_t *h, h2o_req_t *req)
 static int on_static(h2o_handler_t *h, h2o_req_t *req)
 {
     (void)h;
+    if (reject_bad_method(req)) return 0;
     /* path is /static/<filename>, extract filename after "/static/" (8 chars) */
     if (req->path_normalized.len <= 8) {
         h2o_send_error_404(req, "Not Found", "Not Found", 0);
@@ -302,6 +328,7 @@ static int on_upload(h2o_handler_t *h, h2o_req_t *req)
 static int on_compression(h2o_handler_t *h, h2o_req_t *req)
 {
     (void)h;
+    if (reject_bad_method(req)) return 0;
     if (!json_large_response) {
         h2o_send_error_500(req, "Error", "No dataset", 0);
         return 0;
@@ -352,6 +379,7 @@ static void load_db_thread(void)
 static int on_db(h2o_handler_t *h, h2o_req_t *req)
 {
     (void)h;
+    if (reject_bad_method(req)) return 0;
     if (!tl_db || !tl_db_stmt) {
         h2o_send_error_500(req, "Error", "DB not loaded", 0);
         return 0;

@@ -317,6 +317,14 @@ ngx_http_httparena_handler(ngx_http_request_t *r)
     u_char *uri = r->uri.data;
     size_t uri_len = r->uri.len;
 
+    /* Reject unknown HTTP methods — only allow GET, HEAD, POST */
+    if (!(r->method & (NGX_HTTP_GET | NGX_HTTP_POST | NGX_HTTP_HEAD))) {
+        ngx_http_discard_request_body(r);
+        return send_resp(r, 405,
+                         (u_char *)"text/plain", 10,
+                         (u_char *)"Method Not Allowed", 18, 1);
+    }
+
     /* /db */
     if (uri_len == 3 && ngx_strncmp(uri, "/db", 3) == 0) {
         return on_db(r);
@@ -435,7 +443,11 @@ ngx_http_httparena_handler(ngx_http_request_t *r)
                          (u_char *)"Not Found", 9, 0);
     }
 
-    return NGX_DECLINED;
+    /* Unknown path — return 404 instead of falling through to nginx default */
+    ngx_http_discard_request_body(r);
+    return send_resp(r, 404,
+                     (u_char *)"text/plain", 10,
+                     (u_char *)"Not Found", 9, 1);
 }
 
 /* ---------- Data loading ---------- */
