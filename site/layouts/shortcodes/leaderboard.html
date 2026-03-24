@@ -451,6 +451,15 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
   </div>
 
   <div class="lb-desc">{{ $p.desc | safeHTML }}</div>
+  {{ if eq $p.id "baseline" }}
+  <div class="lb-cpu-warning" style="margin-top:0.5rem; margin-bottom:0.75rem; padding:0.5rem 1rem; border-radius:0.5rem; background:rgba(234,179,8,0.08); border:1px solid rgba(234,179,8,0.3); color:#78350f; font-size:0.85rem;">
+    &#9889; <strong>CPU throttled:</strong> Containers are limited to 64 CPU threads (<code>--cpus=64</code>) for this test.
+  </div>
+  <style>
+  html.dark .lb-cpu-warning { color: #fef3c7 !important; background: rgba(234,179,8,0.12) !important; border-color: rgba(234,179,8,0.4) !important; }
+  html.dark .lb-cpu-warning code { color: #fde68a; }
+  </style>
+  {{ end }}
 
   <div class="lb-filters" style="margin:0 0 0.5rem 0;">
     <span class="lb-filters-label">Type</span>
@@ -617,6 +626,10 @@ document.querySelectorAll('.lb-tab').forEach(function(tab) {
   tab.addEventListener('click', function() {
     document.querySelectorAll('.lb-panel').forEach(function(p) { p.classList.remove('active'); });
     document.querySelector('[data-panel="' + tab.dataset.tab + '"]').classList.add('active');
+    /* Reset type filter to Framework on tab change */
+    document.querySelectorAll('.lb-type-filter').forEach(function(f) {
+      f.classList.toggle('active', f.dataset.type === 'framework');
+    });
     applyFilters();
   });
 });
@@ -644,8 +657,9 @@ function applyFilters() {
     else allBtn.classList.remove('active');
   }
 
-  var showEngine = document.querySelector('.lb-type-filter[data-type="engine"]').classList.contains('active');
-  var showFramework = document.querySelector('.lb-type-filter[data-type="framework"]').classList.contains('active');
+  var activePanel = document.querySelector('.lb-panel.active') || document;
+  var showEngine = activePanel.querySelector('.lb-type-filter[data-type="engine"]').classList.contains('active');
+  var showFramework = activePanel.querySelector('.lb-type-filter[data-type="framework"]').classList.contains('active');
 
   var searchVal = document.querySelector('.lb-search-input').value.toLowerCase().trim();
   var terms = searchVal ? searchVal.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];

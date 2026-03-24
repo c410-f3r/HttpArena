@@ -71,6 +71,37 @@ html.dark .http-ver[data-ver="ws"].active { color: #22d3ee; background: rgba(8,1
       document.getElementById('lb-composite-wrapper').style.display = ver === 'composite' ? '' : 'none';
       document.getElementById('lb-grpc-wrapper').style.display = ver === 'grpc' ? '' : 'none';
       document.getElementById('lb-ws-wrapper').style.display = ver === 'ws' ? '' : 'none';
+      /* Reset all type filters to Framework */
+      document.querySelectorAll('.lb-type-filter').forEach(function(f) {
+        f.classList.toggle('active', f.dataset.type === 'framework');
+      });
+      /* Reset composite type filter too */
+      document.querySelectorAll('.composite-type-filter').forEach(function(f) {
+        f.classList.toggle('active', f.dataset.type === 'framework');
+      });
+      /* Sync language filters — capture active langs, apply to all, then trigger re-filter */
+      var activeLangs = new Set();
+      var allActive = false;
+      document.querySelectorAll('.lb-lang-filter').forEach(function(f) {
+        if (f.classList.contains('active')) {
+          if (f.dataset.lang === 'all') allActive = true;
+          else activeLangs.add(f.dataset.lang);
+        }
+      });
+      document.querySelectorAll('.lb-lang-filter').forEach(function(f) {
+        if (f.dataset.lang === 'all') f.classList.toggle('active', allActive);
+        else f.classList.toggle('active', allActive || activeLangs.has(f.dataset.lang));
+      });
+      /* Trigger re-filter on the newly visible wrapper by clicking its type filter */
+      var wrapperIds = { h1: 'lb-wrapper', h2: 'lb-h2-wrapper', h3: 'lb-h3-wrapper', grpc: 'lb-grpc-wrapper', ws: 'lb-ws-wrapper' };
+      var wrapperId = wrapperIds[ver];
+      if (wrapperId) {
+        var w = document.getElementById(wrapperId);
+        if (w) {
+          var typeBtn = w.querySelector('.lb-type-filter[data-type="framework"]');
+          if (typeBtn) typeBtn.click();
+        }
+      }
     });
   });
 })();
