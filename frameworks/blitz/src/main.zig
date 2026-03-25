@@ -2,17 +2,29 @@ const std = @import("std");
 const mem = std.mem;
 const blitz = @import("blitz");
 
-// ── Global pre-computed responses ───────────────────────────────────
-var dataset_json_resp: []const u8 = "";
-var dataset_gzip_resp: []const u8 = "";
-var compression_json_resp: []const u8 = "";
-var compression_gzip_resp: []const u8 = "";
+// ── Dataset items (parsed at startup, serialized per-request) ───────
+const DatasetItem = struct {
+    id: i64,
+    name: []const u8,
+    category: []const u8,
+    price: f64,
+    quantity: i64,
+    active: bool,
+    tags_json: []const u8, // pre-serialized JSON array string
+    rating_score: f64,
+    rating_count: i64,
+};
+
+var dataset_items: []DatasetItem = &[_]DatasetItem{};
+var dataset_large_items: []DatasetItem = &[_]DatasetItem{};
+
+// Pre-built JSON body for /compression (spec allows pre-serialization, only gzip must be per-request)
+var compression_json_body: []const u8 = "";
 
 // ── Per-thread SQLite (thread-local for zero contention) ────────────
 threadlocal var tls_db: ?blitz.SqliteDb = null;
 threadlocal var tls_db_stmt: ?blitz.SqliteStatement = null;
-var db_available: bool = false; // set at startup if benchmark.db exists
-var db_default_resp: []const u8 = ""; // pre-computed response for ?min=10&max=50
+var db_available: bool = false;
 
 const StaticFile = struct {
     name: []const u8,
@@ -48,29 +60,132 @@ fn handleBaseline2(req: *blitz.Request, res: *blitz.Response) void {
 }
 
 fn handleJson(_: *blitz.Request, res: *blitz.Response) void {
-    _ = res.rawResponse(dataset_json_resp);
+    // Per-request: iterate all items, compute total, serialize JSON
+    const items = dataset_items;
+    if (items.len == 0) {
+        _ = res.json("{\"items\":[],\"count\":0}");
+        return;
+    }
+
+    var buf: [65536]u8 = undefined;
+    var pos: usize = 0;
+
+    const prefix = "{\"items\":[";
+    @memcpy(buf[pos .. pos + prefix.len], prefix);
+    pos += prefix.len;
+
+    for (items, 0..) |item, idx| {
+        if (idx > 0) {
+            buf[pos] = ',';
+            pos += 1;
+        }
+
+        // Compute total per-request as required by spec
+        const total = @round(item.price * @as(f64, @floatFromInt(item.quantity)) * 100.0) / 100.0;
+
+        const written = std.fmt.bufPrint(buf[pos..], "{{\"id\":{d},\"name\":", .{item.id}) catch break;
+        pos += written.len;
+
+        pos = writeJsonString(&buf, pos, item.name);
+
+        const cat_prefix = ",\"category\":";
+        @memcpy(buf[pos .. pos + cat_prefix.len], cat_prefix);
+        pos += cat_prefix.len;
+        pos = writeJsonString(&buf, pos, item.category);
+
+        const fields = std.fmt.bufPrint(buf[pos..], ",\"price\":", .{}) catch break;
+        pos += fields.len;
+        pos = writeFloatBuf(&buf, pos, item.price);
+
+        const qty = std.fmt.bufPrint(buf[pos..], ",\"quantity\":{d},\"active\":{s},\"tags\":", .{
+            item.quantity,
+            if (item.active) "true" else "false",
+        }) catch break;
+        pos += qty.len;
+
+        // tags — pre-serialized JSON array
+        if (item.tags_json.len > 0) {
+            if (pos + item.tags_json.len < buf.len) {
+                @memcpy(buf[pos .. pos + item.tags_json.len], item.tags_json);
+                pos += item.tags_json.len;
+            }
+        } else {
+            const empty = "[]";
+            @memcpy(buf[pos .. pos + empty.len], empty);
+            pos += empty.len;
+        }
+
+        const rating = std.fmt.bufPrint(buf[pos..], ",\"rating\":{{\"score\":", .{}) catch break;
+        pos += rating.len;
+        pos = writeFloatBuf(&buf, pos, item.rating_score);
+
+        const rcount = std.fmt.bufPrint(buf[pos..], ",\"count\":{d}}},\"total\":", .{item.rating_count}) catch break;
+        pos += rcount.len;
+        pos = writeFloatBuf(&buf, pos, total);
+
+        buf[pos] = '}';
+        pos += 1;
+    }
+
+    const suffix = std.fmt.bufPrint(buf[pos..], "],\"count\":{d}}}", .{items.len}) catch {
+        _ = res.setStatus(.internal_server_error).text("Buffer overflow");
+        return;
+    };
+    pos += suffix.len;
+
+    _ = res.json(buf[0..pos]);
 }
+
+// Thread-local buffers for compression (avoids heap alloc + use-after-free with rawResponse)
+threadlocal var tls_gzip_buf: [1048576]u8 = undefined;
+threadlocal var tls_resp_buf: [1048576 + 256]u8 = undefined;
 
 fn handleCompression(req: *blitz.Request, res: *blitz.Response) void {
     // Check if client accepts gzip
     if (req.headers.get("Accept-Encoding")) |ae| {
         if (mem.indexOf(u8, ae, "gzip") != null) {
-            _ = res.rawResponse(compression_gzip_resp);
+            // Per-request gzip compression at level 1 (BEST_SPEED)
+            if (compression_json_body.len == 0) {
+                _ = res.setStatus(.internal_server_error).text("No data");
+                return;
+            }
+
+            var fbs = std.io.fixedBufferStream(&tls_gzip_buf);
+            var compressor = std.compress.gzip.compressor(fbs.writer(), .{
+                .level = .fast,
+            }) catch {
+                _ = res.json(compression_json_body);
+                return;
+            };
+            compressor.writer().writeAll(compression_json_body) catch {
+                _ = res.json(compression_json_body);
+                return;
+            };
+            compressor.finish() catch {
+                _ = res.json(compression_json_body);
+                return;
+            };
+            const gzip_data = fbs.getWritten();
+
+            // Build raw HTTP response with gzip headers into thread-local buffer
+            const header = std.fmt.bufPrint(&tls_resp_buf, "HTTP/1.1 200 OK\r\nServer: blitz\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\nVary: Accept-Encoding\r\nContent-Length: {d}\r\n\r\n", .{gzip_data.len}) catch {
+                _ = res.json(compression_json_body);
+                return;
+            };
+            @memcpy(tls_resp_buf[header.len .. header.len + gzip_data.len], gzip_data);
+            _ = res.rawResponse(tls_resp_buf[0 .. header.len + gzip_data.len]);
             return;
         }
     }
     // Fallback: uncompressed JSON
-    _ = res.rawResponse(compression_json_resp);
+    _ = res.json(compression_json_body);
 }
 
 fn handleUpload(req: *blitz.Request, res: *blitz.Response) void {
+    // Must actually read the body — spec requires reading the entire request body
     if (req.body) |body| {
         var nb: [32]u8 = undefined;
         _ = res.textBuf(blitz.writeUsize(&nb, body.len));
-    } else if (req.content_length) |cl| {
-        // Body was discarded (streaming mode) but we know the size
-        var nb: [32]u8 = undefined;
-        _ = res.textBuf(blitz.writeUsize(&nb, cl));
     } else {
         _ = res.text("0");
     }
@@ -78,12 +193,9 @@ fn handleUpload(req: *blitz.Request, res: *blitz.Response) void {
 
 fn handleWsUpgrade(req: *blitz.Request, res: *blitz.Response) void {
     if (!blitz.websocket.isUpgradeRequest(req)) {
-        // Non-WebSocket request (e.g. health check curl) — return 200
         _ = res.text("WebSocket endpoint");
         return;
     }
-    // Signal the server to handle the WebSocket upgrade
-    // The server will build the 101 response using the request headers
     res.ws_upgraded = true;
 }
 
@@ -91,21 +203,6 @@ fn handleDb(req: *blitz.Request, res: *blitz.Response) void {
     if (!db_available) {
         _ = res.setStatus(.internal_server_error).text("DB not available");
         return;
-    }
-
-    // Fast path: serve cached response for default query (min=10&max=50)
-    // The mixed benchmark always sends this exact query
-    if (db_default_resp.len > 0) {
-        if (req.query) |q| {
-            if (mem.eql(u8, q, "min=10&max=50")) {
-                _ = res.rawResponse(db_default_resp);
-                return;
-            }
-        } else {
-            // No query = default params = cached response
-            _ = res.rawResponse(db_default_resp);
-            return;
-        }
     }
 
     // Parse query params: ?min=10&max=50
@@ -153,7 +250,6 @@ fn handleDb(req: *blitz.Request, res: *blitz.Response) void {
     var buf: [65536]u8 = undefined;
     var pos: usize = 0;
 
-    // Start: {"items":[
     const prefix = "{\"items\":[";
     @memcpy(buf[pos .. pos + prefix.len], prefix);
     pos += prefix.len;
@@ -178,11 +274,9 @@ fn handleDb(req: *blitz.Request, res: *blitz.Response) void {
         const rating_score = stmt.columnDouble(7);
         const rating_count = stmt.columnInt(8);
 
-        // Build JSON for this row
         const written = std.fmt.bufPrint(buf[pos..], "{{\"id\":{d},\"name\":", .{id}) catch break;
         pos += written.len;
 
-        // Write name as JSON string
         pos = writeJsonString(&buf, pos, name);
 
         const cat_prefix = ",\"category\":";
@@ -197,7 +291,6 @@ fn handleDb(req: *blitz.Request, res: *blitz.Response) void {
         }) catch break;
         pos += price_written.len;
 
-        // tags is stored as JSON array string — write directly
         if (tags_raw.len > 0) {
             if (pos + tags_raw.len < buf.len) {
                 @memcpy(buf[pos .. pos + tags_raw.len], tags_raw);
@@ -218,7 +311,6 @@ fn handleDb(req: *blitz.Request, res: *blitz.Response) void {
         count += 1;
     }
 
-    // Close: ],"count":N}
     const suffix_written = std.fmt.bufPrint(buf[pos..], "],\"count\":{d}}}", .{count}) catch {
         _ = res.setStatus(.internal_server_error).text("Buffer overflow");
         return;
@@ -271,6 +363,46 @@ fn writeJsonString(buf: *[65536]u8, start: usize, s: []const u8) usize {
     return pos;
 }
 
+// Write float with 2 decimal places into a fixed buffer at given position
+fn writeFloatBuf(buf: *[65536]u8, start: usize, f: f64) usize {
+    var pos = start;
+    const rounded = @round(f * 100.0) / 100.0;
+    const int_part: i64 = @intFromFloat(rounded);
+    const frac = @abs(rounded - @as(f64, @floatFromInt(int_part)));
+    const frac_int: u64 = @intFromFloat(@round(frac * 100.0));
+    if (frac_int == 0) {
+        const s = std.fmt.bufPrint(buf[pos..], "{d}.0", .{int_part}) catch return pos;
+        pos += s.len;
+    } else if (frac_int % 10 == 0) {
+        const s = std.fmt.bufPrint(buf[pos..], "{d}.{d}", .{ int_part, frac_int / 10 }) catch return pos;
+        pos += s.len;
+    } else {
+        const s = std.fmt.bufPrint(buf[pos..], "{d}.{d:0>2}", .{ int_part, frac_int }) catch return pos;
+        pos += s.len;
+    }
+    return pos;
+}
+
+// Overloaded writeFloatBuf for larger buffers (compression handler)
+fn writeFloatBufLarge(buf: []u8, start: usize, f: f64) usize {
+    var pos = start;
+    const rounded = @round(f * 100.0) / 100.0;
+    const int_part: i64 = @intFromFloat(rounded);
+    const frac = @abs(rounded - @as(f64, @floatFromInt(int_part)));
+    const frac_int: u64 = @intFromFloat(@round(frac * 100.0));
+    if (frac_int == 0) {
+        const s = std.fmt.bufPrint(buf[pos..], "{d}.0", .{int_part}) catch return pos;
+        pos += s.len;
+    } else if (frac_int % 10 == 0) {
+        const s = std.fmt.bufPrint(buf[pos..], "{d}.{d}", .{ int_part, frac_int / 10 }) catch return pos;
+        pos += s.len;
+    } else {
+        const s = std.fmt.bufPrint(buf[pos..], "{d}.{d:0>2}", .{ int_part, frac_int }) catch return pos;
+        pos += s.len;
+    }
+    return pos;
+}
+
 fn handleStatic(req: *blitz.Request, res: *blitz.Response) void {
     const filepath = req.params.get("filepath") orelse {
         _ = res.setStatus(.not_found).text("Not Found");
@@ -300,106 +432,89 @@ fn parseQuerySum(query: []const u8) i64 {
 
 // ── Dataset loading ─────────────────────────────────────────────────
 
-fn loadDataset(path: []const u8) []const u8 {
+fn parseDatasetItems(path: []const u8) []DatasetItem {
     const alloc = std.heap.c_allocator;
-    const file = std.fs.openFileAbsolute(path, .{}) catch return "";
+    const file = std.fs.openFileAbsolute(path, .{}) catch return &[_]DatasetItem{};
     defer file.close();
-    const raw = file.readToEndAlloc(alloc, 64 * 1024 * 1024) catch return "";
+    const raw = file.readToEndAlloc(alloc, 64 * 1024 * 1024) catch return &[_]DatasetItem{};
     defer alloc.free(raw);
 
-    const parsed = std.json.parseFromSlice(std.json.Value, alloc, raw, .{}) catch return "";
-    const items = parsed.value.array.items;
+    const parsed = std.json.parseFromSlice(std.json.Value, alloc, raw, .{}) catch return &[_]DatasetItem{};
+    const json_items = parsed.value.array.items;
 
-    var out = std.ArrayList(u8).init(alloc);
-    var json_buf = std.ArrayList(u8).init(alloc);
-    json_buf.appendSlice("{\"items\":[") catch return "";
+    const items = alloc.alloc(DatasetItem, json_items.len) catch return &[_]DatasetItem{};
 
-    for (items, 0..) |item, idx| {
-        if (idx > 0) json_buf.append(',') catch {};
+    for (json_items, 0..) |item, i| {
         const obj = item.object;
-        const price = switch (obj.get("price").?) {
-            .float => |f| f,
-            .integer => |i| @as(f64, @floatFromInt(i)),
-            else => 0.0,
+        items[i] = .{
+            .id = switch (obj.get("id").?) {
+                .integer => |v| v,
+                else => 0,
+            },
+            .name = alloc.dupe(u8, switch (obj.get("name").?) {
+                .string => |s| s,
+                else => "",
+            }) catch "",
+            .category = alloc.dupe(u8, switch (obj.get("category").?) {
+                .string => |s| s,
+                else => "",
+            }) catch "",
+            .price = switch (obj.get("price").?) {
+                .float => |f| f,
+                .integer => |v| @as(f64, @floatFromInt(v)),
+                else => 0.0,
+            },
+            .quantity = switch (obj.get("quantity").?) {
+                .integer => |v| v,
+                else => 0,
+            },
+            .active = switch (obj.get("active").?) {
+                .bool => |b| b,
+                else => false,
+            },
+            .tags_json = blk: {
+                // Serialize tags array to JSON string
+                var tags_buf = std.ArrayList(u8).init(alloc);
+                const tags_val = obj.get("tags") orelse {
+                    break :blk alloc.dupe(u8, "[]") catch "[]";
+                };
+                writeJsonValueToList(&tags_buf, tags_val);
+                break :blk tags_buf.toOwnedSlice() catch "[]";
+            },
+            .rating_score = blk: {
+                const rating = obj.get("rating") orelse break :blk 0.0;
+                switch (rating) {
+                    .object => |robj| {
+                        const score = robj.get("score") orelse break :blk 0.0;
+                        break :blk switch (score) {
+                            .float => |f| f,
+                            .integer => |v| @as(f64, @floatFromInt(v)),
+                            else => 0.0,
+                        };
+                    },
+                    else => break :blk 0.0,
+                }
+            },
+            .rating_count = blk: {
+                const rating = obj.get("rating") orelse break :blk 0;
+                switch (rating) {
+                    .object => |robj| {
+                        const count_val = robj.get("count") orelse break :blk 0;
+                        break :blk switch (count_val) {
+                            .integer => |v| v,
+                            else => 0,
+                        };
+                    },
+                    else => break :blk 0,
+                }
+            },
         };
-        const quantity = switch (obj.get("quantity").?) {
-            .integer => |i| i,
-            else => 0,
-        };
-        const total = @round(price * @as(f64, @floatFromInt(quantity)) * 100.0) / 100.0;
-
-        json_buf.appendSlice("{\"id\":") catch {};
-        writeJsonValue(&json_buf, obj.get("id").?);
-        json_buf.appendSlice(",\"name\":") catch {};
-        writeJsonValue(&json_buf, obj.get("name").?);
-        json_buf.appendSlice(",\"category\":") catch {};
-        writeJsonValue(&json_buf, obj.get("category").?);
-        json_buf.appendSlice(",\"price\":") catch {};
-        writeJsonValue(&json_buf, obj.get("price").?);
-        json_buf.appendSlice(",\"quantity\":") catch {};
-        writeJsonValue(&json_buf, obj.get("quantity").?);
-        json_buf.appendSlice(",\"active\":") catch {};
-        writeJsonValue(&json_buf, obj.get("active").?);
-        json_buf.appendSlice(",\"tags\":") catch {};
-        writeJsonValue(&json_buf, obj.get("tags").?);
-        json_buf.appendSlice(",\"rating\":") catch {};
-        writeJsonValue(&json_buf, obj.get("rating").?);
-        json_buf.appendSlice(",\"total\":") catch {};
-        writeFloat(&json_buf, total);
-        json_buf.append('}') catch {};
     }
 
-    var count_buf: [32]u8 = undefined;
-    json_buf.appendSlice("],\"count\":") catch {};
-    json_buf.appendSlice(blitz.writeUsize(&count_buf, items.len)) catch {};
-    json_buf.append('}') catch {};
-
-    var cl_buf: [32]u8 = undefined;
-    out.appendSlice("HTTP/1.1 200 OK\r\nServer: blitz\r\nContent-Type: application/json\r\nContent-Length: ") catch return "";
-    out.appendSlice(blitz.writeUsize(&cl_buf, json_buf.items.len)) catch return "";
-    out.appendSlice("\r\n\r\n") catch return "";
-    out.appendSlice(json_buf.items) catch return "";
-
-    // Build gzip pre-compressed response
-    const json_body = json_buf.items;
-    const gzip_buf = alloc.alloc(u8, json_body.len) catch {
-        json_buf.deinit();
-        return out.toOwnedSlice() catch "";
-    };
-    var fbs = std.io.fixedBufferStream(gzip_buf);
-    var compressor = std.compress.gzip.compressor(fbs.writer(), .{}) catch {
-        alloc.free(gzip_buf);
-        json_buf.deinit();
-        return out.toOwnedSlice() catch "";
-    };
-    _ = compressor.write(json_body) catch {
-        alloc.free(gzip_buf);
-        json_buf.deinit();
-        return out.toOwnedSlice() catch "";
-    };
-    compressor.finish() catch {
-        alloc.free(gzip_buf);
-        json_buf.deinit();
-        return out.toOwnedSlice() catch "";
-    };
-    const gzip_data = fbs.getWritten();
-
-    if (gzip_data.len > 0) {
-        var gzip_out = std.ArrayList(u8).init(alloc);
-        var gcl_buf: [32]u8 = undefined;
-        gzip_out.appendSlice("HTTP/1.1 200 OK\r\nServer: blitz\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\nVary: Accept-Encoding\r\nContent-Length: ") catch {};
-        gzip_out.appendSlice(blitz.writeUsize(&gcl_buf, gzip_data.len)) catch {};
-        gzip_out.appendSlice("\r\n\r\n") catch {};
-        gzip_out.appendSlice(gzip_data) catch {};
-        dataset_gzip_resp = gzip_out.toOwnedSlice() catch "";
-    }
-    alloc.free(gzip_buf);
-
-    json_buf.deinit();
-    return out.toOwnedSlice() catch "";
+    return items;
 }
 
-fn writeJsonValue(out: *std.ArrayList(u8), val: std.json.Value) void {
+fn writeJsonValueToList(out: *std.ArrayList(u8), val: std.json.Value) void {
     switch (val) {
         .string => |s| {
             out.append('"') catch return;
@@ -418,14 +533,14 @@ fn writeJsonValue(out: *std.ArrayList(u8), val: std.json.Value) void {
             const s = std.fmt.bufPrint(&buf, "{d}", .{i}) catch return;
             out.appendSlice(s) catch return;
         },
-        .float => |f| writeFloat(out, f),
+        .float => |f| writeFloatToList(out, f),
         .bool => |b| out.appendSlice(if (b) "true" else "false") catch return,
         .null => out.appendSlice("null") catch return,
         .array => |arr| {
             out.append('[') catch return;
             for (arr.items, 0..) |item, idx| {
                 if (idx > 0) out.append(',') catch {};
-                writeJsonValue(out, item);
+                writeJsonValueToList(out, item);
             }
             out.append(']') catch return;
         },
@@ -439,7 +554,7 @@ fn writeJsonValue(out: *std.ArrayList(u8), val: std.json.Value) void {
                 out.append('"') catch {};
                 out.appendSlice(entry.key_ptr.*) catch {};
                 out.appendSlice("\":") catch {};
-                writeJsonValue(out, entry.value_ptr.*);
+                writeJsonValueToList(out, entry.value_ptr.*);
             }
             out.append('}') catch return;
         },
@@ -447,7 +562,7 @@ fn writeJsonValue(out: *std.ArrayList(u8), val: std.json.Value) void {
     }
 }
 
-fn writeFloat(out: *std.ArrayList(u8), f: f64) void {
+fn writeFloatToList(out: *std.ArrayList(u8), f: f64) void {
     var buf: [64]u8 = undefined;
     const rounded = @round(f * 100.0) / 100.0;
     const int_part: i64 = @intFromFloat(rounded);
@@ -463,6 +578,71 @@ fn writeFloat(out: *std.ArrayList(u8), f: f64) void {
         const s = std.fmt.bufPrint(&buf, "{d}.{d:0>2}", .{ int_part, frac_int }) catch return;
         out.appendSlice(s) catch return;
     }
+}
+
+// Pre-build the JSON body for compression endpoint (spec allows this — only gzip must be per-request)
+fn buildCompressionJsonBody(items: []const DatasetItem) []const u8 {
+    const alloc = std.heap.c_allocator;
+    var json_buf = std.ArrayList(u8).init(alloc);
+    json_buf.appendSlice("{\"items\":[") catch return "";
+
+    for (items, 0..) |item, idx| {
+        if (idx > 0) json_buf.append(',') catch {};
+
+        const total = @round(item.price * @as(f64, @floatFromInt(item.quantity)) * 100.0) / 100.0;
+
+        json_buf.appendSlice("{\"id\":") catch {};
+        var id_buf: [32]u8 = undefined;
+        const id_s = std.fmt.bufPrint(&id_buf, "{d}", .{item.id}) catch continue;
+        json_buf.appendSlice(id_s) catch {};
+
+        json_buf.appendSlice(",\"name\":") catch {};
+        writeJsonStringToList(&json_buf, item.name);
+
+        json_buf.appendSlice(",\"category\":") catch {};
+        writeJsonStringToList(&json_buf, item.category);
+
+        json_buf.appendSlice(",\"price\":") catch {};
+        writeFloatToList(&json_buf, item.price);
+
+        var qty_buf: [128]u8 = undefined;
+        const qty_s = std.fmt.bufPrint(&qty_buf, ",\"quantity\":{d},\"active\":{s},\"tags\":", .{
+            item.quantity,
+            if (item.active) "true" else "false",
+        }) catch continue;
+        json_buf.appendSlice(qty_s) catch {};
+
+        json_buf.appendSlice(item.tags_json) catch {};
+
+        json_buf.appendSlice(",\"rating\":{\"score\":") catch {};
+        writeFloatToList(&json_buf, item.rating_score);
+        var rc_buf: [64]u8 = undefined;
+        const rc_s = std.fmt.bufPrint(&rc_buf, ",\"count\":{d}}},\"total\":", .{item.rating_count}) catch continue;
+        json_buf.appendSlice(rc_s) catch {};
+        writeFloatToList(&json_buf, total);
+
+        json_buf.append('}') catch {};
+    }
+
+    var count_buf: [32]u8 = undefined;
+    json_buf.appendSlice("],\"count\":") catch {};
+    json_buf.appendSlice(blitz.writeUsize(&count_buf, items.len)) catch {};
+    json_buf.append('}') catch {};
+
+    return json_buf.toOwnedSlice() catch "";
+}
+
+fn writeJsonStringToList(out: *std.ArrayList(u8), s: []const u8) void {
+    out.append('"') catch return;
+    for (s) |ch| switch (ch) {
+        '"' => out.appendSlice("\\\"") catch return,
+        '\\' => out.appendSlice("\\\\") catch return,
+        '\n' => out.appendSlice("\\n") catch return,
+        '\r' => out.appendSlice("\\r") catch return,
+        '\t' => out.appendSlice("\\t") catch return,
+        else => out.append(ch) catch return,
+    };
+    out.append('"') catch return;
 }
 
 // ── Static files ────────────────────────────────────────────────────
@@ -511,119 +691,22 @@ fn getContentType(name: []const u8) []const u8 {
     return "application/octet-stream";
 }
 
-// ── DB Response Cache ───────────────────────────────────────────────
-
-fn initDbCache() void {
-    const alloc = std.heap.c_allocator;
-
-    // Open DB, run default query, build raw HTTP response
-    var db = blitz.SqliteDb.open("/data/benchmark.db", .{
-        .readonly = true,
-        .mmap_size = 64 * 1024 * 1024,
-    }) catch return;
-    defer db.close();
-
-    var stmt = db.prepare("SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ?1 AND ?2 LIMIT 50") catch return;
-    defer stmt.finalize();
-
-    stmt.bindDouble(1, 10.0) catch return;
-    stmt.bindDouble(2, 50.0) catch return;
-
-    // Build JSON body
-    var buf: [65536]u8 = undefined;
-    var pos: usize = 0;
-
-    const prefix = "{\"items\":[";
-    @memcpy(buf[pos .. pos + prefix.len], prefix);
-    pos += prefix.len;
-
-    var count: usize = 0;
-    while (true) {
-        const has_row = stmt.step() catch break;
-        if (!has_row) break;
-
-        if (count > 0) {
-            buf[pos] = ',';
-            pos += 1;
-        }
-
-        const id = stmt.columnInt(0);
-        const name = stmt.columnText(1);
-        const category = stmt.columnText(2);
-        const price = stmt.columnDouble(3);
-        const quantity = stmt.columnInt(4);
-        const active = stmt.columnInt(5);
-        const tags_raw = stmt.columnText(6);
-        const rating_score = stmt.columnDouble(7);
-        const rating_count = stmt.columnInt(8);
-
-        const written = std.fmt.bufPrint(buf[pos..], "{{\"id\":{d},\"name\":", .{id}) catch break;
-        pos += written.len;
-
-        pos = writeJsonString(&buf, pos, name);
-
-        const cat_prefix_str = ",\"category\":";
-        @memcpy(buf[pos .. pos + cat_prefix_str.len], cat_prefix_str);
-        pos += cat_prefix_str.len;
-        pos = writeJsonString(&buf, pos, category);
-
-        const price_written = std.fmt.bufPrint(buf[pos..], ",\"price\":{d:.2},\"quantity\":{d},\"active\":{s},\"tags\":", .{
-            price,
-            quantity,
-            if (active == 1) "true" else "false",
-        }) catch break;
-        pos += price_written.len;
-
-        if (tags_raw.len > 0) {
-            if (pos + tags_raw.len < buf.len) {
-                @memcpy(buf[pos .. pos + tags_raw.len], tags_raw);
-                pos += tags_raw.len;
-            }
-        } else {
-            const empty = "[]";
-            @memcpy(buf[pos .. pos + empty.len], empty);
-            pos += empty.len;
-        }
-
-        const rating_written = std.fmt.bufPrint(buf[pos..], ",\"rating\":{{\"score\":{d:.1},\"count\":{d}}}}}", .{
-            rating_score,
-            rating_count,
-        }) catch break;
-        pos += rating_written.len;
-
-        count += 1;
-    }
-
-    const suffix_written = std.fmt.bufPrint(buf[pos..], "],\"count\":{d}}}", .{count}) catch return;
-    pos += suffix_written.len;
-
-    const json_body = buf[0..pos];
-
-    // Build full raw HTTP response: headers + body
-    var resp_buf = std.ArrayList(u8).init(alloc);
-    const header = std.fmt.allocPrint(alloc, "HTTP/1.1 200 OK\r\nServer: blitz\r\nContent-Type: application/json\r\nContent-Length: {d}\r\n\r\n", .{json_body.len}) catch return;
-    defer alloc.free(header);
-    resp_buf.appendSlice(header) catch return;
-    resp_buf.appendSlice(json_body) catch return;
-    db_default_resp = resp_buf.toOwnedSlice() catch return;
-}
-
 // ── Main ────────────────────────────────────────────────────────────
 
 pub fn main() !void {
-    // Load data — large dataset for /compression, small for /json
-    // loadDataset() sets dataset_gzip_resp as a side effect
-    compression_json_resp = loadDataset("/data/dataset-large.json");
-    compression_gzip_resp = dataset_gzip_resp;
-    dataset_json_resp = loadDataset("/data/dataset.json");
-    // dataset_gzip_resp now has the small dataset gzip (used by /json if needed)
+    // Parse dataset items into structured data
+    dataset_items = parseDatasetItems("/data/dataset.json");
+    dataset_large_items = parseDatasetItems("/data/dataset-large.json");
+
+    // Pre-build JSON body for compression endpoint (spec allows pre-serialization)
+    compression_json_body = buildCompressionJsonBody(dataset_large_items);
+
     loadStaticFiles();
 
     // Check if benchmark.db exists for /db endpoint
     if (std.fs.openFileAbsolute("/data/benchmark.db", .{})) |f| {
         f.close();
         db_available = true;
-        initDbCache();
     } else |_| {
         db_available = false;
     }
@@ -632,7 +715,6 @@ pub fn main() !void {
     const alloc = std.heap.c_allocator;
     var router = blitz.Router.init(alloc);
 
-    // Register routes
     router.get("/pipeline", handlePipeline);
     router.get("/baseline11", handleBaseline);
     router.post("/baseline11", handleBaseline);
@@ -653,7 +735,6 @@ pub fn main() !void {
             .compression = false,
         });
         uring_server.listen() catch {
-            // io_uring init failed (seccomp/memlock/kernel) — fall back to epoll
             _ = std.posix.write(2, "uring: init failed, falling back to epoll\n") catch {};
             var server = blitz.Server.init(&router, .{
                 .port = 8080,
