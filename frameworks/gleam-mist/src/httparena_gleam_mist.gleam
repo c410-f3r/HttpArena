@@ -220,10 +220,10 @@ fn get_query_float(
 }
 
 // ---------------------------------------------------------------------------
-// Erlang zlib FFI for gzip compression
+// Erlang zlib FFI for gzip compression (level 1 = BEST_SPEED)
 // ---------------------------------------------------------------------------
 
-@external(erlang, "zlib", "gzip")
+@external(erlang, "bench_zlib", "gzip_level1")
 fn gzip(data: BitArray) -> BitArray
 
 // ---------------------------------------------------------------------------
