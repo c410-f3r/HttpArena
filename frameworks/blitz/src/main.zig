@@ -161,7 +161,7 @@ fn handleCompression(req: *blitz.Request, res: *blitz.Response) void {
                 _ = res.json(compression_json_body);
                 return;
             };
-            _ = compressor.write(compression_json_body) catch {
+            compressor.writer().writeAll(compression_json_body) catch {
                 _ = res.json(compression_json_body);
                 return;
             };
