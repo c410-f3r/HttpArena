@@ -61,7 +61,11 @@ defmodule HttparenaPhoenix.BenchController do
 
   def compression(conn, _params) do
     json_large_cache = :persistent_term.get(:json_large_cache)
-    compressed = :zlib.gzip(json_large_cache)
+    z = :zlib.open()
+    :ok = :zlib.deflateInit(z, 1, :deflated, 31, 8, :default)
+    compressed = IO.iodata_to_binary(:zlib.deflate(z, json_large_cache, :finish))
+    :zlib.deflateEnd(z)
+    :zlib.close(z)
 
     conn
     |> put_resp_header("server", "phoenix")
