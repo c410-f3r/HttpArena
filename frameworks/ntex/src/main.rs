@@ -299,7 +299,7 @@ async fn main() -> std::io::Result<()> {
 
     let workers = num_cpus::get();
 
-    web::server(async move {
+    web::server(async move || {
         let worker_db = Connection::open_with_flags(
             "/data/benchmark.db",
             rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
