@@ -74,7 +74,7 @@ if has_test "compression"; then
     docker_args+=(-v "$DATA_DIR/dataset-large.json:/data/dataset-large.json:ro")
 fi
 
-if has_test "db"; then
+if has_test "mixed"; then
     DB_FILE="$DATA_DIR/benchmark.db"
     if [ ! -f "$DB_FILE" ]; then
         echo "[db] benchmark.db not found, generating..."
