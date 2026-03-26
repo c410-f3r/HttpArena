@@ -7,7 +7,7 @@ RUN mkdir -p src && echo 'import CSQLite\nprint("stub")' > src/main.swift && \
     swift build -c release 2>/dev/null || true && \
     rm -rf src/
 COPY src ./src
-RUN swift build -c release -Xswiftc -O -Xswiftc -cross-module-optimization
+RUN swift build -c release --static-swift-stdlib
 
 FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
