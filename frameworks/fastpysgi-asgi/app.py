@@ -8,6 +8,7 @@ import sqlite3
 from urllib.parse import parse_qs
 
 import orjson
+import asyncpg
 
 # -- Dataset ----------------------------------------------------------
 
@@ -51,6 +52,29 @@ def _get_db() -> sqlite3.Connection:
         conn.row_factory = sqlite3.Row
         _local.conn = conn
     return conn
+
+# -- Posgres DB ------------------------------------------------------------
+
+db_pool = None
+PG_POOL_SIZE = 4
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgres://bench:bench@localhost:5432/benchmark")
+
+class NoResetConnection(asyncpg.Connection):
+    __slots__ = ()
+    def get_reset_query(self):
+        return ""
+
+async def db_setup():
+    global db_pool
+    try:
+        db_pool = await asyncpg.create_pool(
+            DATABASE_URL,
+            min_size = PG_POOL_SIZE,
+            max_size = PG_POOL_SIZE,
+            connection_class = NoResetConnection,
+        )
+    except Exception:
+        db_pool = None
 
 # -- Helpers ----------------------------------------------------------
 
@@ -152,6 +176,43 @@ async def db_endpoint(scope, receive, send):
         )
     return json_resp( { "items": items, "count": len(items) } )
 
+async def async_db_endpoint(scope, receive, send):
+    if db_pool is None:
+        return json_resp( { "items": [ ], "count": 0 } )
+    query_params = parse_qs(scope.get('query_string', b'').decode())
+    min_val = float(query_params.get('min', ['10'])[0])
+    max_val = float(query_params.get('max', ['50'])[0])
+    db_conn = await db_pool.acquire()
+    try:
+        rows = await db_conn.fetch(
+            """
+            SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count
+            FROM   items
+            WHERE  price BETWEEN $1 AND $2
+            LIMIT  50
+            """,
+            min_val, max_val
+        )
+    finally:
+        await db_pool.release(db_conn)
+    items = [
+        {
+            'id'      : row['id'],
+            'name'    : row['name'],
+            'category': row['category'],
+            'price'   : row['price'],
+            'quantity': row['quantity'],
+            'active'  : row['active'],
+            'tags'    : row['tags'],
+            'rating': {
+                'score': row['rating_score'],
+                'count': row['rating_count'],
+            }
+        }
+        for row in rows
+    ]
+    return json_resp( { "items": items, "count": len(items) } )
+
 async def upload_endpoint(scope, receive, send):
     size = 0
     while True:
@@ -169,6 +230,7 @@ ROUTES = {
     '/json': json_endpoint,
     '/compression': compression_endpoint,
     '/db': db_endpoint,
+    '/async-db': async_db_endpoint,
     '/upload': upload_endpoint,
 }
 
@@ -185,10 +247,11 @@ async def app(scope, receive, send):
         while True:
             message = await receive()
             if message['type'] == 'lifespan.startup':
-                # nothing
+                await db_setup()
                 await send({'type': 'lifespan.startup.complete'})
             elif message['type'] == 'lifespan.shutdown':
-                # nothing
+                if db_pool:
+                    db_pool.close()
                 await send({'type': 'lifespan.shutdown.complete'})
                 return
         return
@@ -214,8 +277,6 @@ if __name__ == "__main__":
     port = 8080
 
     def run_app():
-        #loop = asyncio.get_event_loop()
-        #loop.run_until_complete(db_setup())
         fastpysgi.server.read_buffer_size = 256*1024
         fastpysgi.server.backlog = 4096
         fastpysgi.server.loop_timeout = 1
