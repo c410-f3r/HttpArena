@@ -4,12 +4,14 @@ require 'rails'
 require 'action_controller/railtie'
 
 class BenchmarkApp < Rails::Application
-  config.load_defaults 8.0
+  config.load_defaults Rails::VERSION::STRING.to_f
   config.eager_load = true
   config.enable_reloading = false
   config.api_only = true
   config.secret_key_base = 'benchmark-not-secret'
   config.hosts.clear
+
+  config.action_dispatch.default_headers = {'Server' => 'Rails'}
 
   config.consider_all_requests_local = false
 
