@@ -57,12 +57,10 @@ class BenchmarkController < ActionController::API
         response.headers['content-encoding'] = 'gzip'
         send_data sio.string, disposition: :inline
       else
-        response.headers['content-type'] = 'application/json'
-        render plain: result
+        render json: result
       end
     else
-      response.headers['content-type'] = 'application/json'
-      render plain: result
+      render json: result
     end
   end
 
