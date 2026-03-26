@@ -2,6 +2,7 @@ import Foundation
 import Hummingbird
 import HummingbirdCompression
 import NIOCore
+import NIOFoundationCompat
 
 #if canImport(CSQLite)
 import CSQLite
@@ -48,13 +49,18 @@ struct JsonResponse: Codable, Sendable {
 
 final class AppState: Sendable {
     let dataset: [DatasetItem]
-    let jsonLargeCache: [UInt8]
+    let jsonLargeCache: ByteBuffer
     let staticFiles: [String: StaticFile]
     let dbPath: String
     let dbAvailable: Bool
 
-    init(dataset: [DatasetItem], jsonLargeCache: [UInt8],
-         staticFiles: [String: StaticFile], dbPath: String, dbAvailable: Bool) {
+    init(
+        dataset: [DatasetItem],
+        jsonLargeCache: ByteBuffer,
+        staticFiles: [String: StaticFile],
+        dbPath: String,
+        dbAvailable: Bool
+    ) {
         self.dataset = dataset
         self.jsonLargeCache = jsonLargeCache
         self.staticFiles = staticFiles
@@ -64,7 +70,7 @@ final class AppState: Sendable {
 }
 
 struct StaticFile: Sendable {
-    let data: [UInt8]
+    let data: ByteBuffer
     let contentType: String
 }
 
@@ -75,24 +81,30 @@ func loadDataset(path: String) -> [DatasetItem] {
     return (try? JSONDecoder().decode([DatasetItem].self, from: data)) ?? []
 }
 
-func buildJsonCache(_ items: [DatasetItem]) -> [UInt8] {
+func buildJsonCache(_ items: [DatasetItem]) -> ByteBuffer {
     let processed = items.map { item in
         ProcessedItem(
-            id: item.id, name: item.name, category: item.category,
-            price: item.price, quantity: item.quantity, active: item.active,
-            tags: item.tags, rating: item.rating,
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            price: item.price,
+            quantity: item.quantity,
+            active: item.active,
+            tags: item.tags,
+            rating: item.rating,
             total: (item.price * Double(item.quantity) * 100.0).rounded() / 100.0
         )
     }
     let resp = JsonResponse(items: processed, count: processed.count)
-    let data = (try? JSONEncoder().encode(resp)) ?? Data()
-    return [UInt8](data)
+    return (try? JSONEncoder().encodeAsByteBuffer(resp, allocator: ByteBufferAllocator())) ?? ByteBuffer()
 }
 
 func loadStaticFiles() -> [String: StaticFile] {
     var files: [String: StaticFile] = [:]
     let dir = "/data/static"
-    guard let entries = try? FileManager.default.contentsOfDirectory(atPath: dir) else { return files }
+    guard let entries = try? FileManager.default.contentsOfDirectory(atPath: dir) else {
+        return files
+    }
     for name in entries {
         let path = "\(dir)/\(name)"
         guard let data = FileManager.default.contents(atPath: path) else { continue }
@@ -108,7 +120,7 @@ func loadStaticFiles() -> [String: StaticFile] {
         case "json": ct = "application/json"
         default: ct = "application/octet-stream"
         }
-        files[name] = StaticFile(data: [UInt8](data), contentType: ct)
+        files[name] = StaticFile(data: ByteBuffer(data: data), contentType: ct)
     }
     return files
 }
@@ -145,7 +157,8 @@ func queryDb(dbPath: String, minPrice: Double, maxPrice: Double) -> [UInt8] {
     sqlite3_exec(db, "PRAGMA mmap_size=268435456", nil, nil, nil)
 
     var stmt: OpaquePointer?
-    let sql = "SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ?1 AND ?2 LIMIT 50"
+    let sql =
+        "SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ?1 AND ?2 LIMIT 50"
     guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
         return [UInt8](#"{"items":[],"count":0}"#.utf8)
     }
@@ -209,21 +222,12 @@ let state = AppState(
 let router = Router()
 
 // Add response compression (only activates when client sends accept-encoding)
-router.middlewares.add(ResponseCompressionMiddleware(minimumResponseSizeToCompress: 512, zlibCompressionLevel: .fastestCompression))
-
-// Server header middleware
-struct ServerHeaderMiddleware<Context: RequestContext>: RouterMiddleware {
-    func handle(
-        _ request: Request,
-        context: Context,
-        next: (Request, Context) async throws -> Response
-    ) async throws -> Response {
-        var response = try await next(request, context)
-        response.headers[.server] = "hummingbird"
-        return response
-    }
-}
-router.middlewares.add(ServerHeaderMiddleware())
+router.middlewares.add(
+    ResponseCompressionMiddleware(
+        minimumResponseSizeToCompress: 512,
+        zlibCompressionLevel: .fastestCompression
+    )
+)
 
 // GET /pipeline
 router.get("pipeline") { _, _ -> Response in
@@ -248,9 +252,7 @@ router.get("baseline11") { request, _ -> Response in
 router.post("baseline11") { request, _ -> Response in
     var sum = request.uri.query.map(parseQuerySum) ?? 0
     let body = try await request.body.collect(upTo: 1_048_576)
-    if let bodyStr = body.getString(at: body.readerIndex, length: body.readableBytes),
-       let n = Int(bodyStr.trimmingCharacters(in: .whitespacesAndNewlines))
-    {
+    if let n = Int(String(buffer: body).trimmingCharacters(in: .whitespacesAndNewlines)) {
         sum += n
     }
     return Response(
@@ -279,16 +281,16 @@ router.get("json") { _, _ -> Response in
     return Response(
         status: .ok,
         headers: [.contentType: "application/json"],
-        body: .init(byteBuffer: ByteBuffer(bytes: jsonBytes))
+        body: .init(byteBuffer: jsonBytes)
     )
 }
 
 // GET /compression — returns large JSON; ResponseCompressionMiddleware handles gzip
 router.get("compression") { _, _ -> Response in
-    return Response(
+    Response(
         status: .ok,
         headers: [.contentType: "application/json"],
-        body: .init(byteBuffer: ByteBuffer(bytes: state.jsonLargeCache))
+        body: .init(byteBuffer: state.jsonLargeCache)
     )
 }
 
@@ -332,14 +334,14 @@ router.get("static/{filename}") { _, context -> Response in
     return Response(
         status: .ok,
         headers: [.contentType: file.contentType],
-        body: .init(byteBuffer: ByteBuffer(bytes: file.data))
+        body: .init(byteBuffer: file.data)
     )
 }
 
 // Start server
 let app = Application(
     router: router,
-    configuration: .init(address: .hostname("0.0.0.0", port: 8080))
+    configuration: .init(address: .hostname("0.0.0.0", port: 8080), serverName: "hummingbird")
 )
 
 try await app.runService()
