@@ -33,11 +33,11 @@ class BenchmarkController < ActionController::API
   def baseline11
     total = 0
     request.query_parameters.each_value do |v|
-      total += v.to_i if v =~ /\A-?\d+\z/
+      total += v.to_i
     end
     if request.post?
       body_str = request.body.read.to_s.strip
-      total += body_str.to_i if body_str =~ /\A-?\d+\z/
+      total += body_str.to_i
     end
     response.headers['Server'] = 'rails'
     render plain: total.to_s
@@ -46,7 +46,7 @@ class BenchmarkController < ActionController::API
   def baseline2
     total = 0
     request.query_parameters.each_value do |v|
-      total += v.to_i if v =~ /\A-?\d+\z/
+      total += v.to_i
     end
     response.headers['Server'] = 'rails'
     render plain: total.to_s
