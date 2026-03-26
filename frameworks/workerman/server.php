@@ -67,7 +67,7 @@ $http_worker->onMessage = static function ($connection, $request) {
         case '/compression':
              global $largeJson;
 
-            if ($request->header('Accept-Encoding') ?? null === 'gzip') {
+            if ($request->header('Accept-Encoding', '') === 'gzip') {
                 return $connection->send(new Response(
                                     200, [
                                     'Content-Type' => 'application/json',
