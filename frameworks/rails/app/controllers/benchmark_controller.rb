@@ -8,18 +8,17 @@ class BenchmarkController < ActionController::API
   DATASET_PATH = ENV.fetch('DATASET_PATH', '/data/dataset.json')
   LARGE_DATASET_PATH = '/data/dataset-large.json'
 
-  @@dataset_items = nil
-  @@db_available = File.exist?('/data/benchmark.db')
+  mattr_accessor :dataset_items, :db_available, :large_json_payload
+  self.db_available = File.exist?('/data/benchmark.db')
 
   if File.exist?(DATASET_PATH)
-    @@dataset_items = JSON.parse(File.read(DATASET_PATH))
+    self.dataset_items = JSON.parse(File.read(DATASET_PATH))
   end
 
-  @@large_json_payload = nil
   if File.exist?(LARGE_DATASET_PATH)
     raw = JSON.parse(File.read(LARGE_DATASET_PATH))
     items = raw.map { |d| d.merge('total' => (d['price'] * d['quantity'] * 100).round / 100.0) }
-    @@large_json_payload = JSON.generate({ 'items' => items, 'count' => items.length })
+    self.large_json_payload = JSON.generate({ 'items' => items, 'count' => items.length })
   end
 
   DB_QUERY = 'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT 50'
@@ -52,8 +51,8 @@ class BenchmarkController < ActionController::API
   end
 
   def json_endpoint
-    if @@dataset_items
-      items = @@dataset_items.map { |d| d.merge('total' => (d['price'] * d['quantity'] * 100).round / 100.0) }
+    if dataset_items
+      items = dataset_items.map { |d| d.merge('total' => (d['price'] * d['quantity'] * 100).round / 100.0) }
       body = JSON.generate({ 'items' => items, 'count' => items.length })
       response.headers['Server'] = 'rails'
       response.headers['Content-Type'] = 'application/json'
@@ -64,10 +63,10 @@ class BenchmarkController < ActionController::API
   end
 
   def compression
-    if @@large_json_payload
+    if large_json_payload
       sio = StringIO.new
       gz = Zlib::GzipWriter.new(sio, 1)
-      gz.write(@@large_json_payload)
+      gz.write(large_json_payload)
       gz.close
       response.headers['Server'] = 'rails'
       response.headers['Content-Type'] = 'application/json'
@@ -79,7 +78,7 @@ class BenchmarkController < ActionController::API
   end
 
   def db
-    unless @@db_available
+    unless db_available
       response.headers['Server'] = 'rails'
       render json: { items: [], count: 0 }
       return
