@@ -49,6 +49,6 @@ class BenchmarkApp < Rails::Application
   }
 
   # Silence logging
-  config.logger = Logger.new('/dev/null')
+  config.logger = nil
   config.log_level = :fatal
 end
