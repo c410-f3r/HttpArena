@@ -32,7 +32,7 @@ $http_worker->onWorkerStart = static function () {
 };
 
 // Data received
-$http_worker->onMessage = static function ($connection, $request) {
+$http_worker->onMessage = static function ($connection, $request) use ($jsonData, $largeJson) {
     $path = $request->path();
     switch ($path) {
         case '/pipeline':
@@ -49,8 +49,6 @@ $http_worker->onMessage = static function ($connection, $request) {
             return $connection->send($sum);
 
         case '/json':
-            global $jsonData;
-
             $total = [];
             foreach ($jsonData as $item) {
                 $item['total'] = $item['price'] * $item['quantity'];
@@ -65,8 +63,6 @@ $http_worker->onMessage = static function ($connection, $request) {
             return $connection->send(strlen($request->rawBody()));
 
         case '/compression':
-            global $largeJson;
-
             if (str_contains($request->header('Accept-Encoding', ''), 'gzip')) {
                  $connection->headers = [
                     'Content-Type' => 'application/json',
