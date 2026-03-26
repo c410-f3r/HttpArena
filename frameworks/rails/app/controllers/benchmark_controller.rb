@@ -26,7 +26,6 @@ class BenchmarkController < ActionController::API
   DB_QUERY = 'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT 50'
 
   def pipeline
-    response.headers['Server'] = 'rails'
     render plain: 'ok'
   end
 
@@ -39,7 +38,6 @@ class BenchmarkController < ActionController::API
       body_str = request.body.read.to_s.strip
       total += body_str.to_i
     end
-    response.headers['Server'] = 'rails'
     render plain: total.to_s
   end
 
@@ -48,7 +46,6 @@ class BenchmarkController < ActionController::API
     request.query_parameters.each_value do |v|
       total += v.to_i
     end
-    response.headers['Server'] = 'rails'
     render plain: total.to_s
   end
 
@@ -56,7 +53,6 @@ class BenchmarkController < ActionController::API
     if dataset_items
       items = dataset_items.map { |d| d.merge('total' => (d['price'] * d['quantity'] * 100).round / 100.0) }
       body = JSON.generate({ 'items' => items, 'count' => items.length })
-      response.headers['Server'] = 'rails'
       response.headers['Content-Type'] = 'application/json'
       render plain: body
     else
@@ -70,7 +66,6 @@ class BenchmarkController < ActionController::API
       gz = Zlib::GzipWriter.new(sio, 1)
       gz.write(large_json_payload)
       gz.close
-      response.headers['Server'] = 'rails'
       response.headers['Content-Type'] = 'application/json'
       response.headers['Content-Encoding'] = 'gzip'
       send_data sio.string, disposition: :inline
@@ -81,7 +76,6 @@ class BenchmarkController < ActionController::API
 
   def db
     unless db_available
-      response.headers['Server'] = 'rails'
       render json: { items: [], count: 0 }
       return
     end
@@ -98,13 +92,11 @@ class BenchmarkController < ActionController::API
         'rating' => { 'score' => r['rating_score'], 'count' => r['rating_count'] }
       }
     end
-    response.headers['Server'] = 'rails'
     render json: { items: items, count: items.length }
   end
 
   def upload
     data = request.body.read
-    response.headers['Server'] = 'rails'
     render plain: data.bytesize.to_s
   end
 
