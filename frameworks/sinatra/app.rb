@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
-require 'sinatra/base'
-require 'json'
+require 'bundler/setup'
+Bundler.require(:default)
+
 require 'zlib'
-require 'stringio'
-require 'sqlite3'
 
 class App < Sinatra::Base
   configure do
