@@ -119,17 +119,26 @@ docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 docker run "${docker_args[@]}" "$IMAGE_NAME"
 
 # Wait for server to start
-echo "[wait] Waiting for server..."
+echo "[wait] Waiting for server on http://localhost:$PORT/baseline11..."
+
 for i in $(seq 1 30); do
-    if curl -s -o /dev/null --connect-timeout 1 -m 1 -w '' "http://localhost:$PORT/baseline11?a=1&b=1" 2>/dev/null; then
+    # Try to hit the server
+    if output=$(curl -s -o /dev/null --connect-timeout 1 --max-time 2 -w "%{http_code}" "http://localhost:$PORT/baseline11?a=1&b=1" 2>&1); then
+        # curl succeeded (exit code 0)
+        echo "[try $i] Server responded with HTTP code $output"
         break
+    else
+        # curl failed, show error per try
+        echo "[try $i] curl failed: $output"
     fi
+
     if [ "$i" -eq 30 ]; then
         echo "FAIL: Server did not start within 30s"
         exit 1
     fi
     sleep 1
 done
+
 echo "[ready] Server is up"
 
 # ───── Helpers ─────
