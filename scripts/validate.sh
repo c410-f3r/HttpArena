@@ -9,11 +9,11 @@ H2PORT=8443
 PASS=0
 FAIL=0
 
-SCRIPT_DIR="C:/Work/Projects/GenHTTP/HttpArena/scripts"
-ROOT_DIR="C:/Work/Projects/GenHTTP/HttpArena"
-META_FILE="C:/Work/Projects/GenHTTP/HttpArena/frameworks/$FRAMEWORK/meta.json"
-CERTS_DIR="C:/Work/Projects/GenHTTP/HttpArena/certs"
-DATA_DIR="C:/Work/Projects/GenHTTP/HttpArena/data"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR/.."
+META_FILE="$ROOT_DIR/frameworks/$FRAMEWORK/meta.json"
+CERTS_DIR="$ROOT_DIR/certs"
+DATA_DIR="$ROOT_DIR/data"
 
 PG_CONTAINER="httparena-validate-postgres"
 PG_NETWORK="httparena-validate-net"
