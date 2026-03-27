@@ -1,7 +1,8 @@
-using System.IO.Compression;
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.AspNetCore.ResponseCompression;
+
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -31,38 +32,44 @@ builder.WebHost.ConfigureKestrel(options =>
     }
 });
 
-builder.Services.AddResponseCompression(options =>
-{
-    options.EnableForHttps = true;
-    options.MimeTypes = new[] { "application/json" };
-    options.Providers.Add<GzipCompressionProvider>();
-});
-builder.Services.Configure<GzipCompressionProviderOptions>(options =>
-{
-    options.Level = CompressionLevel.Fastest;
-});
+builder.Services.AddResponseCompression();
 
 var app = builder.Build();
 
 app.UseResponseCompression();
 
-app.Use(async (ctx, next) =>
+app.Use((ctx, next) =>
 {
     ctx.Response.Headers["Server"] = "aspnet-minimal";
-    await next();
+    return next();
 });
 
 AppData.Load();
 
-app.MapGet("/pipeline", Handlers.Pipeline);
-app.MapGet("/baseline11", Handlers.GetBaseline);
-app.MapPost("/baseline11", Handlers.PostBaseline);
-app.MapGet("/baseline2", Handlers.GetBaseline2);
+app.MapGet("/pipeline", Handlers.Text);
+
+app.MapGet("/baseline11", Handlers.Sum);
+app.MapPost("/baseline11", Handlers.SumBody);
+app.MapGet("/baseline2", Handlers.Sum);
+
 app.MapPost("/upload", Handlers.Upload);
 app.MapGet("/json", Handlers.Json);
 app.MapGet("/compression", Handlers.Compression);
 app.MapGet("/db", Handlers.Database);
 app.MapGet("/async-db", Handlers.AsyncDatabase);
-app.MapGet("/static/{filename}", Handlers.StaticFile);
+
+if (Directory.Exists("/data/static"))
+{
+    var typeProvider = new FileExtensionContentTypeProvider();
+    
+    typeProvider.Mappings[".js"] = "application/javascript";
+    
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider("/data/static"),
+        ContentTypeProvider = typeProvider,
+        RequestPath = "/static"
+    });
+}
 
 app.Run();
