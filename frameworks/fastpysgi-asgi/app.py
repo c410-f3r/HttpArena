@@ -226,6 +226,8 @@ async def db_endpoint(scope, receive, send):
 async def async_db_endpoint(scope, receive, send):
     global DATABASE_POOL, DATABASE_QUERY
     if not DATABASE_POOL:
+        await db_setup()
+    if not DATABASE_POOL:
         return json_resp( { "items": [ ], "count": 0 } )
     query_params = parse_qs(scope.get('query_string', b'').decode())
     min_val = float(query_params.get('min', ['10'])[0])
