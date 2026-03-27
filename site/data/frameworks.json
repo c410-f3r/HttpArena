@@ -19,6 +19,7 @@
   "FastAPI": {"description": "FastAPI async web framework on Uvicorn (uvloop), multi-worker via gunicorn.", "repo": "https://github.com/fastapi/fastapi", "type": "framework", "engine": "uvicorn"},
   "Fastify": {"description": "Fast and low-overhead Node.js web framework built for developer experience and performance.", "repo": "https://github.com/fastify/fastify", "type": "framework", "engine": "V8"},
   "FastPySGI": {"description": "An ultra fast WSGI/ASGI server for Python", "repo": "https://github.com/remittor/fastpysgi", "type": "engine", "engine": "libuv"},
+  "FastPySGI-ASGI": {"description": "An ultra fast WSGI/ASGI server for Python", "repo": "https://github.com/remittor/fastpysgi", "type": "engine", "engine": "libuv"},
   "fiber": {"description": "Fiber is an Express-inspired Go web framework built on fasthttp, featuring zero-allocation routing and extreme performance.", "repo": "https://github.com/gofiber/fiber", "type": "framework", "engine": "fiber"},
   "flask": {"description": "Flask web framework on Gunicorn with sync workers, one worker per CPU core.", "repo": "https://github.com/pallets/flask", "type": "framework", "engine": "gunicorn"},
   "GenHTTP": {"description": "Lightweight, embeddable and modular C# web server.", "repo": "https://github.com/Kaliumhexacyanoferrat/GenHTTP", "type": "framework", "engine": "GenHTTP"},
