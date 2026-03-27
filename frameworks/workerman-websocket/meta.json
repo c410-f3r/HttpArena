@@ -1,0 +1,12 @@
+{
+  "display_name": "workerman-websocket",
+  "language": "PHP",
+  "type": "framework",
+  "engine": "Workerman",
+  "description": "Workerman WebSocket echo server",
+  "repo": "https://github.com/walkor/Workerman",
+  "enabled": true,
+  "tests": [
+    "echo-ws"
+  ]
+}
