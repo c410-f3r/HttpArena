@@ -121,7 +121,7 @@ docker run "${docker_args[@]}" "$IMAGE_NAME"
 # Wait for server to start
 echo "[wait] Waiting for server..."
 for i in $(seq 1 30); do
-    if curl -s -o /dev/null -w '' "http://localhost:$PORT/baseline11?a=1&b=1" 2>/dev/null; then
+    if curl -s -o /dev/null --connect-timeout 1 -m 1 -w '' "http://localhost:$PORT/baseline11?a=1&b=1" 2>/dev/null; then
         break
     fi
     if [ "$i" -eq 30 ]; then
