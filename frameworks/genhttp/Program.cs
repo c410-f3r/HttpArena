@@ -2,7 +2,7 @@ using System.Net;
 
 using genhttp;
 
-using GenHTTP.Engine.Kestrel;
+using GenHTTP.Engine.Internal;
 
 var app = Project.Create();
 
