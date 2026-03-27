@@ -301,6 +301,11 @@ for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
     sudo sh -c "echo performance > $g" 2>/dev/null || true
 done
 
+echo "[tune] Setting TCP accept queue for high connection counts..."
+sudo sysctl -w net.core.somaxconn=65535 > /dev/null 2>&1 || true
+sudo sysctl -w net.ipv4.tcp_max_syn_backlog=65535 > /dev/null 2>&1 || true
+sudo sysctl -w net.core.netdev_max_backlog=65535 > /dev/null 2>&1 || true
+
 echo "[tune] Setting UDP buffer sizes for QUIC..."
 sudo sysctl -w net.core.rmem_max=7500000 > /dev/null 2>&1 || true
 sudo sysctl -w net.core.wmem_max=7500000 > /dev/null 2>&1 || true
