@@ -12,7 +12,7 @@ static class AppData
 
     public static List<DatasetItem>? DatasetItems;
     public static byte[]? LargeJsonResponse;
-    public static Dictionary<string, (byte[] Data, string ContentType)> StaticFiles = new();
+    
     public static SqliteConnection? DbConnection;
     public static NpgsqlDataSource? PgDataSource;
 
@@ -20,7 +20,6 @@ static class AppData
     {
         LoadDataset();
         LoadLargeDataset();
-        LoadStaticFiles();
         OpenDatabase();
         OpenPgPool();
     }
@@ -54,25 +53,6 @@ static class AppData
             new { items = processed, count = processed.Count }, JsonOptions);
     }
 
-    static void LoadStaticFiles()
-    {
-        var dir = "/data/static";
-        if (!Directory.Exists(dir)) return;
-
-        var mimeTypes = new Dictionary<string, string>
-        {
-            {".css", "text/css"}, {".js", "application/javascript"}, {".html", "text/html"},
-            {".woff2", "font/woff2"}, {".svg", "image/svg+xml"}, {".webp", "image/webp"}, {".json", "application/json"}
-        };
-        foreach (var file in Directory.GetFiles(dir))
-        {
-            var name = Path.GetFileName(file);
-            var ext = Path.GetExtension(file);
-            var ct = mimeTypes.GetValueOrDefault(ext, "application/octet-stream");
-            StaticFiles[name] = (File.ReadAllBytes(file), ct);
-        }
-    }
-
     static void OpenPgPool()
     {
         var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
@@ -99,4 +79,5 @@ static class AppData
         pragma.CommandText = "PRAGMA mmap_size=268435456";
         pragma.ExecuteNonQuery();
     }
+    
 }

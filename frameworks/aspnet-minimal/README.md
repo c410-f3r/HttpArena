@@ -1,13 +1,13 @@
 # aspnet-minimal
 
-Minimal ASP.NET Core HTTP server using .NET 10 preview with Kestrel and minimal API routing.
+Minimal ASP.NET Core HTTP server using .NET 10 with Kestrel and minimal API routing.
 
 ## Stack
 
-- **Language:** C# / .NET 10 (preview, Alpine)
+- **Language:** C# / .NET 10 (Alpine)
 - **Framework:** ASP.NET Core Minimal APIs
 - **Engine:** Kestrel
-- **Build:** Self-contained publish, `aspnet:10.0-preview-alpine` runtime
+- **Build:** Self-contained publish, `aspnet:10.0-alpine` runtime
 
 ## Endpoints
 

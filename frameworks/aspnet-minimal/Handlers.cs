@@ -1,31 +1,15 @@
 using System.Text.Json;
 
+using Microsoft.AspNetCore.Mvc;
+
 static class Handlers
 {
-    public static IResult GetBaseline(HttpRequest req)
-    {
-        return Results.Text(SumQuery(req).ToString());
-    }
+    
+    public static int Sum(int a, int b) => a + b;
+    
+    public static int SumBody(int a, int b, [FromBody] int c) => a + b + c;
 
-    public static async Task<IResult> PostBaseline(HttpRequest req)
-    {
-        int sum = SumQuery(req);
-        using var reader = new StreamReader(req.Body);
-        var body = await reader.ReadToEndAsync();
-        if (int.TryParse(body, out int b))
-            sum += b;
-        return Results.Text(sum.ToString());
-    }
-
-    public static IResult GetBaseline2(HttpRequest req)
-    {
-        return Results.Text(SumQuery(req).ToString());
-    }
-
-    public static IResult Pipeline()
-    {
-        return Results.Text("ok");
-    }
+    public static string Text() => "ok";
 
     public static async Task<IResult> Upload(HttpRequest req)
     {
@@ -53,22 +37,14 @@ static class Handlers
         return Results.Json(new { items, count = items.Count });
     }
 
-    public static async Task Compression(HttpContext ctx)
+    public static IResult Compression()
     {
         if (AppData.LargeJsonResponse == null)
         {
-            ctx.Response.StatusCode = 500;
-            return;
+            return Results.StatusCode(500);
         }
-        ctx.Response.ContentType = "application/json";
-        await ctx.Response.Body.WriteAsync(AppData.LargeJsonResponse);
-    }
 
-    public static IResult StaticFile(string filename)
-    {
-        if (AppData.StaticFiles.TryGetValue(filename, out var sf))
-            return Results.Bytes(sf.Data, sf.ContentType);
-        return Results.NotFound();
+        return Results.Bytes(AppData.LargeJsonResponse, "application/json");
     }
 
     public static IResult Database(HttpRequest req)
@@ -141,12 +117,4 @@ static class Handlers
         return Results.Json(new { items, count = items.Count });
     }
 
-    static int SumQuery(HttpRequest req)
-    {
-        int sum = 0;
-        foreach (var (_, values) in req.Query)
-            foreach (var v in values)
-                if (int.TryParse(v, out int n)) sum += n;
-        return sum;
-    }
 }
