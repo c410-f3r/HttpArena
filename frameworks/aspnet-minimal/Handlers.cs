@@ -1,13 +1,15 @@
 using System.Text.Json;
 
-using Microsoft.AspNetCore.Mvc;
-
 static class Handlers
 {
     
     public static int Sum(int a, int b) => a + b;
     
-    public static int SumBody(int a, int b, [FromBody] int c) => a + b + c;
+    public static async ValueTask<int> SumBody(int a, int b, HttpRequest req)
+    {
+        using var reader = new StreamReader(req.Body);
+        return a + b + int.Parse(await reader.ReadToEndAsync());
+    }
 
     public static string Text() => "ok";
 

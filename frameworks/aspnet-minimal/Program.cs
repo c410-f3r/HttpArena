@@ -1,6 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -59,9 +60,14 @@ app.MapGet("/async-db", Handlers.AsyncDatabase);
 
 if (Directory.Exists("/data/static"))
 {
+    var typeProvider = new FileExtensionContentTypeProvider();
+    
+    typeProvider.Mappings[".js"] = "application/javascript";
+    
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new PhysicalFileProvider("/data/static"),
+        ContentTypeProvider = typeProvider,
         RequestPath = "/static"
     });
 }
