@@ -226,8 +226,14 @@ app.get("/async-db", async (c) => {
 
 // --- /upload ---
 app.post("/upload", async (c) => {
-  const ab = await c.req.arrayBuffer();
-  return new Response(String(ab.byteLength), {
+  let size = 0;
+  const body = c.req.raw.body;
+  if (body) {
+    for await (const chunk of body) {
+      size += chunk.byteLength;
+    }
+  }
+  return new Response(String(size), {
     headers: { "content-type": "text/plain", server: SERVER_NAME },
   });
 });

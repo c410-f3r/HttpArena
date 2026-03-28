@@ -194,11 +194,13 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   if (path === "/upload" && req.method === "POST") {
-    return req.arrayBuffer().then((ab) => {
-      return new Response(String(ab.byteLength), {
-        headers: { "content-type": "text/plain" },
-      });
-    });
+    let size = 0;
+    if (req.body) {
+      for await (const chunk of req.body) {
+        size += chunk.byteLength;
+      }
+    }
+    return new Response(String(size), { headers: { "content-type": "text/plain" } });
   }
 
   // /baseline11 — GET or POST

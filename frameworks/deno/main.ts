@@ -158,8 +158,13 @@ export default {
         }
 
         if (path === "/upload" && req.method === "POST") {
-            const buf = new Uint8Array(await req.arrayBuffer());
-            return new Response(String(buf.byteLength), { headers: PLAIN });
+            let size = 0;
+            if (req.body) {
+                for await (const chunk of req.body) {
+                    size += chunk.byteLength;
+                }
+            }
+            return new Response(String(size), { headers: PLAIN });
         }
 
         // /baseline11

@@ -187,8 +187,13 @@ function addRoutes(app: Elysia) {
     })
 
     .post("/upload", async ({ request }) => {
-      const ab = await request.arrayBuffer();
-      return new Response(String(ab.byteLength), {
+      let size = 0;
+      if (request.body) {
+        for await (const chunk of request.body) {
+          size += chunk.byteLength;
+        }
+      }
+      return new Response(String(size), {
         headers: { "content-type": "text/plain" },
       });
     })

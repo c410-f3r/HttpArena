@@ -1,5 +1,6 @@
 use actix_web::http::header::{ContentType, HeaderValue, SERVER};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
+use futures_util::StreamExt;
 use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod};
 use rusqlite::Connection;
 use rustls::ServerConfig;
@@ -161,11 +162,17 @@ async fn baseline11_get(req: HttpRequest) -> HttpResponse {
         .body(sum.to_string())
 }
 
-async fn upload(body: web::Bytes) -> HttpResponse {
+async fn upload(mut payload: web::Payload) -> HttpResponse {
+    let mut size: usize = 0;
+    while let Some(chunk) = payload.next().await {
+        if let Ok(data) = chunk {
+            size += data.len();
+        }
+    }
     HttpResponse::Ok()
         .insert_header((SERVER, SERVER_HDR.clone()))
         .content_type(ContentType::plaintext())
-        .body(body.len().to_string())
+        .body(size.to_string())
 }
 
 async fn baseline11_post(req: HttpRequest, body: web::Bytes) -> HttpResponse {

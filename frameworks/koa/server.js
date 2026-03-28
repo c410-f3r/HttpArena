@@ -230,10 +230,15 @@ function startWorker() {
 
     // --- /upload ---
     router.post('/upload', async (ctx) => {
-        const body = await readBody(ctx);
+        let size = 0;
+        await new Promise((resolve, reject) => {
+            ctx.req.on('data', chunk => { size += chunk.length; });
+            ctx.req.on('end', resolve);
+            ctx.req.on('error', reject);
+        });
         ctx.set('server', SERVER_NAME);
         ctx.type = 'text/plain';
-        ctx.body = String(body.length);
+        ctx.body = String(size);
     });
 
     app.use(router.routes());

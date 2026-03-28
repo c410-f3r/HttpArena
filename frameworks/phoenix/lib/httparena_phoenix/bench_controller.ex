@@ -75,13 +75,20 @@ defmodule HttparenaPhoenix.BenchController do
   end
 
   def upload(conn, _params) do
-    {:ok, body, conn} = read_body(conn, length: 25_000_000)
-    size = byte_size(body)
+    size = read_body_size(conn, 0)
 
     conn
     |> put_resp_header("server", "phoenix")
     |> put_resp_header("content-type", "text/plain")
     |> send_resp(200, Integer.to_string(size))
+  end
+
+  defp read_body_size(conn, acc) do
+    case read_body(conn, length: 65_536, read_length: 65_536) do
+      {:ok, body, _conn} -> acc + byte_size(body)
+      {:more, body, conn} -> read_body_size(conn, acc + byte_size(body))
+      {:error, _} -> acc
+    end
   end
 
   def db(conn, params) do

@@ -5,6 +5,7 @@ use rocket::data::{Data, ToByteUnit};
 use rocket::http::{ContentType, Header, Status};
 use rocket::request::{self, FromRequest, Outcome, Request};
 use rocket::response::{self, Responder, Response};
+use rocket::tokio::io::AsyncReadExt;
 use rocket::{get, post, routes, State};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -422,10 +423,17 @@ async fn pgdb_endpoint(raw: RawQuery, pg_pool: &State<Option<Pool>>) -> ServerRe
 
 #[post("/upload", data = "<body>")]
 async fn upload(body: Data<'_>) -> ServerResponse {
-    match body.open(25.mebibytes()).into_bytes().await {
-        Ok(bytes) => ServerResponse::text(bytes.len().to_string()),
-        Err(_) => ServerResponse::error("Failed to read body"),
+    let mut stream = body.open(25.mebibytes());
+    let mut buf = [0u8; 65536];
+    let mut size: usize = 0;
+    loop {
+        match stream.read(&mut buf).await {
+            Ok(0) => break,
+            Ok(n) => size += n,
+            Err(_) => break,
+        }
     }
+    ServerResponse::text(size.to_string())
 }
 
 #[get("/static/<filename>")]

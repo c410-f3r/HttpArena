@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"math"
 	"mime"
@@ -239,9 +238,9 @@ func main() {
 	})
 
 	r.Post("/upload", func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
+		size, _ := io.Copy(io.Discard, r.Body)
 		w.Header().Set("Server", "chi")
-		w.Write([]byte(fmt.Sprintf("%d", len(body))))
+		w.Write([]byte(strconv.FormatInt(size, 10)))
 	})
 
 	r.Get("/db", func(w http.ResponseWriter, r *http.Request) {

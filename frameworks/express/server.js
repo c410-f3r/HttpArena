@@ -88,7 +88,16 @@ function startWorker() {
     const express = require('express');
     const app = express();
 
-    // Raw body parsing
+    // --- /upload --- (defined before body-parsing middleware so the stream is not buffered)
+    app.post('/upload', (req, res) => {
+        let size = 0;
+        req.on('data', chunk => { size += chunk.length; });
+        req.on('end', () => {
+            res.set('server', SERVER_NAME).set('Content-Type', 'text/plain').send(String(size));
+        });
+    });
+
+    // Raw body parsing (applied to all routes except /upload which is already defined above)
     app.use(express.raw({ type: 'application/octet-stream', limit: '50mb' }));
     app.use(express.text({ type: 'text/plain', limit: '50mb' }));
     app.use(express.raw({ type: '*/*', limit: '50mb' }));
@@ -202,12 +211,6 @@ function startWorker() {
         } catch (e) {
             res.set('server', SERVER_NAME).type('application/json').send('{"items":[],"count":0}');
         }
-    });
-
-    // --- /upload ---
-    app.post('/upload', (req, res) => {
-        const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || '');
-        res.set('server', SERVER_NAME).type('text/plain').send(String(body.length));
     });
 
     // Start HTTP/1.1 server
