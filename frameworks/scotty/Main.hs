@@ -1,10 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
 
 module Main where
 
 import Web.Scotty
-import Network.Wai (rawQueryString, requestMethod, requestHeaders)
+import Network.Wai (Request, rawQueryString, requestMethod, requestHeaders, getRequestBodyChunk)
 import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Network.HTTP.Types.Status (status404, status500)
 import Network.HTTP.Types.Method (methodPost)
@@ -225,11 +226,12 @@ main = do
                   (BL.fromStrict payload)
               else raw (BL.fromStrict payload)
 
-    -- Upload: POST /upload -> byte count
+    -- Upload: POST /upload -> byte count (streaming to avoid buffering entire body)
     post "/upload" $ do
-      b <- body
+      req <- request
+      totalBytes <- liftIO $ countBodyBytes req
       setHeader "Server" "scotty"
-      text $ TL.pack $ show (BL.length b)
+      text $ TL.pack $ show totalBytes
 
     -- SQLite DB: GET /db
     get "/db" $ do
@@ -284,6 +286,16 @@ main = do
         Nothing -> do
           status status404
           text "Not Found"
+
+-- Stream request body and count bytes without buffering
+countBodyBytes :: Request -> IO Int
+countBodyBytes req = go 0
+  where
+    go !acc = do
+      chunk <- getRequestBodyChunk req
+      if BS.null chunk
+        then return acc
+        else go (acc + BS.length chunk)
 
 -- Helper: get query parameter with default
 paramWithDefault :: String -> Double -> ActionM Double
