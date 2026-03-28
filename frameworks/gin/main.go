@@ -6,7 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"io"
 	"math"
 	"mime"
 	"net/http"
@@ -240,9 +240,9 @@ func main() {
 	})
 
 	r.POST("/upload", func(c *gin.Context) {
-		body, _ := c.GetRawData()
+		size, _ := io.Copy(io.Discard, c.Request.Body)
 		c.Header("Server", "gin")
-		c.String(http.StatusOK, fmt.Sprintf("%d", len(body)))
+		c.String(http.StatusOK, strconv.FormatInt(size, 10))
 	})
 
 	r.GET("/db", func(c *gin.Context) {

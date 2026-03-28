@@ -245,13 +245,22 @@ async fn compression(res: &mut Response) {
 
 #[handler]
 async fn upload(req: &mut Request, res: &mut Response) {
-    if let Ok(body) = req.payload_with_max_size(25 * 1024 * 1024).await {
-        res.headers_mut()
-            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
-        res.render(body.len().to_string());
-    } else {
-        res.status_code(StatusCode::BAD_REQUEST);
+    use http_body_util::BodyExt;
+    let mut size: usize = 0;
+    let body = req.body_mut();
+    while let Some(frame) = body.frame().await {
+        match frame {
+            Ok(f) => {
+                if let Some(data) = f.data_ref() {
+                    size += data.len();
+                }
+            }
+            Err(_) => break,
+        }
     }
+    res.headers_mut()
+        .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/plain"));
+    res.render(size.to_string());
 }
 
 #[handler]

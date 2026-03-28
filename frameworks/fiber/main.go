@@ -6,7 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"io"
 	"math"
 	"mime"
 	"os"
@@ -169,6 +169,7 @@ func main() {
 
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
+		StreamRequestBody:     true,
 		BodyLimit:             25 * 1024 * 1024, // 25 MB
 	})
 
@@ -240,9 +241,9 @@ func main() {
 	})
 
 	app.Post("/upload", func(c *fiber.Ctx) error {
-		body := c.Body()
+		size, _ := io.Copy(io.Discard, c.Request().BodyStream())
 		c.Set("Server", "fiber")
-		return c.SendString(fmt.Sprintf("%d", len(body)))
+		return c.SendString(strconv.FormatInt(size, 10))
 	})
 
 	app.Get("/db", func(c *fiber.Ctx) error {

@@ -15,9 +15,14 @@ static class Handlers
 
     public static async Task<IResult> Upload(HttpRequest req)
     {
-        using var ms = new MemoryStream();
-        await req.Body.CopyToAsync(ms);
-        return Results.Text(ms.Length.ToString());
+        long size = 0;
+        var buffer = new byte[65536];
+        int read;
+        while ((read = await req.Body.ReadAsync(buffer)) > 0)
+        {
+            size += read;
+        }
+        return Results.Text(size.ToString());
     }
 
     public static IResult Json()

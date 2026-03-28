@@ -228,9 +228,17 @@ function startWorker() {
 
     // --- /upload ---
     app.post('/upload', async (c) => {
-        const buf = Buffer.from(await c.req.arrayBuffer());
+        let size = 0;
+        const reader = c.req.raw.body?.getReader();
+        if (reader) {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                size += value.byteLength;
+            }
+        }
         c.header('server', SERVER_NAME);
-        return c.text(String(buf.length));
+        return c.text(String(size));
     });
 
     // Start HTTP/1.1 via @hono/node-server

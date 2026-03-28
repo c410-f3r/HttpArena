@@ -208,10 +208,20 @@ function startWorker() {
         }
     });
 
-    // --- /upload ---
-    app.post('/upload', (req, reply) => {
-        const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || '');
-        reply.header('server', SERVER_NAME).type('text/plain').send(String(body.length));
+    // --- /upload --- (streaming: bypass Fastify body parsing via encapsulated plugin)
+    app.register(function (instance, opts, done) {
+        instance.removeAllContentTypeParsers();
+        instance.addContentTypeParser('*', function (request, payload, done) {
+            done(null);
+        });
+        instance.post('/upload', (req, reply) => {
+            let size = 0;
+            req.raw.on('data', chunk => { size += chunk.length; });
+            req.raw.on('end', () => {
+                reply.header('server', SERVER_NAME).type('text/plain').send(String(size));
+            });
+        });
+        done();
     });
 
     // Start HTTP/1.1 server

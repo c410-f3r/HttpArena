@@ -207,5 +207,7 @@ async def async_db_endpoint(request: Request):
 
 @app.post("/upload")
 async def upload_endpoint(request: Request):
-    data = await request.body()
-    return _text(str(len(data)))
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+    return _text(str(size))

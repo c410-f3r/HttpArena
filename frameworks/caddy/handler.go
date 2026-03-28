@@ -234,10 +234,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyht
 
 	case "/upload":
 		if r.Method == "POST" && r.Body != nil {
-			body, _ := io.ReadAll(r.Body)
+			n, _ := io.Copy(io.Discard, r.Body)
 			w.Header().Set("Content-Type", "text/plain")
 			w.Header().Set("Server", "caddy")
-			fmt.Fprintf(w, "%d", len(body))
+			fmt.Fprintf(w, "%d", n)
 		} else {
 			http.Error(w, "POST required", 405)
 		}

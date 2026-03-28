@@ -238,9 +238,15 @@ end
 
 post "/upload" do |env|
   server_header(env)
-  body = env.request.body.try(&.gets_to_end) || ""
+  size = 0
+  if body_io = env.request.body
+    buf = Bytes.new(65536)
+    while (n = body_io.read(buf)) > 0
+      size += n
+    end
+  end
   env.response.content_type = "text/plain"
-  body.bytesize.to_s
+  size.to_s
 end
 
 # ---------------------------------------------------------------------------

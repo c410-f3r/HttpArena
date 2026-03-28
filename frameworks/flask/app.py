@@ -195,8 +195,10 @@ def async_db_endpoint():
 
 @app.route('/upload', methods=['POST'])
 def upload_endpoint():
-    data = request.get_data()
-    resp = make_response(str(len(data)))
-    resp.content_type = 'text/plain'
-    resp.headers['Server'] = 'flask'
-    return resp
+    size = 0
+    while True:
+        chunk = request.stream.read(65536)
+        if not chunk:
+            break
+        size += len(chunk)
+    return str(size), 200, {'Content-Type': 'text/plain', 'Server': 'flask'}

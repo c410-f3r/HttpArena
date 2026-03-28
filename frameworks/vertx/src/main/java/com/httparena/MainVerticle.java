@@ -127,6 +127,9 @@ public class MainVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
 
+        // Upload route registered BEFORE BodyHandler to enable streaming
+        router.post("/upload").handler(this::handleUpload);
+
         // Body handler for POST requests — 25MB limit, no disk writes
         router.post().handler(BodyHandler.create()
             .setHandleFileUploads(false)
@@ -139,7 +142,6 @@ public class MainVerticle extends AbstractVerticle {
         router.get("/baseline2").handler(this::handleBaseline2);
         router.get("/json").handler(this::handleJson);
         router.get("/compression").handler(this::handleCompression);
-        router.post("/upload").handler(this::handleUpload);
         router.get("/db").handler(this::handleDb);
         router.get("/static/:filename").handler(this::handleStatic);
 
@@ -264,11 +266,16 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void handleUpload(RoutingContext ctx) {
-        Buffer body = ctx.body().buffer();
-        int len = body != null ? body.length() : 0;
-        ctx.response()
-            .putHeader("content-type", "text/plain")
-            .end(String.valueOf(len));
+        HttpServerRequest req = ctx.request();
+        req.pause();
+        final long[] size = {0};
+        req.handler(buffer -> size[0] += buffer.length());
+        req.endHandler(v -> {
+            ctx.response()
+                .putHeader("content-type", "text/plain")
+                .end(Long.toString(size[0]));
+        });
+        req.resume();
     }
 
     private void handleDb(RoutingContext ctx) {

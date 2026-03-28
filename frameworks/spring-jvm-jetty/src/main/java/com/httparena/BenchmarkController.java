@@ -11,6 +11,7 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.sql.Connection;
@@ -122,8 +123,14 @@ public class BenchmarkController {
     }
 
     @PostMapping(value = "/upload", produces = MediaType.TEXT_PLAIN_VALUE)
-    public String upload(@RequestBody byte[] body) {
-        return String.valueOf(body.length);
+    public String upload(InputStream body) throws IOException {
+        byte[] buf = new byte[65536];
+        long total = 0;
+        int n;
+        while ((n = body.read(buf)) != -1) {
+            total += n;
+        }
+        return String.valueOf(total);
     }
 
     @GetMapping(value = "/baseline2", produces = MediaType.TEXT_PLAIN_VALUE)

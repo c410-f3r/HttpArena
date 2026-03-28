@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"math"
 	"mime"
@@ -241,9 +240,9 @@ func main() {
 	})
 
 	e.POST("/upload", func(c echo.Context) error {
-		body, _ := io.ReadAll(c.Request().Body)
+		size, _ := io.Copy(io.Discard, c.Request().Body)
 		c.Response().Header().Set("Server", "echo")
-		return c.String(http.StatusOK, fmt.Sprintf("%d", len(body)))
+		return c.String(http.StatusOK, strconv.FormatInt(size, 10))
 	})
 
 	e.GET("/db", func(c echo.Context) error {

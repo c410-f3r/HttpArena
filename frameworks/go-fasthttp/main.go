@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -233,10 +233,10 @@ func asyncDbHandler(ctx *fasthttp.RequestCtx) {
 }
 
 func uploadHandler(ctx *fasthttp.RequestCtx) {
-	body := ctx.PostBody()
+	size, _ := io.Copy(io.Discard, ctx.RequestBodyStream())
 	ctx.Response.Header.Set("Server", "go-fasthttp")
 	ctx.SetContentType("text/plain")
-	ctx.SetBodyString(fmt.Sprintf("%d", len(body)))
+	ctx.SetBodyString(strconv.FormatInt(size, 10))
 }
 
 func dbHandler(ctx *fasthttp.RequestCtx) {
@@ -332,6 +332,7 @@ func main() {
 			}
 			s := &fasthttp.Server{
 				Handler:            handler,
+				StreamRequestBody:  true,
 				MaxRequestBodySize: 25 * 1024 * 1024, // 25 MB
 			}
 			s.Serve(ln)

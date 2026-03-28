@@ -121,8 +121,12 @@ class BenchmarkController < ActionController::API
   end
 
   def upload
-    data = request.body.read
-    render plain: data.bytesize.to_s
+    size = 0
+    buf = request.body
+    while (chunk = buf.read(65536))
+      size += chunk.bytesize
+    end
+    render plain: size.to_s
   end
 
   def not_found
