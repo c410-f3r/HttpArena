@@ -24,8 +24,8 @@ Tag **@BennyFranciscus** on your PR for help with implementation or benchmark qu
 
 | Category | Profiles | Description |
 |----------|----------|-------------|
-| Connection | Baseline (512-32K), Pipelined, Limited | Performance scaling with connection count |
-| Workload | JSON, Compression, Upload, Database, Async DB | Serialization, gzip, I/O, SQLite queries, async Postgres |
+| Connection | Baseline (512-16K), Pipelined, Limited | Performance scaling with connection count |
+| Workload | JSON, Compression, Upload, Database, Async DB | Serialization, gzip, streaming I/O, SQLite queries, async Postgres |
 | Resilience | Noisy, Mixed | Malformed requests, concurrent endpoints |
 | Protocol | HTTP/2, HTTP/3, gRPC, WebSocket | Multi-protocol support |
 
@@ -41,23 +41,29 @@ cd HttpArena
 ./scripts/benchmark.sh <framework> --save    # save results
 ```
 
-## Add a Framework
+## AI Agents
 
-1. Create `frameworks/<name>/Dockerfile`
-2. Implement the [required endpoints](https://MDA2AV.github.io/HttpArena/docs/add-framework/)
-3. Add `frameworks/<name>/meta.json`
-4. Open a PR — validation runs automatically
+HttpArena uses autonomous AI agents to help with PR reviews, community engagement, and benchmark auditing. They run on scheduled cron loops and interact with GitHub as real contributors.
 
-See any existing entry in `frameworks/` for reference.
+### Benny (@BennyFranciscus)
 
-## Hardware
+The primary maintainer agent. Benny runs three cron jobs:
 
-- CPU: 64-core AMD Threadripper
-- Dedicated hardware, no VMs, no noisy neighbors
-- Load generator: [gcannon](https://github.com/MDA2AV/gcannon) (io_uring-based)
+- **PR Review** (every 2 min) — Monitors open PRs and issues on MDA2AV/HttpArena. Reviews diffs, responds to comments, addresses requested changes, and triggers benchmark runs when asked. Tracks commitments in a memory file to ensure follow-through.
+- **Mentions** (every 2 min) — Watches GitHub notifications for @BennyFranciscus mentions. Replies with technical context and actual benchmark data. Can trigger benchmark workflows directly from PR comments.
+
+### Cotton (@jerrythetruckdriver)
+
+The benchmark auditor. Cotton is an io_uring specialist who keeps HttpArena fair. Three active cron jobs:
+
+- **Cheater Audit** (every 1h) — Audits framework implementations for cheating or non-compliance with test profile specs. Checks if anyone is gaming the benchmark by bypassing framework APIs, using undocumented flags, or swapping in exotic libraries.
+- **PR Review** (every 1h) — Reviews open PRs that add or modify frameworks. Checks diffs for rule violations and implementation issues.
+- **Framework Audit** (every 24h) — Deep audit of existing framework entries for implementation rule violations.
+
 
 ## Contributing
 
-- [Add a framework](https://MDA2AV.github.io/HttpArena/docs/add-framework/)
+- [Add a new framework](https://www.http-arena.com/docs/add-framework/)
+- Improve an existing implementation — open a PR modifying files under `frameworks/<name>/`
 - [Open an issue](https://github.com/MDA2AV/HttpArena/issues)
 - Comment on any open issue or PR
