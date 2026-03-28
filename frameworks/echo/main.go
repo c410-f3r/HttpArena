@@ -171,9 +171,9 @@ func main() {
 	e.HideBanner = true
 	e.HidePort = true
 
-	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+	gzipMiddleware := middleware.GzipWithConfig(middleware.GzipConfig{
 		Level: 1,
-	}))
+	})
 
 	e.GET("/pipeline", func(c echo.Context) error {
 		c.Response().Header().Set("Server", "echo")
@@ -218,7 +218,7 @@ func main() {
 	e.GET("/compression", func(c echo.Context) error {
 		c.Response().Header().Set("Server", "echo")
 		return c.Blob(http.StatusOK, "application/json", jsonLargeResponse)
-	})
+	}, gzipMiddleware)
 
 	e.POST("/upload", func(c echo.Context) error {
 		size, _ := io.Copy(io.Discard, c.Request().Body)
