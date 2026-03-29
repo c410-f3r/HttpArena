@@ -15,6 +15,7 @@ import psycopg.rows
 # -- Dataset and constants --------------------------------------------------------
 
 CPU_COUNT = int(multiprocessing.cpu_count())
+WRK_COUNT = min(len(os.sched_getaffinity(0)), 128)
 
 MIME_TYPES = {
     '.css'  : 'text/css',
@@ -118,7 +119,7 @@ def db_close():
     DATABASE_POOL = None
 
 def db_setup():
-    global DATABASE_POOL, DATABASE_URL, CPU_COUNT
+    global DATABASE_POOL, DATABASE_URL, WRK_COUNT
     db_close()
     max_pool_size = 0
     try:
@@ -342,4 +343,4 @@ if __name__ == "__main__":
 
     fastpysgi.server.read_buffer_size = READ_BUF_SIZE
     fastpysgi.server.backlog = 16*1024
-    fastpysgi.run(app, host, port, workers = CPU_COUNT, loglevel = 0)
+    fastpysgi.run(app, host, port, workers = WRK_COUNT, loglevel = 0)

@@ -15,6 +15,7 @@ import asyncpg
 # -- Dataset and constants --------------------------------------------------------
 
 CPU_COUNT = int(multiprocessing.cpu_count())
+WRK_COUNT = min(len(os.sched_getaffinity(0)), 128)
 
 MIME_TYPES = {
     '.css'  : 'text/css',
@@ -107,7 +108,7 @@ def _get_db() -> sqlite3.Connection:
 # -- Postgres DB ------------------------------------------------------------
 
 PG_POOL_MIN_SIZE = 2
-PG_POOL_MAX_SIZE = 3
+PG_POOL_MAX_SIZE = 2
 
 class NoResetConnection(asyncpg.Connection):
     __slots__ = ()
@@ -124,7 +125,7 @@ async def db_close():
     DATABASE_POOL = None
 
 async def db_setup():
-    global DATABASE_POOL, DATABASE_URL, CPU_COUNT
+    global DATABASE_POOL, DATABASE_URL, WRK_COUNT
     await db_close()
     max_pool_size = 0
     '''
@@ -140,7 +141,7 @@ async def db_setup():
         pass
     if not max_connections:
         return
-    max_pool_size = int(max_connections * 0.87 / CPU_COUNT) + 1
+    max_pool_size = int(max_connections * 0.87 / WRK_COUNT) + 1
     '''
     try:
         DATABASE_POOL = await asyncpg.create_pool(
@@ -368,4 +369,4 @@ if __name__ == "__main__":
     fastpysgi.server.read_buffer_size = 256*1024
     fastpysgi.server.backlog = 16*1024
     fastpysgi.server.loop_timeout = 1
-    fastpysgi.run(app, host, port, workers = CPU_COUNT, loglevel = 0)
+    fastpysgi.run(app, host, port, workers = WRK_COUNT, loglevel = 0)
