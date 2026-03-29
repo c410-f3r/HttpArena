@@ -26,7 +26,7 @@
     {{ $data := index site.Data $key }}
     {{ if $data }}
       {{ range $data }}
-        {{ $entries = $entries | append (dict "profile" $p.id "label" $p.label "framework" .framework "rps" .rps "language" (.language | default "") "cpu" (.cpu | default "") "memory" (.memory | default "") "bandwidth" (.bandwidth | default "") "tpl_baseline" (.tpl_baseline | default 0) "tpl_json" (.tpl_json | default 0) "tpl_db" (.tpl_db | default 0) "tpl_upload" (.tpl_upload | default 0) "tpl_compression" (.tpl_compression | default 0)) }}
+        {{ $entries = $entries | append (dict "profile" $p.id "label" $p.label "framework" .framework "rps" .rps "language" (.language | default "") "cpu" (.cpu | default "") "memory" (.memory | default "") "bandwidth" (.bandwidth | default "") "tpl_baseline" (.tpl_baseline | default 0) "tpl_json" (.tpl_json | default 0) "tpl_db" (.tpl_db | default 0) "tpl_upload" (.tpl_upload | default 0) "tpl_compression" (.tpl_compression | default 0) "tpl_static" (.tpl_static | default 0) "tpl_async_db" (.tpl_async_db | default 0)) }}
       {{ end }}
     {{ end }}
   {{ end }}
@@ -204,7 +204,7 @@ function entriesFromRound(roundData) {
       var data = roundData[key];
       if (data) {
         data.forEach(function(d) {
-          entries.push({ profile: p.id, label: p.label, framework: d.framework, rps: d.rps, language: d.language || '', cpu: d.cpu || '', memory: d.memory || '', bandwidth: d.bandwidth || '', tpl_baseline: d.tpl_baseline || 0, tpl_json: d.tpl_json || 0, tpl_db: d.tpl_db || 0, tpl_upload: d.tpl_upload || 0, tpl_compression: d.tpl_compression || 0 });
+          entries.push({ profile: p.id, label: p.label, framework: d.framework, rps: d.rps, language: d.language || '', cpu: d.cpu || '', memory: d.memory || '', bandwidth: d.bandwidth || '', tpl_baseline: d.tpl_baseline || 0, tpl_json: d.tpl_json || 0, tpl_db: d.tpl_db || 0, tpl_upload: d.tpl_upload || 0, tpl_compression: d.tpl_compression || 0, tpl_static: d.tpl_static || 0, tpl_async_db: d.tpl_async_db || 0 });
         });
       }
     });
@@ -230,12 +230,14 @@ function loadData(newEntries, newMeta) {
     counts[key] = (counts[key] || 0) + 1;
     if (e.profile === 'mixed') {
       var fw = e.framework;
-      if (!tplSums[fw]) tplSums[fw] = {baseline:0, json:0, db:0, upload:0, compression:0, count:0};
+      if (!tplSums[fw]) tplSums[fw] = {baseline:0, json:0, db:0, upload:0, compression:0, static:0, async_db:0, count:0};
       tplSums[fw].baseline += (e.tpl_baseline || 0);
       tplSums[fw].json += (e.tpl_json || 0);
       tplSums[fw].db += (e.tpl_db || 0);
       tplSums[fw].upload += (e.tpl_upload || 0);
       tplSums[fw].compression += (e.tpl_compression || 0);
+      tplSums[fw].static += (e.tpl_static || 0);
+      tplSums[fw].async_db += (e.tpl_async_db || 0);
       tplSums[fw].count++;
     }
   });
@@ -254,7 +256,9 @@ function loadData(newEntries, newMeta) {
       json: t.json / t.count,
       db: t.db / t.count,
       upload: t.upload / t.count,
-      compression: t.compression / t.count
+      compression: t.compression / t.count,
+      static: t.static / t.count,
+      async_db: t.async_db / t.count
     };
   });
   fwLang = {};
@@ -340,13 +344,13 @@ function renderComposite() {
   });
 
   // For mixed: compute weighted scores and re-normalize
-  var mixedWeights = {baseline:0.15, json:1, db:10, upload:10, compression:7};
+  var mixedWeights = {baseline:0.15, json:1, db:10, upload:10, compression:7, static:2, async_db:10};
   if (activeIds.indexOf('mixed') >= 0) {
     var maxWeighted = 0;
     Object.keys(avgTplMixed).forEach(function(fw) {
       if (isExcluded(fw)) return;
       var t = avgTplMixed[fw];
-      var w = t.baseline * mixedWeights.baseline + t.json * mixedWeights.json + t.db * mixedWeights.db + t.upload * mixedWeights.upload + t.compression * mixedWeights.compression;
+      var w = t.baseline * mixedWeights.baseline + t.json * mixedWeights.json + t.db * mixedWeights.db + t.upload * mixedWeights.upload + t.compression * mixedWeights.compression + (t.static || 0) * mixedWeights.static + (t.async_db || 0) * mixedWeights.async_db;
       if (w > maxWeighted) maxWeighted = w;
     });
     if (maxWeighted > 0) maxRpsByProfile['mixed'] = maxWeighted;
@@ -399,7 +403,7 @@ function renderComposite() {
         // For mixed: use weighted template score
         if (pid === 'mixed' && avgTplMixed[fw]) {
           var t = avgTplMixed[fw];
-          effectiveRps = t.baseline * mixedWeights.baseline + t.json * mixedWeights.json + t.db * mixedWeights.db + t.upload * mixedWeights.upload + t.compression * mixedWeights.compression;
+          effectiveRps = t.baseline * mixedWeights.baseline + t.json * mixedWeights.json + t.db * mixedWeights.db + t.upload * mixedWeights.upload + t.compression * mixedWeights.compression + (t.static || 0) * mixedWeights.static + (t.async_db || 0) * mixedWeights.async_db;
         }
         // For compression: use bandwidth-adjusted RPS
         if (pid === 'compression' && minBwPerReq[pid]) {
