@@ -523,7 +523,7 @@ for profile in "${profiles_to_run[@]}"; do
             -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
     elif [ "$endpoint" = "mixed" ]; then
         gc_args=("http://localhost:$PORT"
-            --raw "$REQUESTS_DIR/get.raw,$REQUESTS_DIR/get.raw,$REQUESTS_DIR/get.raw,$REQUESTS_DIR/post_cl.raw,$REQUESTS_DIR/post_cl.raw,$REQUESTS_DIR/json-get.raw,$REQUESTS_DIR/db-get.raw,$REQUESTS_DIR/upload-small.raw,$REQUESTS_DIR/json-gzip.raw,$REQUESTS_DIR/json-gzip.raw"
+            --raw "$REQUESTS_DIR/get.raw,$REQUESTS_DIR/get.raw,$REQUESTS_DIR/get.raw,$REQUESTS_DIR/post_cl.raw,$REQUESTS_DIR/post_cl.raw,$REQUESTS_DIR/json-get.raw,$REQUESTS_DIR/db-get.raw,$REQUESTS_DIR/upload-small.raw,$REQUESTS_DIR/json-gzip.raw,$REQUESTS_DIR/json-gzip.raw,$REQUESTS_DIR/static-reset.css.raw,$REQUESTS_DIR/static-app.js.raw,$REQUESTS_DIR/async-db-get.raw,$REQUESTS_DIR/async-db-get.raw"
             -c "$CONNS" -t "$THREADS" -d 15s -p "$pipeline")
     elif [ "$endpoint" = "async-db" ]; then
         gc_args=("http://localhost:$PORT/async-db?min=10&max=50"
@@ -687,19 +687,23 @@ else: print(f'{bps}B/s')
     if [ "$USE_H2LOAD" = "false" ] && [ "$USE_OHA" = "false" ]; then
         tpl_line=$(echo "$best_output" | grep -oP 'Per-template-ok: \K.*' || echo "")
         if [ -n "$tpl_line" ] && [ "$endpoint" = "mixed" ]; then
-            # Mixed templates: get×3, post_cl×2, json-get×1, db-get×1, upload-small×1, json-gzip×2
+            # Mixed templates: get×3, post_cl×2, json-get×1, db-get×1, upload-small×1, json-gzip×2, static×2, async-db×2
             IFS=',' read -ra tpl_counts <<< "$tpl_line"
             t_baseline=$(( ${tpl_counts[0]:-0} + ${tpl_counts[1]:-0} + ${tpl_counts[2]:-0} + ${tpl_counts[3]:-0} + ${tpl_counts[4]:-0} ))
             t_json=${tpl_counts[5]:-0}
             t_db=${tpl_counts[6]:-0}
             t_upload=${tpl_counts[7]:-0}
             t_compression=$(( ${tpl_counts[8]:-0} + ${tpl_counts[9]:-0} ))
+            t_static=$(( ${tpl_counts[10]:-0} + ${tpl_counts[11]:-0} ))
+            t_async_db=$(( ${tpl_counts[12]:-0} + ${tpl_counts[13]:-0} ))
             tpl_json=",
   \"tpl_baseline\": $t_baseline,
   \"tpl_json\": $t_json,
   \"tpl_db\": $t_db,
   \"tpl_upload\": $t_upload,
-  \"tpl_compression\": $t_compression"
+  \"tpl_compression\": $t_compression,
+  \"tpl_static\": $t_static,
+  \"tpl_async_db\": $t_async_db"
         fi
     fi
 

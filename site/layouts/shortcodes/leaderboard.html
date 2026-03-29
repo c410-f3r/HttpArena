@@ -400,7 +400,7 @@ html.dark .lb-filters-toggle:hover .lb-toggle-icon { color: #60a5fa; }
   (dict "id" "upload"       "label" "Upload (20 MB)"        "conns" (slice 64 256 512)     "desc" "Each request sends a 20 MB binary payload via <code>POST /upload</code>. The server reads the entire body and returns its CRC32 checksum. Measures request body ingestion throughput — how efficiently a framework handles large uploads, including buffering, memory management, and I/O handling under sustained load.")
   (dict "id" "compression" "label" "Compression"           "conns" (slice 4096 16384) "desc" "Requests <code>GET /compression</code> with <code>Accept-Encoding: gzip</code>. The server loads a 6000-item dataset (~1 MB JSON) at startup and serves it gzip-compressed on the fly. Measures the throughput cost of real-time compression — only frameworks with built-in gzip support are eligible.")
   (dict "id" "noisy"       "label" "Noisy"                 "conns" (slice 512 4096 16384) "desc" "Valid baseline requests interleaved with malformed noise — nonexistent paths, bad content-length, and raw binary. Only 2xx responses count. Measures resilience: how well a framework maintains throughput while rejecting garbage traffic.")
-  (dict "id" "mixed"        "label" "Mixed Workload"        "conns" (slice 4096 16384) "desc" "A realistic mix of request types: 3 baseline GETs, 2 baseline POSTs, 1 JSON processing, 1 SQLite DB lookup, 1 file upload (1 MB), and 2 compression requests. Connections limited to 100 requests each. Measures overall framework performance under a diverse, real-world-like workload that exercises multiple code paths simultaneously.")
+  (dict "id" "mixed"        "label" "Mixed Workload"        "conns" (slice 4096 16384) "desc" "A realistic mix of request types: 3 baseline GETs, 2 baseline POSTs, 1 JSON processing, 1 SQLite DB lookup, 1 file upload (1 MB), 2 compression requests, 2 static file serves, and 2 async Postgres queries. Connections limited to 5 requests each. Measures overall framework performance under a diverse, real-world-like workload that exercises multiple code paths simultaneously.")
   (dict "id" "static"       "label" "Static Files"          "conns" (slice 4096 16384) "desc" "Serves 20 pre-loaded static files (CSS, JS, HTML, fonts, images, JSON) from <code>/static/{filename}</code> over HTTP/1.1. Files are loaded into memory at startup. Requests cycle through all 20 files. Measures static file serving throughput, MIME type handling, and memory-mapped I/O efficiency.")
   (dict "id" "pipelined"    "label" "Pipelined (16)"        "conns" (slice 512 4096 16384) "desc" "16 HTTP requests are sent back-to-back on each connection before waiting for responses. Uses a lightweight <code>GET /pipeline</code> endpoint that returns a fixed response, isolating raw I/O and pipeline handling from application logic. Frameworks that batch pipelined requests from the read buffer gain a significant advantage.")
   (dict "id" "async-db"    "label" "Async DB"              "conns" (slice 512 1024) "desc" "Async Postgres query over 100K rows with no index on price, forcing a sequential scan per request. The framework manages its own connection pool and uses an async Postgres driver. Measures event loop scheduling, connection pooling efficiency, and async I/O throughput. Framework-only — engines are excluded.")
@@ -555,7 +555,7 @@ var lbProfiles = {{ $profiles | jsonify | safeJS }};
     {{ $pct := mul (div (float $r.rps) (float $maxRps)) 100.0 }}
     {{ $meta := index site.Data.frameworks $r.framework }}
     {{ $s2xx := int ($r.status_2xx | default 0) }}{{ $s3xx := int ($r.status_3xx | default 0) }}{{ $s4xx := int ($r.status_4xx | default 0) }}{{ $s5xx := int ($r.status_5xx | default 0) }}{{ $errs := add $s4xx $s5xx }}
-    <div class="lb-row{{ if $isReconn }} lb-row-reconn{{ end }}{{ if $isNoisy }} lb-row-noisy{{ end }}" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-bandwidth="{{ $r.bandwidth | default "" }}" data-input-bw="{{ $r.input_bw | default "" }}" data-type="{{ with $meta }}{{ .type | default "framework" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}" data-s2xx="{{ $s2xx }}" data-s3xx="{{ $s3xx }}" data-s4xx="{{ $s4xx }}" data-s5xx="{{ $s5xx }}" {{ if $r.tpl_baseline }}data-tpl-baseline="{{ int $r.tpl_baseline }}" data-tpl-json="{{ int ($r.tpl_json | default 0) }}" data-tpl-db="{{ int ($r.tpl_db | default 0) }}" data-tpl-upload="{{ int ($r.tpl_upload | default 0) }}" data-tpl-compression="{{ int ($r.tpl_compression | default 0) }}"{{ end }}>
+    <div class="lb-row{{ if $isReconn }} lb-row-reconn{{ end }}{{ if $isNoisy }} lb-row-noisy{{ end }}" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-bandwidth="{{ $r.bandwidth | default "" }}" data-input-bw="{{ $r.input_bw | default "" }}" data-type="{{ with $meta }}{{ .type | default "framework" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}" data-s2xx="{{ $s2xx }}" data-s3xx="{{ $s3xx }}" data-s4xx="{{ $s4xx }}" data-s5xx="{{ $s5xx }}" {{ if $r.tpl_baseline }}data-tpl-baseline="{{ int $r.tpl_baseline }}" data-tpl-json="{{ int ($r.tpl_json | default 0) }}" data-tpl-db="{{ int ($r.tpl_db | default 0) }}" data-tpl-upload="{{ int ($r.tpl_upload | default 0) }}" data-tpl-compression="{{ int ($r.tpl_compression | default 0) }}" data-tpl-static="{{ int ($r.tpl_static | default 0) }}" data-tpl-async-db="{{ int ($r.tpl_async_db | default 0) }}"{{ end }}>
       {{ $ftype := "framework" }}{{ with $meta }}{{ $ftype = .type | default "framework" }}{{ end }}
       <div class="lb-rank">{{ add $j 1 }}</div>
       <div class="lb-name">{{ $r.framework }}</div>
@@ -1004,6 +1004,8 @@ window.addEventListener('roundChanged', function(ev) {
         row.dataset.tplDb = String(r.tpl_db || 0);
         row.dataset.tplUpload = String(r.tpl_upload || 0);
         row.dataset.tplCompression = String(r.tpl_compression || 0);
+        row.dataset.tplStatic = String(r.tpl_static || 0);
+        row.dataset.tplAsyncDb = String(r.tpl_async_db || 0);
       }
       row.innerHTML =
         '<div class="lb-rank">' + rank + '</div>' +
@@ -1206,10 +1208,10 @@ function fmtK(n) {
   return String(n);
 }
 
-var mixedColors = {baseline:'#3b82f6', json:'#8b5cf6', db:'#f59e0b', upload:'#10b981', compression:'#ef4444'};
-var mixedLabels = {baseline:'Baseline', json:'JSON', db:'DB', upload:'Upload', compression:'Gzip'};
-var mixedKeys = ['baseline','json','db','upload','compression'];
-var mixedWeights = {baseline:0.15, json:1, db:10, upload:10, compression:7};
+var mixedColors = {baseline:'#3b82f6', json:'#8b5cf6', db:'#f59e0b', upload:'#10b981', compression:'#ef4444', static:'#06b6d4', async_db:'#d946ef'};
+var mixedLabels = {baseline:'Baseline', json:'JSON', db:'DB', upload:'Upload', compression:'Gzip', static:'Static', async_db:'Async DB'};
+var mixedKeys = ['baseline','json','db','upload','compression','static','async_db'];
+var mixedWeights = {baseline:0.15, json:1, db:10, upload:10, compression:7, static:2, async_db:10};
 
 var mixedGrid = '2.5rem 10rem 5.5rem 4.95rem 4.5rem 3.5rem 6rem 5rem 3.5rem 5rem 4.5rem 5.5rem 5rem 5rem 4rem';
 
@@ -1246,7 +1248,9 @@ function applyMixedPanel(panel) {
       json: Number(row.dataset.tplJson) || 0,
       db: Number(row.dataset.tplDb) || 0,
       upload: Number(row.dataset.tplUpload) || 0,
-      compression: Number(row.dataset.tplCompression) || 0
+      compression: Number(row.dataset.tplCompression) || 0,
+      static: Number(row.dataset.tplStatic) || 0,
+      async_db: Number(row.dataset.tplAsyncDb) || 0
     };
     var weighted = 0;
     mixedKeys.forEach(function(k) { weighted += d[k] * mixedWeights[k]; });
@@ -1272,7 +1276,7 @@ function applyMixedPanel(panel) {
       barHeader.className = 'lb-mix-header';
       barHeader.style.textAlign = 'right';
       barHeader.style.fontWeight = '600';
-      barHeader.title = 'Weighted score: baseline\u00d70.15 + json\u00d71 + db\u00d710 + upload\u00d710 + gzip\u00d77, normalized to 100';
+      barHeader.title = 'Weighted score: baseline\u00d70.15 + json\u00d71 + db\u00d710 + upload\u00d710 + gzip\u00d77 + static\u00d72 + async-db\u00d710, normalized to 100';
       barHeader.textContent = 'Score';
       /* Insert mix legend header after Score */
       var mixHeader = document.createElement('div');
@@ -1363,7 +1367,7 @@ function applyMixedScores() {
         barHeader.className = 'lb-mix-header';
         barHeader.style.textAlign = 'right';
         barHeader.style.fontWeight = '600';
-        barHeader.title = 'Weighted score: baseline\u00d70.15 + json\u00d71 + db\u00d710 + upload\u00d710 + gzip\u00d77, normalized to 100';
+        barHeader.title = 'Weighted score: baseline\u00d70.15 + json\u00d71 + db\u00d710 + upload\u00d710 + gzip\u00d77 + static\u00d72 + async-db\u00d710, normalized to 100';
         barHeader.textContent = 'Score';
         var mixHeader = document.createElement('div');
         mixHeader.innerHTML = '<div style="font-size:0.65rem;font-weight:600;margin-bottom:1px;">Request Mix</div>' +
