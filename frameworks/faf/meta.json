@@ -2,8 +2,8 @@
   "display_name": "faf",
   "language": "Rust",
   "type": "engine",
-  "engine": "epoll + SIMD HTTP parsing",
-  "description": "FaF (Fast as Fuck) — zero-dependency Rust HTTP engine using raw epoll syscalls with SSE4.2 SIMD request parsing, one-thread-per-core with CPU affinity.",
+  "engine": "epoll",
+  "description": "FaF (Fast as Fuck) — zero-dependency Rust HTTP engine using raw epoll syscalls, one-thread-per-core with SO_REUSEPORT.",
   "repo": "https://github.com/errantmind/faf",
   "enabled": true,
   "tests": [
