@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 
-// HttpArena entry for FaF (Fast as Fuck)
-// Architecture faithful to errantmind/faf:
+// HttpArena entry: rust-epoll
+// Zero-dependency Rust HTTP engine using raw epoll syscalls:
 //   - Raw epoll event loop (no async runtime, no framework)
 //   - One thread per CPU core with SO_REUSEPORT
 //   - Hand-rolled HTTP/1.1 parsing with pipelining support
 //   - Direct syscalls for accept/recv/send via libc
 //   - Zero-copy request processing
 //
-// Extended beyond faf's callback API to support POST body reading
+// Supports POST body reading via Content-Length and chunked TE
 // required by HttpArena's baseline test profile.
 
 use std::collections::HashMap;
@@ -22,8 +22,8 @@ const REQ_BUF_SIZE: usize = 8192;
 const RES_BUF_SIZE: usize = 65536;
 const MAX_EVENTS: i32 = 512;
 
-const RESP_PREFIX: &[u8] = b"HTTP/1.1 200 OK\r\nServer: faf\r\nContent-Type: text/plain\r\nContent-Length: ";
-const RESP_OK: &[u8] = b"HTTP/1.1 200 OK\r\nServer: faf\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok";
+const RESP_PREFIX: &[u8] = b"HTTP/1.1 200 OK\r\nServer: rust-epoll\r\nContent-Type: text/plain\r\nContent-Length: ";
+const RESP_OK: &[u8] = b"HTTP/1.1 200 OK\r\nServer: rust-epoll\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok";
 const RESP_404: &[u8] = b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
 
 // ── HTTP parsing ────────────────────────────────────────────────────────
@@ -269,13 +269,13 @@ fn worker(listener_fd: i32) {
             let n = libc::epoll_wait(epfd, events.as_mut_ptr(), MAX_EVENTS, timeout);
 
             if n <= 0 { timeout = -1; continue; }
-            timeout = 0; // Non-blocking on hot path (faf pattern)
+            timeout = 0; // Non-blocking on hot path
 
             for idx in 0..n as usize {
                 let fd = events[idx].u64 as i32;
 
                 if fd == listener_fd {
-                    // Accept loop — drain all pending connections (faf pattern)
+                    // Accept loop — drain all pending connections
                     loop {
                         let cfd = libc::accept4(fd, std::ptr::null_mut(),
                             std::ptr::null_mut(), libc::SOCK_NONBLOCK);
@@ -326,7 +326,7 @@ fn worker(listener_fd: i32) {
                 let mut consumed = 0usize;
                 let mut res_off = 0usize;
 
-                // Pipelined request processing loop (core faf pattern)
+                // Pipelined request processing loop
                 while consumed < total {
                     let rem = &reqbufs.get(&fi).unwrap()[consumed..total];
                     if rem.len() < 16 { break; }
@@ -391,7 +391,7 @@ fn worker(listener_fd: i32) {
                     consumed += full_len;
                 }
 
-                // Flush all batched responses (faf pattern: single write for pipelined requests)
+                // Flush all batched responses
                 if res_off > 0 {
                     let w = libc::send(fd, resbuf.as_ptr() as *const libc::c_void,
                         res_off, 0);
@@ -442,12 +442,12 @@ fn create_listener() -> i32 {
 // ── Main ────────────────────────────────────────────────────────────────
 
 fn main() {
-    // Elevate process priority (faf pattern)
+    // Elevate process priority
     unsafe { libc::setpriority(libc::PRIO_PROCESS, 0, -19); }
 
     let ncpus = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
 
-    // One thread per core, each with its own listener socket via SO_REUSEPORT (faf pattern)
+    // One thread per core, each with its own listener socket via SO_REUSEPORT
     for _ in 1..ncpus {
         std::thread::Builder::new()
             .stack_size(8 * 1024 * 1024)
