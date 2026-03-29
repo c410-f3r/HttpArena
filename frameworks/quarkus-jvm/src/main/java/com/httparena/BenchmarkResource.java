@@ -112,14 +112,14 @@ public class BenchmarkResource {
     @POST
     @Path("/upload")
     @Produces(MediaType.TEXT_PLAIN)
-    public long upload(InputStream body) throws IOException {
+    public String upload(InputStream body) throws IOException {
         byte[] buf = new byte[65536];
         long total = 0;
         int n;
         while ((n = body.read(buf)) != -1) {
             total += n;
         }
-        return total;
+        return String.valueOf(total);
     }
 
     @GET
