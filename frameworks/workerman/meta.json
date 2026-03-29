@@ -7,11 +7,13 @@
   "repo": "https://github.com/walkor/Workerman",
   "enabled": true,
   "tests": [
-    "pipelined",
     "baseline",
-    "noisy",
+    "pipelined",
+    "limited-conn",
     "json",
+    "upload",
     "compression",
-    "limited-conn"
+    "noisy",
+    "mixed"
   ]
 }

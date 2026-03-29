@@ -1,6 +1,6 @@
 {
 	"require": {
-		"workerman/workerman": "^5"
+		"workerman/workerman": "dev-master"
 	},
 	"autoload": {
 		"psr-4": {

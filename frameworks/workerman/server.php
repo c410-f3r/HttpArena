@@ -2,6 +2,7 @@
 
 use Workerman\Worker;
 use Workerman\Protocols\Http\Response;
+use Workerman\Connection\TcpConnection;
 
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/db.php';
@@ -12,6 +13,9 @@ $http_worker->reusePort = true;
 
 // 1 process per CPU core
 $http_worker->count = (int) shell_exec('nproc');
+
+// Increase max package size to 30MB for file upload test
+TcpConnection::$defaultMaxPackageSize = 30 * 1024 * 1024;
 
 // benchmark data
 define('JSON_DATA', json_decode(file_get_contents('/data/dataset.json'), true));
@@ -57,9 +61,9 @@ $http_worker->onMessage = static function ($connection, $request) {
             $connection->headers = ['Content-Type' => 'application/json'];
             return $connection->send(json_encode(['items' => $total, 'count' => count($total)]));
         
-        // case '/upload':
-        //     $connection->headers = ['Content-Type' => 'text/plain'];
-        //     return $connection->send(strlen($request->rawBody()));
+        case '/upload':
+            $connection->headers = ['Content-Type' => 'text/plain'];
+            return $connection->send(strlen($request->rawBody()));
 
         case '/compression':
             if (str_contains($request->header('Accept-Encoding', ''), 'gzip')) {
@@ -83,11 +87,11 @@ $http_worker->onMessage = static function ($connection, $request) {
             );
     }
 
-    // Serve static files
-    // if (str_starts_with($request->path(), '/static/')) {
-    //     $response = (new Response())->withFile('/data' . $request->path());
-    //     return $connection->send($response);
-    // }
+    //Serve static files
+    if (str_starts_with($request->path(), '/static/')) {
+        $response = (new Response())->withFile('/data' . $request->path());
+        return $connection->send($response);
+    }
 
     return $connection->send(new Response(
         404,
