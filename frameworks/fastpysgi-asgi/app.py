@@ -366,6 +366,6 @@ if __name__ == "__main__":
     port = 8080
 
     fastpysgi.server.read_buffer_size = 256*1024
-    fastpysgi.server.backlog = 4096
+    fastpysgi.server.backlog = 16*1024
     fastpysgi.server.loop_timeout = 1
     fastpysgi.run(app, host, port, workers = CPU_COUNT, loglevel = 0)
