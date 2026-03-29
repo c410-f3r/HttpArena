@@ -63,6 +63,7 @@
   "tonic-grpc": {"description": "Rust gRPC server using tonic, a native Rust gRPC implementation built on top of hyper and tower.", "repo": "https://github.com/hyperium/tonic", "type": "framework", "engine": "Tonic"},
   "ulfius": {"description": "Ulfius C REST framework built on GNU Libmicrohttpd with Jansson JSON. Lightweight with small memory footprint, designed for embedded systems.", "repo": "https://github.com/babelouest/ulfius", "type": "framework", "engine": "libmicrohttpd"},
   "ultimate-express": {"description": "ultimate-express (Express API on uWebSockets.js) with single-process threading.", "repo": "https://github.com/dimdenGD/ultimate-express", "type": "framework", "engine": "uWebSockets"},
+  "uWebSockets.js": {"description": "Native C++ HTTP/WebSocket server exposed as a Node.js addon. Uses µSockets event loop with epoll, bypassing Node's HTTP stack entirely.", "repo": "https://github.com/uNetworking/uWebSockets.js", "type": "engine", "engine": "uWebSockets"},
   "vertx": {"description": "Eclipse Vert.x 4.5 — reactive toolkit on Netty with event-loop threading, JDK 21.", "repo": "https://github.com/eclipse-vertx/vert.x", "type": "engine", "engine": "Netty"},
   "workerman": {"description": "Workerman with PHP content handlers for all benchmark endpoints.", "repo": "https://github.com/walkor/Workerman", "type": "framework", "engine": "workerman"},
   "workerman-websocket": {"description": "Workerman WebSocket echo server", "repo": "https://github.com/walkor/Workerman", "type": "framework", "engine": "Workerman"}
