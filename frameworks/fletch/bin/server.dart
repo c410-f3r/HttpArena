@@ -37,8 +37,8 @@ Future<void> main() async {
 }
 
 Future<void> _run(dynamic _) async {
-  final jsonResponseBytes = _buildJsonResponseBytes();
-  final gzipResponseBytes = _buildGzipResponseBytes();
+  final jsonDataset = _loadDataset('/data/dataset.json');
+  final compressionDataset = _loadDataset('/data/dataset-large.json');
   final staticFiles = _loadStaticFiles();
   final sqliteDb = _openSqlite();
 
@@ -131,7 +131,15 @@ Future<void> _run(dynamic _) async {
   });
 
   app.get('/json', (req, res) {
-    res.bytes(jsonResponseBytes, contentType: 'application/json');
+    if (jsonDataset == null) {
+      res.bytes(_emptyJson, contentType: 'application/json');
+      return;
+    }
+    final items = jsonDataset.map(_mapItem).toList();
+    res.bytes(
+      utf8.encode(jsonEncode({'items': items, 'count': items.length})),
+      contentType: 'application/json',
+    );
   });
 
   // Use Content-Length header when available — avoids buffering the entire
@@ -156,7 +164,16 @@ Future<void> _run(dynamic _) async {
   });
 
   app.get('/compression', (req, res) {
-    res.bytes(gzipResponseBytes, contentType: 'application/json');
+    if (compressionDataset == null) {
+      res.bytes(Uint8List.fromList(GZipCodec(level: 1).encode(_emptyJson)),
+          contentType: 'application/json');
+      res.setHeader('Content-Encoding', 'gzip');
+      return;
+    }
+    final items = compressionDataset.map(_mapItem).toList();
+    final jsonBytes = utf8.encode(jsonEncode({'items': items, 'count': items.length}));
+    final gzipBytes = Uint8List.fromList(GZipCodec(level: 1).encode(jsonBytes));
+    res.bytes(gzipBytes, contentType: 'application/json');
     res.setHeader('Content-Encoding', 'gzip');
   });
 
@@ -259,27 +276,11 @@ Future<void> _run(dynamic _) async {
 // Data helpers
 // ---------------------------------------------------------------------------
 
-Uint8List _buildJsonResponseBytes() {
+List<dynamic>? _loadDataset(String path) {
   try {
-    final raw =
-        jsonDecode(File('/data/dataset.json').readAsStringSync()) as List;
-    final items = raw.map(_mapItem).toList();
-    return utf8.encode(jsonEncode({'items': items, 'count': items.length}));
+    return jsonDecode(File(path).readAsStringSync()) as List;
   } catch (_) {
-    return _emptyJson;
-  }
-}
-
-Uint8List _buildGzipResponseBytes() {
-  try {
-    final raw =
-        jsonDecode(File('/data/dataset-large.json').readAsStringSync()) as List;
-    final items = raw.map(_mapItem).toList();
-    final jsonBytes =
-        utf8.encode(jsonEncode({'items': items, 'count': items.length}));
-    return Uint8List.fromList(GZipCodec(level: 1).encode(jsonBytes));
-  } catch (_) {
-    return Uint8List.fromList(GZipCodec(level: 1).encode(_emptyJson));
+    return null;
   }
 }
 
