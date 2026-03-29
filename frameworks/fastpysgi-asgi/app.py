@@ -16,24 +16,34 @@ import asyncpg
 
 CPU_COUNT = int(multiprocessing.cpu_count())
 
+MIME_TYPES = {
+    '.css'  : 'text/css',
+    '.js'   : 'application/javascript',
+    '.html' : 'text/html',
+    '.woff2': 'font/woff2',
+    '.svg'  : 'image/svg+xml',
+    '.webp' : 'image/webp',
+    '.json' : 'application/json',
+}
 STATIC_DIR = '/data/static/'
 STATIC_FILES = { }
 def load_static_files():
-    global STATIC_FILES, STATIC_DIR
+    global STATIC_FILES, STATIC_DIR, MIME_TYPES
     for root, dirs, files in os.walk(STATIC_DIR):
         for filename in files:
             full_path = os.path.join(root, filename)
-            rel_path = os.path.relpath(full_path, STATIC_DIR)
-            key = rel_path.replace(os.sep, '/')
+            key = full_path.replace(os.sep, '/')
             try:
                 with open(full_path, 'rb') as file:
                     data = file.read()
             except Exception as e:
                 continue
             ext = os.path.splitext(filename)[1]
-            content_type, encoding = mimetypes.guess_type(full_path)
+            content_type = MIME_TYPES.get(ext)
             if content_type is None:
-                content_type = 'application/octet-stream'
+                content_type, encoding = mimetypes.guess_type(full_path)
+                if content_type is None:
+                    content_type = 'application/octet-stream'
             STATIC_FILES[key] = (data, content_type.encode())
 
 load_static_files()
