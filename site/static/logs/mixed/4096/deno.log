@@ -1,404 +1,157 @@
 [serve-worker-0 ] deno serve: Listening on http://0.0.0.0:8080/ with 128 threads
-[serve-worker-92] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-43] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
   name: "Http"
 }
-[serve-worker-101] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-125] BadResource: Cannot read request body as underlying resource unavailable
+    at ext:deno_http/00_serve.ts:252:26
+    at Object.pull (ext:deno_web/06_streams.js:973:11)
+    at eventLoopTick (ext:core/01_core.js:177:7) {
+  name: "BadResource"
+}
+[serve-worker-29] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
   name: "Http"
 }
-[serve-worker-35] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-52] BadResource: Cannot read request body as underlying resource unavailable
+    at ext:deno_http/00_serve.ts:252:26
+    at Object.pull (ext:deno_web/06_streams.js:973:11)
+    at eventLoopTick (ext:core/01_core.js:177:7) {
+  name: "BadResource"
+}
+[serve-worker-0 ] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
   name: "Http"
 }
-[serve-worker-30] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-67] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
   name: "Http"
 }
-[serve-worker-47] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-67] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
   name: "Http"
 }
-[serve-worker-123] BadResource: Cannot read body as underlying resource unavailable
+[serve-worker-75] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
+  name: "Http"
+}
+[serve-worker-75] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
+  name: "Http"
+}
+[serve-worker-75] BadResource: Cannot read body as underlying resource unavailable
     at ext:deno_fetch/22_body.js:170:19
     at eventLoopTick (ext:core/01_core.js:177:7)
     at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
+    at async Object.fetch (file:///app/main.ts:200:27)
     at async mapped (ext:deno_http/00_serve.ts:391:18) {
   name: "BadResource"
 }
-[serve-worker-123] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-39] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-81] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-31] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-1 ] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-99] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-7 ] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-70] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-127] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-17] BadResource: Cannot read body as underlying resource unavailable
-    at ext:deno_fetch/22_body.js:170:19
-    at eventLoopTick (ext:core/01_core.js:177:7)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-75] BadResource: Cannot read request body as underlying resource unavailable
+    at ext:deno_http/00_serve.ts:252:26
+    at Object.pull (ext:deno_web/06_streams.js:973:11)
+    at eventLoopTick (ext:core/01_core.js:177:7) {
   name: "BadResource"
 }
-[serve-worker-62] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-75] Http: error reading a body from connection
+    at Object.pull (ext:deno_web/06_streams.js:963:38)
+    at Module.invokeCallbackFunction (ext:deno_webidl/00_webidl.js:1116:16)
+    at ReadableByteStreamController.pullAlgorithm (ext:deno_web/06_streams.js:3588:14)
+    at readableByteStreamControllerCallPullIfNeeded (ext:deno_web/06_streams.js:1263:49)
+    at ext:deno_web/06_streams.js:1271:11
+    at eventLoopTick (ext:core/01_core.js:177:7) {
   name: "Http"
 }
-[serve-worker-14] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-75] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
   name: "Http"
-}
-[serve-worker-11] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-14] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-121] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-11] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-78] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-72] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-89] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-78] BadResource: Cannot read body as underlying resource unavailable
-    at ext:deno_fetch/22_body.js:170:19
-    at eventLoopTick (ext:core/01_core.js:177:7)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "BadResource"
 }
 [serve-worker-114] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
   name: "Http"
 }
-[serve-worker-62] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-62] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-62] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-107] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-19] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-69] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-92] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-92] BadResource: Cannot read body as underlying resource unavailable
-    at ext:deno_fetch/22_body.js:170:19
-    at eventLoopTick (ext:core/01_core.js:177:7)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "BadResource"
-}
-[serve-worker-98] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-86] BadResource: Cannot read body as underlying resource unavailable
-    at ext:deno_fetch/22_body.js:170:19
-    at eventLoopTick (ext:core/01_core.js:177:7)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "BadResource"
-}
-[serve-worker-86] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-69] BadResource: Cannot read body as underlying resource unavailable
-    at ext:deno_fetch/22_body.js:170:19
-    at eventLoopTick (ext:core/01_core.js:177:7)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "BadResource"
-}
-[serve-worker-6 ] BadResource: Cannot read body as underlying resource unavailable
-    at ext:deno_fetch/22_body.js:170:19
-    at eventLoopTick (ext:core/01_core.js:177:7)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "BadResource"
-}
-[serve-worker-8 ] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-64] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-67] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-67] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-67] BadResource: Cannot read body as underlying resource unavailable
-    at ext:deno_fetch/22_body.js:170:19
-    at eventLoopTick (ext:core/01_core.js:177:7)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "BadResource"
-}
-[serve-worker-77] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-108] BadResource: Cannot read body as underlying resource unavailable
-    at ext:deno_fetch/22_body.js:170:19
-    at eventLoopTick (ext:core/01_core.js:177:7)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-87] BadResource: Cannot read request body as underlying resource unavailable
+    at ext:deno_http/00_serve.ts:252:26
+    at Object.pull (ext:deno_web/06_streams.js:973:11)
+    at eventLoopTick (ext:core/01_core.js:177:7) {
   name: "BadResource"
 }
 [serve-worker-87] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+    at Object.pull (ext:deno_web/06_streams.js:963:38)
+    at Module.invokeCallbackFunction (ext:deno_webidl/00_webidl.js:1116:16)
+    at ReadableByteStreamController.pullAlgorithm (ext:deno_web/06_streams.js:3588:14)
+    at readableByteStreamControllerCallPullIfNeeded (ext:deno_web/06_streams.js:1263:49)
+    at ext:deno_web/06_streams.js:1271:11
+    at eventLoopTick (ext:core/01_core.js:177:7) {
   name: "Http"
 }
-[serve-worker-69] BadResource: Cannot read body as underlying resource unavailable
+[serve-worker-75] BadResource: Cannot read body as underlying resource unavailable
     at ext:deno_fetch/22_body.js:170:19
     at eventLoopTick (ext:core/01_core.js:177:7)
     at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
+    at async Object.fetch (file:///app/main.ts:200:27)
     at async mapped (ext:deno_http/00_serve.ts:391:18) {
   name: "BadResource"
 }
-[serve-worker-61] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-75] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
   name: "Http"
 }
-[serve-worker-113] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-110] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
   name: "Http"
 }
-[serve-worker-55] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-23] Http: error reading a body from connection
+    at Object.pull (ext:deno_web/06_streams.js:963:38)
+    at Module.invokeCallbackFunction (ext:deno_webidl/00_webidl.js:1116:16)
+    at ReadableByteStreamController.pullAlgorithm (ext:deno_web/06_streams.js:3588:14)
+    at readableByteStreamControllerCallPullIfNeeded (ext:deno_web/06_streams.js:1263:49)
+    at ext:deno_web/06_streams.js:1271:11
+    at eventLoopTick (ext:core/01_core.js:177:7) {
   name: "Http"
 }
-[serve-worker-6 ] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
+[serve-worker-23] Http: error reading a body from connection
+    at Object.pull (ext:deno_web/06_streams.js:963:38)
+    at Module.invokeCallbackFunction (ext:deno_webidl/00_webidl.js:1116:16)
+    at ReadableByteStreamController.pullAlgorithm (ext:deno_web/06_streams.js:3588:14)
+    at readableByteStreamControllerCallPullIfNeeded (ext:deno_web/06_streams.js:1263:49)
+    at ext:deno_web/06_streams.js:1271:11
+    at eventLoopTick (ext:core/01_core.js:177:7) {
   name: "Http"
 }
-[serve-worker-94] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-108] Http: error reading a body from connection
-    at async readableStreamCollectIntoUint8Array (ext:deno_web/06_streams.js:1095:19)
-    at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:125:40)
-    at async mapped (ext:deno_http/00_serve.ts:391:18) {
-  name: "Http"
-}
-[serve-worker-108] BadResource: Cannot read body as underlying resource unavailable
+[serve-worker-75] BadResource: Cannot read body as underlying resource unavailable
     at ext:deno_fetch/22_body.js:170:19
     at eventLoopTick (ext:core/01_core.js:177:7)
     at async consumeBody (ext:deno_fetch/22_body.js:268:9)
-    at async Object.fetch (file:///app/main.ts:132:27)
+    at async Object.fetch (file:///app/main.ts:200:27)
     at async mapped (ext:deno_http/00_serve.ts:391:18) {
+  name: "BadResource"
+}
+[serve-worker-11] BadResource: Cannot read request body as underlying resource unavailable
+    at ext:deno_http/00_serve.ts:252:26
+    at Object.pull (ext:deno_web/06_streams.js:973:11)
+    at eventLoopTick (ext:core/01_core.js:177:7) {
+  name: "BadResource"
+}
+[serve-worker-75] Http: error reading a body from connection
+    at async Object.pull (ext:deno_web/06_streams.js:963:27) {
+  name: "Http"
+}
+[serve-worker-32] BadResource: Cannot read request body as underlying resource unavailable
+    at ext:deno_http/00_serve.ts:252:26
+    at Object.pull (ext:deno_web/06_streams.js:973:11)
+    at eventLoopTick (ext:core/01_core.js:177:7) {
+  name: "BadResource"
+}
+[serve-worker-36] BadResource: Cannot read request body as underlying resource unavailable
+    at ext:deno_http/00_serve.ts:252:26
+    at Object.pull (ext:deno_web/06_streams.js:973:11)
+    at eventLoopTick (ext:core/01_core.js:177:7) {
+  name: "BadResource"
+}
+[serve-worker-63] BadResource: Cannot read request body as underlying resource unavailable
+    at ext:deno_http/00_serve.ts:252:26
+    at Object.pull (ext:deno_web/06_streams.js:973:11)
+    at eventLoopTick (ext:core/01_core.js:177:7) {
   name: "BadResource"
 }
