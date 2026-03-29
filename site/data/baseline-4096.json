@@ -1058,5 +1058,25 @@
     "status_3xx": 0,
     "status_4xx": 0,
     "status_5xx": 0
+  },
+  {
+    "framework": "uWebSockets.js",
+    "language": "JS",
+    "rps": 2374553,
+    "avg_latency": "1.72ms",
+    "p99_latency": "3.66ms",
+    "cpu": "6370.7%",
+    "memory": "816.3MiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "319.11MB/s",
+    "input_bw": "183.43MB/s",
+    "reconnects": 0,
+    "status_2xx": 11872765,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
   }
 ]
