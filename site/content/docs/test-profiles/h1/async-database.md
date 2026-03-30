@@ -92,25 +92,26 @@ When Postgres is unavailable or the query returns no rows, return:
 {"items":[],"count":0}
 ```
 
-## Connection details
+## Environment variables
 
-The framework receives the Postgres connection string via the `DATABASE_URL` environment variable:
+The benchmark runner provides these environment variables to your container:
 
-```
-DATABASE_URL=postgres://bench:bench@localhost:5432/benchmark
-```
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `DATABASE_URL` | `postgres://bench:bench@localhost:5432/benchmark` | Postgres connection string. Always read from this - never hardcode. |
+| `DATABASE_MAX_CONN` | `512` | Maximum connections allowed by the Postgres instance. Use this to size your connection pool. |
 
 ## Implementation notes
 
 - **Async driver required** - use your language's async Postgres driver (e.g., `asyncpg` for Python, `tokio-postgres` for Rust, `pg` for Node.js, `r2d2`/`deadpool` for connection pools)
-- **Connection pool** - initialize a pool at startup. Recommended pool size: number of CPU cores or 16-32 connections
+- **Connection pool** - initialize a pool at startup. Read `DATABASE_MAX_CONN` to set your pool size. A good default is `min(DATABASE_MAX_CONN, num_cpus)` or a fixed value like 128-256
 - **Prepared statements** - prepare the query once per connection, reuse across requests
 - **Default parameters** - if `min` or `max` query parameters are missing, default to `10` and `50` respectively
 - **Tags are JSONB** - Postgres returns them as native JSON, no string parsing needed (unlike the SQLite `/db` endpoint)
 
-## Important: DATABASE_URL
+## Important: environment variables and initialization
 
-The connection string is provided via the `DATABASE_URL` environment variable. **Never hardcode** `localhost:5432` or other connection details - always read from `DATABASE_URL`.
+**Never hardcode** connection details. Always read `DATABASE_URL` for the connection string and `DATABASE_MAX_CONN` for pool sizing.
 
 The benchmark runner starts Postgres and waits for the seed data to be fully loaded before starting your framework container. By the time your server starts, Postgres is ready and accepting connections.
 
