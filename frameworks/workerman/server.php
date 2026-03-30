@@ -20,6 +20,17 @@ TcpConnection::$defaultMaxPackageSize = 30 * 1024 * 1024;
 // benchmark data
 define('JSON_DATA', json_decode(file_get_contents('/data/dataset.json'), true));
 define('LARGE_JSON', largeJson());
+define('STATIC_FILES', loadStaticFiles());
+
+const MIME = [
+    'css' => "text/css",
+    'js' => "application/javascript",
+    'html' => "text/html",
+    'woff2' => "font/woff2",
+    'svg' => "image/svg+xml",
+    'webp' => "image/webp",
+    'json' => "application/json"
+    ];
 
 function largeJson()
 {
@@ -31,13 +42,29 @@ function largeJson()
     return json_encode(['items' => $data, 'count' => count($data)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
+function loadStaticFiles() 
+{
+    $files = [];
+    $dir = new DirectoryIterator('/data/static');
+    foreach ($dir as $fileinfo) {
+        if (!$fileinfo->isDot()) {
+            $files['/static/' . $fileinfo->getFilename()] = [
+                file_get_contents($fileinfo->getPathname()),
+                MIME[mime_content_type($fileinfo->getPathname())] ?? 'application/octet-stream'
+            ];
+        }
+    }
+    return $files;
+}
+
 $http_worker->onWorkerStart = static function () {
     DB::Init();
 };
 
 // Data received
 $http_worker->onMessage = static function ($connection, $request) {
-    switch ($request->path()) {
+    $path = $request->path();
+    switch ($path) {
         case '/pipeline':
             $connection->headers = ['Content-Type' => 'text/plain'];
             return $connection->send('ok');
@@ -88,9 +115,11 @@ $http_worker->onMessage = static function ($connection, $request) {
     }
 
     //Serve static files
-    if (str_starts_with($request->path(), '/static/')) {
-        $response = (new Response())->withFile('/data' . $request->path());
-        return $connection->send($response);
+    if (str_starts_with($path, '/static/')) {
+        if (isset(STATIC_FILES[$path])) {
+            $connection->headers = ['Content-Type' => STATIC_FILES[$path][1]];
+            return $connection->send(STATIC_FILES[$path][0]);
+        }
     }
 
     return $connection->send(new Response(
