@@ -101,10 +101,10 @@ func loadDatasetLarge() {
 }
 
 func baseline11Handler(ctx *fasthttp.RequestCtx) {
-    args := ctx.QueryArgs()
-    a := args.GetUintOrZero("a")
-    b := args.GetUintOrZero("b")
-    sum := a + b
+	args := ctx.QueryArgs()
+	a := args.GetUintOrZero("a")
+	b := args.GetUintOrZero("b")
+	sum := a + b
 
 	body := ctx.PostBody()
 	if len(body) > 0 {
@@ -113,9 +113,9 @@ func baseline11Handler(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-    ctx.Response.Header.Set("Server", "go-fasthttp")
-    ctx.SetContentType("text/plain")
-    ctx.SetBodyString(strconv.Itoa(sum))
+	ctx.Response.Header.Set("Server", "go-fasthttp")
+	ctx.SetContentType("text/plain")
+	ctx.SetBodyString(strconv.Itoa(sum))
 }
 
 func pipelineHandler(ctx *fasthttp.RequestCtx) {
@@ -216,7 +216,7 @@ func asyncDbHandler(ctx *fasthttp.RequestCtx) {
 		items = append(items, map[string]interface{}{
 			"id": id, "name": name, "category": category,
 			"price": price, "quantity": quantity, "active": active,
-			"tags": tagsArr,
+			"tags":   tagsArr,
 			"rating": map[string]interface{}{"score": ratingScore, "count": ratingCount},
 		})
 	}
@@ -275,7 +275,7 @@ func dbHandler(ctx *fasthttp.RequestCtx) {
 		items = append(items, map[string]interface{}{
 			"id": id, "name": name, "category": category,
 			"price": price, "quantity": quantity, "active": active == 1,
-			"tags": tagsArr,
+			"tags":   tagsArr,
 			"rating": map[string]interface{}{"score": ratingScore, "count": ratingCount},
 		})
 	}
@@ -301,10 +301,10 @@ func main() {
 	}, flate.BestSpeed)
 
 	fsHandler := (&fasthttp.FS{
-        Root:            "/data/static",
-        Compress:        true,
-        AcceptByteRange: true,
-    }).NewRequestHandler()
+		Root:            "/data/static",
+		Compress:        true,
+		AcceptByteRange: true,
+	}).NewRequestHandler()
 
 	staticHandler := func(ctx *fasthttp.RequestCtx) {
 		ctx.URI().SetPathBytes(ctx.Path()[len("/static"):])
@@ -326,10 +326,10 @@ func main() {
 		case "/async-db":
 			asyncDbHandler(ctx)
 		default:
-            if strings.HasPrefix(string(ctx.Path()), "/static/") {
-                staticHandler(ctx)
-                return
-            }
+			if strings.HasPrefix(string(ctx.Path()), "/static/") {
+				staticHandler(ctx)
+				return
+			}
 			if strings.HasPrefix(string(ctx.Path()), "/baseline") {
 				baseline11Handler(ctx)
 				return
