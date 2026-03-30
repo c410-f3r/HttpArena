@@ -44,9 +44,9 @@ declare -A PROFILES=(
     [unary-grpc]="1|0||256,1024|grpc"
     [unary-grpc-tls]="1|0||256,1024|grpc-tls"
     [echo-ws]="1|0||512,4096,16384|ws-echo"
-    [async-db]="1|0||512,1024|async-db"
+    [async-db]="1|0||1024|async-db"
 )
-PROFILE_ORDER=(baseline pipelined limited-conn json upload compression noisy mixed static tcp-frag async-db baseline-h2 static-h2 baseline-h3 static-h3 unary-grpc unary-grpc-tls echo-ws)
+PROFILE_ORDER=(baseline pipelined limited-conn json upload compression noisy mixed static async-db baseline-h2 static-h2 baseline-h3 static-h3 unary-grpc unary-grpc-tls echo-ws tcp-frag)
 
 # Parse flags
 SAVE_RESULTS=false
@@ -297,12 +297,13 @@ restore_settings() {
     fi
     # Restore loopback MTU in case tcp-frag test was interrupted
     sudo ip link set lo mtu 65536 2>/dev/null || true
+    sudo ip route flush cache 2>/dev/null || true
 }
 trap restore_settings EXIT
 
-# Clean slate: stop containers, restart Docker, drop caches
+# Clean slate: stop containers, remove postgres volume, restart Docker, drop caches
 docker ps -q --filter "name=httparena-" | xargs -r docker stop -t 5 2>/dev/null || true
-docker ps -aq --filter "name=httparena-" | xargs -r docker rm -f 2>/dev/null || true
+docker ps -aq --filter "name=httparena-" | xargs -r docker rm -f -v 2>/dev/null || true
 
 AVAILABLE_CPUS=$(nproc 2>/dev/null || echo "64")
 echo "[info] Available CPUs: $AVAILABLE_CPUS"
@@ -330,6 +331,7 @@ sudo sysctl -w net.core.wmem_max=7500000 > /dev/null 2>&1 || true
 
 echo "[tune] Ensuring loopback MTU is 65536..."
 sudo ip link set lo mtu 65536 2>/dev/null || true
+sudo ip route flush cache 2>/dev/null || true
 
 echo "[clean] Restarting Docker daemon..."
 if sudo systemctl restart docker 2>/dev/null; then
@@ -360,7 +362,7 @@ if echo ",$FRAMEWORK_TESTS," | grep -qF ",async-db,"; then
             -e POSTGRES_DB=benchmark \
             -v "$ROOT_DIR/data/pgdb-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro" \
             postgres:17-alpine \
-            -c max_connections=1000
+            -c max_connections=512
         for i in $(seq 1 60); do
             if docker exec "$PG_CONTAINER" pg_isready -U bench -d benchmark >/dev/null 2>&1; then
                 if docker exec "$PG_CONTAINER" psql -U bench -d benchmark -tAc "SELECT 1 FROM items LIMIT 1" 2>/dev/null | grep -q 1; then
@@ -417,6 +419,7 @@ for profile in "${profiles_to_run[@]}"; do
         -v "$CERTS_DIR:/certs:ro")
     if [ "$endpoint" = "async-db" ] || [ "$endpoint" = "mixed" ]; then
         docker_args+=(-e "DATABASE_URL=postgres://bench:bench@localhost:5432/benchmark")
+        docker_args+=(-e "DATABASE_MAX_CONN=512")
     fi
     if [ -n "$cpu_limit" ]; then
         if [[ "$cpu_limit" == *-* ]]; then
@@ -557,7 +560,7 @@ for profile in "${profiles_to_run[@]}"; do
             -c "$CONNS" -t "$THREADS" -d 15s -p "$pipeline")
     elif [ "$endpoint" = "async-db" ]; then
         gc_args=("http://localhost:$PORT/async-db?min=10&max=50"
-            -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline")
+            -c "$CONNS" -t "$THREADS" -d 10s -p "$pipeline")
     elif [ "$endpoint" = "tcp-frag" ]; then
         # Set loopback MTU to 69 to force heavy TCP fragmentation
         echo "[tune] Setting loopback MTU to 69 for TCP fragmentation test..."
@@ -823,6 +826,9 @@ EOF
     if [ "$endpoint" = "tcp-frag" ]; then
         echo "[tune] Restoring loopback MTU to 65536..."
         sudo ip link set lo mtu 65536
+        # Flush route cache to clear stale MSS from fragmented connections
+        sudo ip route flush cache 2>/dev/null || true
+        sleep 1
     fi
 done
 
