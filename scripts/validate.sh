@@ -101,7 +101,7 @@ if has_test "async-db"; then
         -e POSTGRES_DB=benchmark \
         -v "$DATA_DIR/pgdb-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro" \
         postgres:17-alpine \
-        -c max_connections=500
+        -c max_connections=512
     for i in $(seq 1 60); do
         if docker exec "$PG_CONTAINER" pg_isready -U bench -d benchmark >/dev/null 2>&1; then
             # Ensure seed data is loaded (pg_isready fires before init scripts finish)
@@ -114,6 +114,7 @@ if has_test "async-db"; then
         sleep 1
     done
     docker_args+=(-e "DATABASE_URL=postgres://bench:bench@localhost:5432/benchmark")
+    docker_args+=(-e "DATABASE_MAX_CONN=512")
 fi
 
 # Remove any stale container from a previous run

@@ -391,7 +391,7 @@ async fn main() -> io::Result<()> {
         let pg_config: tokio_postgres::Config = url.parse().ok()?;
         let mgr = Manager::from_config(pg_config, deadpool_postgres::tokio_postgres::NoTls,
             ManagerConfig { recycling_method: RecyclingMethod::Fast });
-        let pool_size = (num_cpus::get() * 4).max(64);
+        let pool_size = 512;
         Pool::builder(mgr).max_size(pool_size).build().ok()
     });
 
