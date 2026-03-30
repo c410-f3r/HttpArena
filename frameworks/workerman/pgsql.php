@@ -2,12 +2,11 @@
 
 class Pgsql
 {
-    private static PDO $pdo;
     private static PDOStatement $bench;
 
     public static function init()
     {
-        self::$pdo = new PDO(
+        $pdo = new PDO(
             'pgsql:host=localhost;port=5432;dbname=benchmark',
             'bench',
             'bench',
@@ -17,7 +16,7 @@ class Pgsql
                 PDO::ATTR_EMULATE_PREPARES    => false
             ]
         );
-        self::$bench = self::$pdo->prepare(
+        self::$bench = $pdo->prepare(
             'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT 50'
         );
     }
