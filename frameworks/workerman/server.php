@@ -20,17 +20,18 @@ TcpConnection::$defaultMaxPackageSize = 30 * 1024 * 1024;
 // benchmark data
 define('JSON_DATA', json_decode(file_get_contents('/data/dataset.json'), true));
 define('LARGE_JSON', largeJson());
-define('STATIC_FILES', loadStaticFiles());
 
 const MIME = [
-    'css' => "text/css",
-    'js' => "application/javascript",
-    'html' => "text/html",
+    'css'   => "text/css",
+    'js'    => "application/javascript",
+    'html'  => "text/html",
     'woff2' => "font/woff2",
-    'svg' => "image/svg+xml",
-    'webp' => "image/webp",
-    'json' => "application/json"
+    'svg'   => "image/svg+xml",
+    'webp'  => "image/webp",
+    'json'  => "application/json"
     ];
+
+define('STATIC_FILES', loadStaticFiles());
 
 function largeJson()
 {
