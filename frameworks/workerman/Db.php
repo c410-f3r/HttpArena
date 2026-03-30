@@ -1,15 +1,14 @@
 <?php
 
-class DB
+class Db
 {
-    public static $db;
-    public static $prepared;
+    private static $prepared;
 
     public static function init()
     {
-        self::$db = new Sqlite3('/data/benchmark.db', SQLITE3_OPEN_READONLY);
+        $db = new Sqlite3('/data/benchmark.db', SQLITE3_OPEN_READONLY);
 
-        self::$prepared = self::$db->prepare('SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count
+        self::$prepared = $db->prepare('SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count
                             FROM items
                             WHERE price BETWEEN ? AND ?
                             LIMIT 50');
@@ -37,6 +36,7 @@ class DB
                     "count" => $row["rating_count"]],
             ];
         }
-        return json_encode(['items' => $data, 'count' => count($data)]);
+        return json_encode(['items' => $data, 'count' => count($data)],
+                            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 }
