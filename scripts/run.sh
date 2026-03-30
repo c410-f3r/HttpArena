@@ -58,6 +58,7 @@ docker_args=(--name "$CONTAINER_NAME" -p "$PORT:8080")
 docker_args+=(-v "$DATA_DIR/dataset.json:/data/dataset.json:ro")
 docker_args+=(-v "$DATA_DIR/dataset-large.json:/data/dataset-large.json:ro")
 docker_args+=(-v "$DATA_DIR/static:/data/static:ro")
+docker_args+=(-e "DATABASE_URL=postgres://bench:bench@localhost:5432/benchmark")
 
 if [ -d "$CERTS_DIR" ]; then
     docker_args+=(-p "$H2PORT:8443" -v "$CERTS_DIR:/certs:ro")
