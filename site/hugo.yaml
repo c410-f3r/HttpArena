@@ -19,6 +19,9 @@ menu:
     - name: Knowledge Base
       pageRef: /docs
       weight: 2
+    - name: RFC Compliance
+      weight: 3
+      url: https://mda2av.github.io/Http11Probe/
     - name: Search
       weight: 5
       params:

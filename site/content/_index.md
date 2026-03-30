@@ -22,9 +22,15 @@ layout: hextra-home
 
 <div style="height:20px"></div>
 
+<style>
+.hextra-cards > a:first-child { background: rgba(22,163,74,0.08) !important; border-color: rgba(22,163,74,0.25) !important; }
+.hextra-cards > a:first-child:hover { border-color: rgba(22,163,74,0.5) !important; background: rgba(22,163,74,0.12) !important; }
+html.dark .hextra-cards > a:first-child { background: rgba(22,163,74,0.12) !important; border-color: rgba(22,163,74,0.3) !important; }
+html.dark .hextra-cards > a:first-child:hover { background: rgba(22,163,74,0.18) !important; border-color: rgba(22,163,74,0.5) !important; }
+</style>
+
 {{< cards >}}
   {{< card link="leaderboard" title="Leaderboard" subtitle="See which frameworks handle the most requests per second, ranked by throughput." icon="chart-bar" >}}
-  {{< card link="https://mda2av.github.io/Http11Probe/" title="Compliance & Security" subtitle="HTTP/1.1 compliance testing — RFC conformance, request smuggling vectors, and malformed input handling." icon="shield-check" >}}
   {{< card link="docs/running-locally" title="Run Locally" subtitle="Set up and run the full benchmark suite on your own machine with Docker and gcannon." icon="terminal" >}}
   {{< card link="docs/add-framework" title="Add a Framework" subtitle="Add your framework with a Dockerfile and open a PR. Three steps to join the arena." icon="plus-circle" >}}
 {{< /cards >}}
