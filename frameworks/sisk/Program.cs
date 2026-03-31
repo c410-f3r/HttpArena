@@ -7,6 +7,7 @@ using sisk;
 using Microsoft.Data.Sqlite;
 using Sisk.Cadente.CoreEngine;
 using Sisk.Core.Http;
+using Sisk.Core.Http.FileSystem;
 using Sisk.Core.Routing;
 
 var certPath = Environment.GetEnvironmentVariable("TLS_CERT") ?? "/certs/server.crt";
@@ -31,10 +32,14 @@ if (hasCert)
 
 Router router = new Router();
 
+router.SetRoute(HttpFileServer.CreateServingRoute("/static", "/data/static"));
+
 router.MapGet("/baseline11", r => new HttpResponse(Sum(r)));
 router.MapPost("/baseline11", r => new HttpResponse(Sum(r)));
 
 router.MapGet("/baseline2", r => new HttpResponse(Sum(r)));
+
+router.MapGet("/pipeline", r => new HttpResponse("ok"));
 
 router.MapPost("/upload", r =>
 {
