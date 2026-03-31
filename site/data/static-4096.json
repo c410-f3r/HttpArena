@@ -740,6 +740,26 @@
     "status_5xx": 0
   },
   {
+    "framework": "Roda",
+    "language": "Ruby",
+    "rps": 321549,
+    "avg_latency": "9.26ms",
+    "p99_latency": "49.10ms",
+    "cpu": "9199.4%",
+    "memory": "18.6GiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "4.82GB/s",
+    "input_bw": "17.48MB/s",
+    "reconnects": 170380,
+    "status_2xx": 1610965,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "salvo",
     "language": "Rust",
     "rps": 474583,
