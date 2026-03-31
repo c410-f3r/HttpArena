@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 [JsonSerializable(typeof(ProcessedItem))]
 [JsonSerializable(typeof(RatingInfo))]
 [JsonSerializable(typeof(List<string>))]
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 partial class AppJsonContext : JsonSerializerContext { }
 
 static class Handlers
@@ -38,18 +39,22 @@ static class Handlers
         if (AppData.DatasetItems == null)
             return TypedResults.Problem("Dataset not loaded");
 
-        var items = AppData.DatasetItems.Select(item => new ProcessedItem
+        var items = new List<ProcessedItem>(AppData.DatasetItems.Count);
+        foreach (var item in AppData.DatasetItems)
         {
-            Id = item.Id,
-            Name = item.Name,
-            Category = item.Category,
-            Price = item.Price,
-            Quantity = item.Quantity,
-            Active = item.Active,
-            Tags = item.Tags,
-            Rating = item.Rating,
-            Total = Math.Round(item.Price * item.Quantity, 2)
-        }).ToList();
+            items.Add(new ProcessedItem
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Category = item.Category,
+                Price = item.Price,
+                Quantity = item.Quantity,
+                Active = item.Active,
+                Tags = item.Tags,
+                Rating = item.Rating,
+                Total = Math.Round(item.Price * item.Quantity, 2)
+            });
+        }
 
         return TypedResults.Json(new ResponseDto(items, AppData.DatasetItems.Count), AppJsonContext.Default);
     }
