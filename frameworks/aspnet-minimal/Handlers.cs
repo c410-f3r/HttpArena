@@ -1,17 +1,18 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 
 [JsonSerializable(typeof(ResponseDto))]
+[JsonSerializable(typeof(ProcessedItem))]
+[JsonSerializable(typeof(RatingInfo))]
+[JsonSerializable(typeof(List<string>))]
 partial class AppJsonContext : JsonSerializerContext { }
-
-record ResponseDto(IEnumerable<ProcessedItem> Items, int Count);
 
 static class Handlers
 {
-    
     public static int Sum(int a, int b) => a + b;
-    
+
     public static async ValueTask<int> SumBody(int a, int b, HttpRequest req)
     {
         using var reader = new StreamReader(req.Body);
@@ -32,10 +33,10 @@ static class Handlers
         return Results.Text(size.ToString());
     }
 
-    public static IResult Json()
+    public static Results<Ok<ResponseDto>, ProblemHttpResult> Json()
     {
         if (AppData.DatasetItems == null)
-            return Results.Problem("Dataset not loaded");
+            return TypedResults.Problem("Dataset not loaded");
 
         var items = AppData.DatasetItems.Select(item => new ProcessedItem
         {
@@ -50,8 +51,7 @@ static class Handlers
             Total = Math.Round(item.Price * item.Quantity, 2)
         });
 
-        return Results.Json(new ResponseDto(items, AppData.DatasetItems.Count),
-                            AppJsonContext.Default.ResponseDto);
+        return TypedResults.Ok(new ResponseDto(items, AppData.DatasetItems.Count));
     }
 
     public static IResult Compression()
