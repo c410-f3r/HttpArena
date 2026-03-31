@@ -32,12 +32,6 @@ builder.WebHost.ConfigureKestrel(options =>
     }
 });
 
-// Configure the Minimal API to use your Source Generation context
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    options.SerializerOptions.TypeInfoResolver = AppJsonContext.Default;
-});
-
 builder.Services.AddResponseCompression();
 
 var app = builder.Build();

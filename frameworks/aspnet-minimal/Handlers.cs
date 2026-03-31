@@ -33,7 +33,7 @@ static class Handlers
         return Results.Text(size.ToString());
     }
 
-    public static Results<Ok<ResponseDto>, ProblemHttpResult> Json()
+    public static Results<JsonHttpResult<ResponseDto>, ProblemHttpResult> Json()
     {
         if (AppData.DatasetItems == null)
             return TypedResults.Problem("Dataset not loaded");
@@ -51,7 +51,7 @@ static class Handlers
             Total = Math.Round(item.Price * item.Quantity, 2)
         });
 
-        return TypedResults.Ok(new ResponseDto(items, AppData.DatasetItems.Count));
+        return TypedResults.Json(new ResponseDto(items, AppData.DatasetItems.Count), AppJsonContext.Default);
     }
 
     public static IResult Compression()
