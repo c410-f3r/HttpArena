@@ -2,12 +2,14 @@
 title: Validation
 ---
 
-The mixed workload profile does not have its own dedicated validation checks. Instead, each endpoint used in the mixed test is validated through its respective test profile:
+The mixed workload uses 7 endpoints. Subscribing to the `mixed` test automatically triggers validation for all of them, even if the individual tests are not listed in `meta.json`:
 
-- `/baseline11` — validated by the [Baseline](../../baseline/validation) checks
-- `/json` — validated by the [JSON Processing](../../json-processing/validation) checks
-- `/db` — validated by the [Database Query](../../database/validation) checks
-- `/upload` — validated by the [Upload](../../upload/validation) checks
-- `/compression` — validated by the [Compression](../../compression/validation) checks
+- `/baseline11` — [Baseline validation](../../baseline/validation) (GET, POST, chunked POST, anti-cheat)
+- `/json` — [JSON Processing validation](../../json-processing/validation) (structure, totals, Content-Type)
+- `/db` — [Database Query validation](../../database/validation) (structure, Content-Type, empty range)
+- `/upload` — [Upload validation](../../upload/validation) (byte count, random anti-cheat)
+- `/compression` — [Compression validation](../../compression/validation) (Content-Encoding, content, size, per-request)
+- `/static/*` — [Static Files validation](../../static/validation) (Content-Types, file sizes, 404)
+- `/async-db` — [Async Database validation](../../async-database/validation) (structure, Content-Type, empty range)
 
-A framework subscribed to the `mixed` test must also implement all five endpoints. The database endpoint (`/db`) validation is triggered specifically when the `mixed` test is in the framework's test list.
+The Postgres sidecar is started automatically when `mixed` is in the test list, and all required data volumes (`dataset-large.json`, `benchmark.db`, `static/`) are mounted.
