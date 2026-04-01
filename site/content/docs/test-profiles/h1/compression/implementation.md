@@ -30,7 +30,7 @@ A framework must meet **both** requirements:
 
 Frameworks excluded due to no built-in compression: hyper, Node.js, Express, Deno, Flask.
 
-Frameworks excluded due to non-configurable compression level: actix, drogon, Spring Boot (Tomcat).
+Frameworks excluded due to non-configurable compression level: drogon, Spring Boot (Tomcat).
 
 ## Compression level
 
