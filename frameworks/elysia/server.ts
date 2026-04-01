@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 import { Database } from "bun:sqlite";
-import { readFileSync, readdirSync } from "fs";
+import { readFileSync } from "fs";
 
 const MIME_TYPES: Record<string, string> = {
   ".css": "text/css", ".js": "application/javascript", ".html": "text/html",
@@ -44,15 +44,7 @@ let pgPool: any = null;
   }
 }
 
-// Pre-load static files
-const staticFiles: Record<string, { buf: Buffer; ct: string }> = {};
-try {
-  for (const name of readdirSync("/data/static")) {
-    const buf = readFileSync(`/data/static/${name}`);
-    const ext = name.slice(name.lastIndexOf("."));
-    staticFiles[name] = { buf: Buffer.from(buf), ct: MIME_TYPES[ext] || "application/octet-stream" };
-  }
-} catch (_) {}
+const STATIC_DIR = "/data/static";
 
 function sumQuery(url: string): number {
   const q = url.indexOf("?");
@@ -198,11 +190,12 @@ function addRoutes(app: Elysia) {
       });
     })
 
-    .get("/static/:filename", ({ params: { filename } }) => {
-      const sf = staticFiles[filename];
-      if (sf) {
-        return new Response(sf.buf, {
-          headers: { "content-type": sf.ct, "content-length": String(sf.buf.length) },
+    .get("/static/:filename", async ({ params: { filename } }) => {
+      const file = Bun.file(`${STATIC_DIR}/${filename}`);
+      if (await file.exists()) {
+        const ext = filename.slice(filename.lastIndexOf("."));
+        return new Response(file, {
+          headers: { "content-type": MIME_TYPES[ext] || "application/octet-stream" },
         });
       }
       return new Response("Not found", { status: 404 });

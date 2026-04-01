@@ -36,12 +36,12 @@ Future<void> main(List<String> args) async {
       ? (int.tryParse(args[0]) ?? Platform.numberOfProcessors)
       : Platform.numberOfProcessors;
   for (var i = 1; i < n; i++) {
-    await Isolate.spawn(_run, null);
+    await Isolate.spawn(_run, n);
   }
-  await _run(null);
+  await _run(n);
 }
 
-Future<void> _run(dynamic _) async {
+Future<void> _run(dynamic numIsolates) async {
   final jsonDataset = _loadDataset('/data/dataset.json');
   final compressionDataset = _loadDataset('/data/dataset-large.json');
   final staticFiles = _loadStaticFiles();
@@ -74,7 +74,7 @@ Future<void> _run(dynamic _) async {
     }
     pgLastConnectAttempt = now;
 
-    final connectFuture = _openPostgresPool().then((pool) {
+    final connectFuture = _openPostgresPool(numIsolates as int).then((pool) {
       if (pool != null) pgPool = pool;
       return pool;
     }).whenComplete(() {
@@ -319,7 +319,7 @@ Database? _openSqlite() {
   }
 }
 
-Future<Pool?> _openPostgresPool() async {
+Future<Pool?> _openPostgresPool(int numIsolates) async {
   final dbUrl = Platform.environment['DATABASE_URL'];
   if (dbUrl == null) return null;
   try {
@@ -332,12 +332,13 @@ Future<Pool?> _openPostgresPool() async {
       username: userInfo[0],
       password: userInfo.length > 1 ? userInfo[1] : '',
     );
-    // 4 connections per isolate; with N isolates total = 4N concurrent queries.
+    final maxConn = int.tryParse(Platform.environment['DATABASE_MAX_CONN'] ?? '') ?? 256;
+    final perIsolate = (maxConn ~/ numIsolates).clamp(1, maxConn);
     final pool = Pool.withEndpoints(
       [endpoint],
-      settings: const PoolSettings(
+      settings: PoolSettings(
         sslMode: SslMode.disable,
-        maxConnectionCount: 4,
+        maxConnectionCount: perIsolate,
       ),
     );
     // Warm up one connection to catch auth/config errors early.

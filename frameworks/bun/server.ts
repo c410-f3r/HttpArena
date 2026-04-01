@@ -45,15 +45,7 @@ let pgPool: any = null;
   }
 }
 
-// Pre-load static files
-const staticFiles: Record<string, { buf: Buffer; ct: string }> = {};
-try {
-  for (const name of fs.readdirSync("/data/static")) {
-    const buf = fs.readFileSync(`/data/static/${name}`);
-    const ext = name.slice(name.lastIndexOf("."));
-    staticFiles[name] = { buf: Buffer.from(buf), ct: MIME_TYPES[ext] || "application/octet-stream" };
-  }
-} catch (_) {}
+const STATIC_DIR = "/data/static";
 
 function sumQuery(url: string): number {
   const q = url.indexOf("?");
@@ -184,10 +176,12 @@ async function handleRequest(req: Request): Promise<Response> {
 
   if (path.startsWith("/static/")) {
     const name = path.slice(8);
-    const sf = staticFiles[name];
-    if (sf) {
-      return new Response(sf.buf, {
-        headers: { "content-type": sf.ct, "content-length": String(sf.buf.length) },
+    const filePath = `${STATIC_DIR}/${name}`;
+    const file = Bun.file(filePath);
+    if (await file.exists()) {
+      const ext = name.slice(name.lastIndexOf("."));
+      return new Response(file, {
+        headers: { "content-type": MIME_TYPES[ext] || "application/octet-stream" },
       });
     }
     return new Response("Not found", { status: 404 });
