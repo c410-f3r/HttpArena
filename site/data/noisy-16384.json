@@ -38,25 +38,6 @@
     "status_5xx": 0
   },
   {
-    "framework": "bun",
-    "language": "TS",
-    "rps": 1944471,
-    "avg_latency": "5.91ms",
-    "p99_latency": "44.30ms",
-    "cpu": "8333.8%",
-    "memory": "2.3GiB",
-    "connections": 16384,
-    "threads": 64,
-    "duration": "5s",
-    "pipeline": 1,
-    "bandwidth": "190.52MB/s",
-    "reconnects": 4339,
-    "status_2xx": 9800135,
-    "status_3xx": 0,
-    "status_4xx": 4339,
-    "status_5xx": 0
-  },
-  {
     "framework": "chi",
     "language": "Go",
     "rps": 406766,
@@ -605,6 +586,26 @@
     "status_2xx": 3686799,
     "status_3xx": 0,
     "status_4xx": 1220358,
+    "status_5xx": 0
+  },
+  {
+    "framework": "bun",
+    "language": "TS",
+    "rps": 1974308,
+    "avg_latency": "5.83ms",
+    "p99_latency": "40.00ms",
+    "cpu": "7432.2%",
+    "memory": "2.2GiB",
+    "connections": 16384,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "193.62MB/s",
+    "input_bw": "199.58MB/s",
+    "reconnects": 4386,
+    "status_2xx": 9950516,
+    "status_3xx": 0,
+    "status_4xx": 4386,
     "status_5xx": 0
   },
   {

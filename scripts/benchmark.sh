@@ -34,7 +34,7 @@ declare -A PROFILES=(
     [upload]="1|0||64,256,512|upload"
     [compression]="1|0||4096,16384|compression"
     [noisy]="1|0||512,4096,16384|noisy"
-    [mixed]="1|5||4096,16384|mixed"
+    [mixed]="1|5||4096|mixed"
     [static]="1|10||4096,16384|static"
     [tcp-frag]="1|2||512,4096,16384|tcp-frag"
     [baseline-h2]="1|0||256,1024|h2"
@@ -369,7 +369,7 @@ if echo ",$FRAMEWORK_TESTS," | grep -qF ",async-db,"; then
             -e POSTGRES_DB=benchmark \
             -v "$ROOT_DIR/data/pgdb-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro" \
             postgres:17-alpine \
-            -c max_connections=512
+            -c max_connections=256
         for i in $(seq 1 60); do
             if docker exec "$PG_CONTAINER" pg_isready -U bench -d benchmark >/dev/null 2>&1; then
                 if docker exec "$PG_CONTAINER" psql -U bench -d benchmark -tAc "SELECT 1 FROM items LIMIT 1" 2>/dev/null | grep -q 1; then
@@ -426,7 +426,7 @@ for profile in "${profiles_to_run[@]}"; do
         -v "$CERTS_DIR:/certs:ro")
     if [ "$endpoint" = "async-db" ] || [ "$endpoint" = "mixed" ]; then
         docker_args+=(-e "DATABASE_URL=postgres://bench:bench@localhost:5432/benchmark")
-        docker_args+=(-e "DATABASE_MAX_CONN=512")
+        docker_args+=(-e "DATABASE_MAX_CONN=256")
     fi
     if [ -n "$cpu_limit" ]; then
         if [[ "$cpu_limit" == *-* ]]; then
