@@ -71,15 +71,17 @@ jobs:
       - name: Compare with main
         id: compare
         run: |
+          # Preserve benchmark results before overwriting site/data for comparison
+          cp -r site/data /tmp/bench_site_data 2>/dev/null || true
           # Use main's site/data for comparison
           if [ -d /tmp/main_site_data ]; then
             cp -r /tmp/main_site_data/* site/data/ 2>/dev/null || true
           fi
           comparison=$(./scripts/compare.sh "${{ inputs.framework }}" "${{ inputs.profile }}" 2>/dev/null || echo "")
           echo "$comparison" > /tmp/bench_comparison.md
-          # Restore PR site/data
-          if [ -d /tmp/pr_site_data ]; then
-            cp -r /tmp/pr_site_data/* site/data/ 2>/dev/null || true
+          # Restore benchmark site/data (not original PR data)
+          if [ -d /tmp/bench_site_data ]; then
+            cp -r /tmp/bench_site_data/* site/data/ 2>/dev/null || true
           fi
 
       - name: Commit saved results
@@ -91,7 +93,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "results/"*"/${{ inputs.framework }}.json" site/static/logs/*/"${{ inputs.framework }}.log" 2>/dev/null || true
+          git add results/**/${{ inputs.framework }}.json site/static/logs/**/${{ inputs.framework }}.log site/data/*.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No results to commit"
           else

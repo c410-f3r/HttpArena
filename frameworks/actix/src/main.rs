@@ -3,6 +3,8 @@ use actix_web::http::header::{ContentType, HeaderValue, SERVER};
 use actix_web::{web, App, HttpResponse, HttpServer};
 use bytes::Bytes;
 use deadpool_postgres::{Manager, ManagerConfig, Pool as PgPool, RecyclingMethod};
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use futures_util::StreamExt;
 use r2d2::Pool as SqlitePool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -190,11 +192,14 @@ async fn json_endpoint(state: web::Data<AppState>) -> HttpResponse {
 }
 
 async fn compression(state: web::Data<AppState>) -> HttpResponse {
-    // Bytes::clone() is O(1) — just increments a ref count
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
+    std::io::Write::write_all(&mut encoder, &state.json_large_cache).unwrap();
+    let compressed = encoder.finish().unwrap();
     HttpResponse::Ok()
         .insert_header(("Content-Type", "application/json"))
+        .insert_header(("Content-Encoding", "gzip"))
         .insert_header(("Server", "actix"))
-        .body(state.json_large_cache.clone())
+        .body(compressed)
 }
 
 async fn db_endpoint(
@@ -358,7 +363,10 @@ async fn main() -> io::Result<()> {
                 recycling_method: RecyclingMethod::Fast,
             },
         );
-        let pool_size = (num_cpus::get() * 4).max(64);
+        let pool_size: usize = std::env::var("DATABASE_MAX_CONN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(256);
         PgPool::builder(mgr).max_size(pool_size).build().ok()
     });
 
