@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { Carno, Controller, Get, Post, Ctx, Context, Use, CompressionMiddleware } from "@carno.js/core";
 import { Database } from "bun:sqlite";
-import { readFileSync, readdirSync } from "fs";
+import { readFileSync } from "fs";
 
 // Inject reusePort so multiple workers can share port 8080
 const _serve = Bun.serve.bind(Bun);
@@ -49,15 +49,7 @@ let pgPool: any = null;
   }
 }
 
-// Pre-load static files
-const staticFiles: Record<string, { buf: Buffer; ct: string }> = {};
-try {
-  for (const name of readdirSync("/data/static")) {
-    const buf = readFileSync(`/data/static/${name}`);
-    const ext = name.slice(name.lastIndexOf("."));
-    staticFiles[name] = { buf: Buffer.from(buf), ct: MIME_TYPES[ext] || "application/octet-stream" };
-  }
-} catch (_) {}
+const STATIC_DIR = "/data/static";
 
 function sumQuery(url: string): number {
   const q = url.indexOf("?");
@@ -215,12 +207,13 @@ class BenchController {
   }
 
   @Get("/static/:filename")
-  staticFile(@Ctx() ctx: Context) {
+  async staticFile(@Ctx() ctx: Context) {
     const filename = ctx.params.filename;
-    const sf = staticFiles[filename];
-    if (sf) {
-      return new Response(sf.buf, {
-        headers: { "content-type": sf.ct, "content-length": String(sf.buf.length) },
+    const file = Bun.file(`${STATIC_DIR}/${filename}`);
+    if (await file.exists()) {
+      const ext = filename.slice(filename.lastIndexOf("."));
+      return new Response(file, {
+        headers: { "content-type": MIME_TYPES[ext] || "application/octet-stream" },
       });
     }
     return new Response("Not found", { status: 404 });
