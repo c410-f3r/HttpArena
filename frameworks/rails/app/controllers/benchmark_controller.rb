@@ -87,7 +87,8 @@ class BenchmarkController < ActionController::API
   end
 
   def compression
-    if large_json_payload
+    accept_encodings = request.headers['Accept-Encoding'].split(',').map(&:strip)
+    if accept_encodings.include? 'gzip'
       sio = StringIO.new
       gz = Zlib::GzipWriter.new(sio, 1)
       gz.write(large_json_payload)
@@ -96,7 +97,7 @@ class BenchmarkController < ActionController::API
       response.headers['Content-Encoding'] = 'gzip'
       send_data sio.string, disposition: :inline
     else
-      head 500
+      render json: large_json_payload
     end
   end
 
