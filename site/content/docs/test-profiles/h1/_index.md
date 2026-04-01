@@ -15,5 +15,6 @@ HTTP/1.1 test profiles measure framework performance over plain TCP connections 
   {{< card link="database" title="Database Query" subtitle="SQLite range query over 100K rows, result parsing, and JSON serialization. Used within the mixed workload profile." icon="database" >}}
   {{< card link="async-database" title="Async Database (Postgres)" subtitle="Async Postgres range query over 100K rows, connection pooling, and JSON serialization. Framework-only benchmark." icon="database" >}}
   {{< card link="mixed" title="Mixed Workload" subtitle="Realistic mix of baseline, JSON, DB, upload, and compression. Weighted scoring rewards heavy endpoint throughput." icon="collection" >}}
+  {{< card link="mini" title="Mini" subtitle="Same mixed workload constrained to 4 CPUs and 16 GB memory. Measures efficiency under limited resources." icon="chip" >}}
   {{< card link="pipelined" title="Pipelined (16x)" subtitle="16 requests sent back-to-back per connection, testing raw I/O and pipeline batching." icon="fast-forward" >}}
 {{< /cards >}}

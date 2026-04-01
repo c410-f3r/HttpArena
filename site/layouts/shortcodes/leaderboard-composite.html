@@ -262,15 +262,15 @@ function entriesFromRound(roundData) {
   return entries;
 }
 
-var entries, meta, avgByProfile, avgCpuByProfile, avgMemByProfile, avgBwByProfile, avgTplMixed, fwLang, allFw;
+var entries, meta, avgByProfile, avgCpuByProfile, avgMemByProfile, avgBwByProfile, avgTplByProfile, fwLang, allFw;
 
 function loadData(newEntries, newMeta) {
   entries = newEntries;
   meta = newMeta;
-  avgByProfile = {}; avgCpuByProfile = {}; avgMemByProfile = {}; avgBwByProfile = {}; avgTplMixed = {};
+  avgByProfile = {}; avgCpuByProfile = {}; avgMemByProfile = {}; avgBwByProfile = {}; avgTplByProfile = {};
   allProfileIds.forEach(function(pid) { avgByProfile[pid] = {}; avgCpuByProfile[pid] = {}; avgMemByProfile[pid] = {}; avgBwByProfile[pid] = {}; });
   var sums = {}, cpuSums = {}, memSums = {}, bwSums = {}, counts = {};
-  var tplSums = {};
+  var tplSumsByProfile = {};
   entries.forEach(function(e) {
     var key = e.profile + '|' + e.framework;
     sums[key] = (sums[key] || 0) + e.rps;
@@ -279,16 +279,18 @@ function loadData(newEntries, newMeta) {
     bwSums[key] = (bwSums[key] || 0) + parseBandwidth(e.bandwidth);
     counts[key] = (counts[key] || 0) + 1;
     if (e.profile === 'mixed' || e.profile === 'mini') {
+      if (!tplSumsByProfile[e.profile]) tplSumsByProfile[e.profile] = {};
       var fw = e.framework;
-      if (!tplSums[fw]) tplSums[fw] = {baseline:0, json:0, db:0, upload:0, compression:0, static:0, async_db:0, count:0};
-      tplSums[fw].baseline += (e.tpl_baseline || 0);
-      tplSums[fw].json += (e.tpl_json || 0);
-      tplSums[fw].db += (e.tpl_db || 0);
-      tplSums[fw].upload += (e.tpl_upload || 0);
-      tplSums[fw].compression += (e.tpl_compression || 0);
-      tplSums[fw].static += (e.tpl_static || 0);
-      tplSums[fw].async_db += (e.tpl_async_db || 0);
-      tplSums[fw].count++;
+      if (!tplSumsByProfile[e.profile][fw]) tplSumsByProfile[e.profile][fw] = {baseline:0, json:0, db:0, upload:0, compression:0, static:0, async_db:0, count:0};
+      var t = tplSumsByProfile[e.profile][fw];
+      t.baseline += (e.tpl_baseline || 0);
+      t.json += (e.tpl_json || 0);
+      t.db += (e.tpl_db || 0);
+      t.upload += (e.tpl_upload || 0);
+      t.compression += (e.tpl_compression || 0);
+      t.static += (e.tpl_static || 0);
+      t.async_db += (e.tpl_async_db || 0);
+      t.count++;
     }
   });
   Object.keys(sums).forEach(function(key) {
@@ -299,17 +301,20 @@ function loadData(newEntries, newMeta) {
     avgMemByProfile[parts[0]][parts[1]] = memSums[key] / c;
     avgBwByProfile[parts[0]][parts[1]] = bwSums[key] / c;
   });
-  Object.keys(tplSums).forEach(function(fw) {
-    var t = tplSums[fw];
-    avgTplMixed[fw] = {
-      baseline: t.baseline / t.count,
-      json: t.json / t.count,
-      db: t.db / t.count,
-      upload: t.upload / t.count,
-      compression: t.compression / t.count,
-      static: t.static / t.count,
-      async_db: t.async_db / t.count
-    };
+  Object.keys(tplSumsByProfile).forEach(function(pid) {
+    avgTplByProfile[pid] = {};
+    Object.keys(tplSumsByProfile[pid]).forEach(function(fw) {
+      var t = tplSumsByProfile[pid][fw];
+      avgTplByProfile[pid][fw] = {
+        baseline: t.baseline / t.count,
+        json: t.json / t.count,
+        db: t.db / t.count,
+        upload: t.upload / t.count,
+        compression: t.compression / t.count,
+        static: t.static / t.count,
+        async_db: t.async_db / t.count
+      };
+    });
   });
   fwLang = {};
   entries.forEach(function(e) { if (e.language) fwLang[e.framework] = e.language; });
@@ -544,9 +549,9 @@ function renderComposite() {
   ['mixed', 'mini'].forEach(function(mpid) {
     if (activeIds.indexOf(mpid) >= 0) {
       var maxWeighted = 0;
-      Object.keys(avgTplMixed).forEach(function(fw) {
+      Object.keys(avgTplByProfile[mpid] || {}).forEach(function(fw) {
         if (isExcluded(fw)) return;
-        var t = avgTplMixed[fw];
+        var t = avgTplByProfile[mpid][fw];
         var w = t.baseline * mixedWeights.baseline + t.json * mixedWeights.json + t.db * mixedWeights.db + t.upload * mixedWeights.upload + t.compression * mixedWeights.compression + (t.static || 0) * mixedWeights.static + (t.async_db || 0) * mixedWeights.async_db;
         if (w > maxWeighted) maxWeighted = w;
       });
@@ -599,8 +604,8 @@ function renderComposite() {
         var rps = avgByProfile[pid][fw];
         var effectiveRps = rps;
         // For mixed: use weighted template score
-        if ((pid === 'mixed' || pid === 'mini') && avgTplMixed[fw]) {
-          var t = avgTplMixed[fw];
+        if ((pid === 'mixed' || pid === 'mini') && avgTplByProfile[pid] && avgTplByProfile[pid][fw]) {
+          var t = avgTplByProfile[pid][fw];
           effectiveRps = t.baseline * mixedWeights.baseline + t.json * mixedWeights.json + t.db * mixedWeights.db + t.upload * mixedWeights.upload + t.compression * mixedWeights.compression + (t.static || 0) * mixedWeights.static + (t.async_db || 0) * mixedWeights.async_db;
         }
         // For compression: use bandwidth-adjusted RPS
