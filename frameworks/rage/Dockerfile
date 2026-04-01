@@ -8,7 +8,7 @@ RUN apt-get update && \
 ENV LD_PRELOAD=libjemalloc.so.2
 
 ENV RUBY_YJIT_ENABLE=1
-ENV RACK_ENV=production
+ENV RAGE_ENV=production
 
 WORKDIR /app
 
