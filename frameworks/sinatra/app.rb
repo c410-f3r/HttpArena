@@ -87,7 +87,9 @@ class App < Sinatra::Base
       Thread.current[:sinatra_pg] ||= begin
         url = ENV['DATABASE_URL']
         return nil unless url
-        PG.connect(url)
+        db = PG.connect(url)
+        db.prepare('select', PG_QUERY)
+        db
       rescue PG::Error
         nil
       end
@@ -142,13 +144,19 @@ class App < Sinatra::Base
   get '/compression' do
     payload = settings.large_json_payload
     halt 500, 'No dataset' unless payload
-    sio = StringIO.new
-    gz = Zlib::GzipWriter.new(sio, 1)
-    gz.write(payload)
-    gz.close
-    content_type 'application/json'
-    headers 'Content-Encoding' => 'gzip', 'Server' => 'sinatra'
-    sio.string
+    if request.get_header('HTTP_ACCEPT_ENCODING')&.include?('gzip')
+      sio = StringIO.new
+      gz = Zlib::GzipWriter.new(sio, 1)
+      gz.write(payload)
+      gz.close
+      content_type 'application/json'
+      headers 'Content-Encoding' => 'gzip', 'Server' => 'sinatra'
+      sio.string
+    else
+      content_type 'application/json'
+      headers 'Server' => 'sinatra'
+      payload
+    end
   end
 
   get '/db' do
@@ -197,7 +205,7 @@ class App < Sinatra::Base
     min_val = (params['min'] || 10.0).to_f
     max_val = (params['max'] || 50.0).to_f
     begin
-      result = conn.exec_params(PG_QUERY, [min_val, max_val])
+      result = conn.exec_prepared('select', [min_val, max_val])
     rescue PG::Error
       Thread.current[:sinatra_pg] = nil
       return '{"items":[],"count":0}'
