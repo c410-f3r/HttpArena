@@ -125,10 +125,13 @@ jobs:
           profile_label="${profile:-all tests}"
           fw="${{ inputs.framework }}"
 
-          # Extract headers and best lines, then append deltas from compare.sh
+          # Build markdown table with results and deltas
           python3 -c '
           import sys, re, os
+
           log_file, fw, comparison_file = sys.argv[1], sys.argv[2], sys.argv[3]
+
+          # Parse deltas from compare.sh output
           deltas = {}
           if os.path.exists(comparison_file):
               with open(comparison_file) as f:
@@ -156,39 +159,46 @@ jobs:
                           idx = i * 2 + 2
                           if idx < len(cells):
                               deltas.setdefault(cur_profile + "/" + conns, {})["mem"] = cells[idx]
-          entries = []
-          header = None
+
+          # Parse log for results
+          rows = []
+          cur_profile = None
+          cur_conns = None
           with open(log_file) as f:
               for line in f:
                   line = line.rstrip()
                   m = re.match(r"^=== " + re.escape(fw) + r" / (.+) / (\d+)c .* ===$", line)
                   if m:
-                      header = line.replace("=== ", "").rstrip(" =")
-                      profile = m.group(1)
-                      conns = m.group(2)
+                      cur_profile = m.group(1)
+                      cur_conns = m.group(2)
                       continue
-                  if header and re.match(r"^=== Best:", line):
-                      best = line.replace("=== ", "").rstrip(" =")
-                      key = profile + "/" + conns
-                      d = deltas.get(key, {})
-                      parts = []
-                      if "rps" in d:
-                          parts.append("RPS: " + d["rps"])
-                      if "mem" in d:
-                          parts.append("Mem: " + d["mem"])
-                      delta_str = (" \u2014 " + ", ".join(parts)) if parts else ""
-                      entries.append((header, "  " + best + delta_str))
-                      header = None
+                  if cur_profile and re.match(r"^=== Best:", line):
+                      m2 = re.match(r"^=== Best: (\d+) req/s \(CPU: ([\d.]+)%, Mem: ([^\)]+)\)", line)
+                      if m2:
+                          rps = int(m2.group(1))
+                          cpu = m2.group(2)
+                          mem = m2.group(3)
+                          key = cur_profile + "/" + cur_conns
+                          d = deltas.get(key, {})
+                          rps_str = "{:,}".format(rps)
+                          d_rps = d.get("rps", "")
+                          d_mem = d.get("mem", "")
+                          rows.append((cur_profile, cur_conns, rps_str, cpu + "%", mem, d_rps, d_mem))
+                      cur_profile = None
+
+          # Build table
           with open("/tmp/bench_body.txt", "w") as out:
-              for h, r in entries:
-                  out.write(h + "\n" + r + "\n\n")
+              out.write("| Test | Conn | RPS | CPU | Mem | \u0394 RPS | \u0394 Mem |\n")
+              out.write("|------|------|-----|-----|-----|-------|-------|\n")
+              for prof, conns, rps, cpu, mem, d_rps, d_mem in rows:
+                  out.write("| {} | {} | {} | {} | {} | {} | {} |\n".format(
+                      prof, conns, rps, cpu, mem, d_rps, d_mem))
           ' "$log" "$fw" /tmp/bench_comparison.md
 
           body="## Benchmark Results"$'\n\n'
           body+="**Framework:** \`${fw}\` | **Test:** \`${profile_label}\`"$'\n\n'
-          body+='```'$'\n'
           body+=$(cat /tmp/bench_body.txt 2>/dev/null || echo "No results captured")
-          body+=$'\n```\n\n'
+          body+=$'\n\n'
 
           body+="<details><summary>Full log</summary>"$'\n\n```\n'
           tail -200 "$log" >> /tmp/bench_full.txt 2>/dev/null || true
