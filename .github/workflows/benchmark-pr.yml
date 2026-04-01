@@ -115,73 +115,63 @@ jobs:
           fw="${{ inputs.framework }}"
 
           # Extract headers and best lines, then append deltas from compare.sh
-          # Headers: "=== actix / baseline / 512c ... ==="
-          # Best lines: "=== Best: 123456 req/s ... ==="
-          python3 - "$log" "$fw" /tmp/bench_comparison.md <<'PYEOF'
-import sys, re, os
-
-log_file, fw, comparison_file = sys.argv[1], sys.argv[2], sys.argv[3]
-
-# Parse comparison data (RPS and Memory deltas keyed by profile/conns)
-deltas = {}
-if os.path.exists(comparison_file):
-    with open(comparison_file) as f:
-        comp = f.read()
-    cur_profile = None
-    conn_cols = []
-    for line in comp.splitlines():
-        m = re.match(r'^### (.+)', line)
-        if m:
-            cur_profile = m.group(1).strip()
-            conn_cols = []
-            continue
-        if cur_profile and line.startswith('| Metric'):
-            conn_cols = re.findall(r'(\d+)c', line)
-            continue
-        if cur_profile and conn_cols and line.startswith('| **RPS**'):
-            cells = [c.strip() for c in line.split('|')[1:] if c.strip()]
-            for i, conns in enumerate(conn_cols):
-                idx = i * 2 + 1
-                if idx < len(cells):
-                    deltas.setdefault(f'{cur_profile}/{conns}', {})['rps'] = cells[idx]
-        if cur_profile and conn_cols and line.startswith('| **Memory**'):
-            cells = [c.strip() for c in line.split('|')[1:] if c.strip()]
-            for i, conns in enumerate(conn_cols):
-                idx = i * 2 + 1
-                if idx < len(cells):
-                    deltas.setdefault(f'{cur_profile}/{conns}', {})['mem'] = cells[idx]
-
-# Parse log for headers and best lines
-entries = []
-header = None
-with open(log_file) as f:
-    for line in f:
-        line = line.rstrip()
-        m = re.match(rf'^=== {re.escape(fw)} / (.+) / (\d+)c .* ===', line)
-        if m:
-            header = line.replace('=== ', '').replace(' ===', '')
-            profile = m.group(1)
-            conns = m.group(2)
-            continue
-        if header and re.match(r'^=== Best:', line):
-            best = line.replace('=== ', '').replace(' ===', '')
-            key = f'{profile}/{conns}'
-            d = deltas.get(key, {})
-            parts = []
-            if 'rps' in d:
-                parts.append(f"RPS: {d['rps']}")
-            if 'mem' in d:
-                parts.append(f"Mem: {d['mem']}")
-            delta_str = f" — {', '.join(parts)}" if parts else ""
-            entries.append((header, f"  {best}{delta_str}"))
-            header = None
-
-# Build output
-with open('/tmp/bench_body.txt', 'w') as out:
-    for h, r in entries:
-        out.write(h + '\n')
-        out.write(r + '\n\n')
-PYEOF
+          python3 -c '
+          import sys, re, os
+          log_file, fw, comparison_file = sys.argv[1], sys.argv[2], sys.argv[3]
+          deltas = {}
+          if os.path.exists(comparison_file):
+              with open(comparison_file) as f:
+                  comp = f.read()
+              cur_profile = None
+              conn_cols = []
+              for line in comp.splitlines():
+                  m = re.match(r"^### (.+)", line)
+                  if m:
+                      cur_profile = m.group(1).strip()
+                      conn_cols = []
+                      continue
+                  if cur_profile and line.startswith("| Metric"):
+                      conn_cols = re.findall(r"(\d+)c", line)
+                      continue
+                  if cur_profile and conn_cols and line.startswith("| **RPS**"):
+                      cells = [c.strip() for c in line.split("|")[1:] if c.strip()]
+                      for i, conns in enumerate(conn_cols):
+                          idx = i * 2 + 1
+                          if idx < len(cells):
+                              deltas.setdefault(cur_profile + "/" + conns, {})["rps"] = cells[idx]
+                  if cur_profile and conn_cols and line.startswith("| **Memory**"):
+                      cells = [c.strip() for c in line.split("|")[1:] if c.strip()]
+                      for i, conns in enumerate(conn_cols):
+                          idx = i * 2 + 1
+                          if idx < len(cells):
+                              deltas.setdefault(cur_profile + "/" + conns, {})["mem"] = cells[idx]
+          entries = []
+          header = None
+          with open(log_file) as f:
+              for line in f:
+                  line = line.rstrip()
+                  m = re.match(r"^=== " + re.escape(fw) + r" / (.+) / (\d+)c .* ===$", line)
+                  if m:
+                      header = line.replace("=== ", "").rstrip(" =")
+                      profile = m.group(1)
+                      conns = m.group(2)
+                      continue
+                  if header and re.match(r"^=== Best:", line):
+                      best = line.replace("=== ", "").rstrip(" =")
+                      key = profile + "/" + conns
+                      d = deltas.get(key, {})
+                      parts = []
+                      if "rps" in d:
+                          parts.append("RPS: " + d["rps"])
+                      if "mem" in d:
+                          parts.append("Mem: " + d["mem"])
+                      delta_str = (" \u2014 " + ", ".join(parts)) if parts else ""
+                      entries.append((header, "  " + best + delta_str))
+                      header = None
+          with open("/tmp/bench_body.txt", "w") as out:
+              for h, r in entries:
+                  out.write(h + "\n" + r + "\n\n")
+          ' "$log" "$fw" /tmp/bench_comparison.md
 
           body="## Benchmark Results"$'\n\n'
           body+="**Framework:** \`${fw}\` | **Test:** \`${profile_label}\`"$'\n\n'
