@@ -191,7 +191,9 @@ static string Sum(HttpRequest request)
 
     var c = 0;
 
-    if (request.HasContents)
+    var body = request.Body;
+
+    if (!string.IsNullOrWhiteSpace(body))
     {
         c = int.Parse(request.Body);
     }
