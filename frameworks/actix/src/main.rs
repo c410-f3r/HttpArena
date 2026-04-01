@@ -18,6 +18,7 @@ struct BaselineQuery {
     b: Option<i64>,
 }
 
+// Shared query struct for both DB endpoints — replaces manual query string parsing
 #[derive(Deserialize)]
 struct PriceQuery {
     min: Option<f64>,
@@ -67,8 +68,10 @@ struct JsonResponse {
     count: usize,
 }
 
+// AppState is wrapped by web::Data which is already an Arc — no need to double-wrap
 struct AppState {
     dataset: Vec<DatasetItem>,
+    // Bytes is cheaply cloneable (ref-counted), safe to clone per-request
     json_large_cache: Bytes,
 }
 
@@ -152,6 +155,7 @@ async fn upload(mut payload: web::Payload) -> HttpResponse {
         .body(size.to_string())
 }
 
+// web::Data<AppState> — no Arc wrapping, web::Data handles it internally
 async fn json_endpoint(state: web::Data<AppState>) -> HttpResponse {
     if state.dataset.is_empty() {
         return HttpResponse::InternalServerError().body("No dataset");
@@ -186,6 +190,7 @@ async fn json_endpoint(state: web::Data<AppState>) -> HttpResponse {
 }
 
 async fn compression(state: web::Data<AppState>) -> HttpResponse {
+    // Bytes::clone() is O(1) — just increments a ref count
     HttpResponse::Ok()
         .insert_header(("Content-Type", "application/json"))
         .insert_header(("Server", "actix"))
@@ -208,6 +213,7 @@ async fn db_endpoint(
     let min = query.min.unwrap_or(10.0);
     let max = query.max.unwrap_or(50.0);
 
+    // SQLite is synchronous — offload to the blocking thread pool so we don't stall the runtime
     let items = web::block(move || {
         let conn = pool.get().unwrap();
         let mut stmt = conn.prepare_cached(
@@ -337,6 +343,7 @@ async fn main() -> io::Result<()> {
         };
     let json_large_cache = build_json_cache(&large_dataset);
 
+    // web::Data::new() wraps in Arc internally — no manual Arc needed
     let state = web::Data::new(AppState {
         dataset,
         json_large_cache,
@@ -352,7 +359,7 @@ async fn main() -> io::Result<()> {
             },
         );
         let pool_size = (num_cpus::get() * 4).max(64);
-        Pool::builder(mgr).max_size(pool_size).build().ok()
+        PgPool::builder(mgr).max_size(pool_size).build().ok()
     });
 
     // r2d2 pool shared across all workers — each get() hands out a connection from the pool
