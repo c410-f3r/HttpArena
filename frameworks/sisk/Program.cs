@@ -5,6 +5,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using sisk;
 using Microsoft.Data.Sqlite;
+using Npgsql;
 using Sisk.Cadente.CoreEngine;
 using Sisk.Core.Http;
 using Sisk.Core.Http.FileSystem;
@@ -133,6 +134,42 @@ router.MapGet("/db", request =>
     };
 });
 
+var pgDataSource = OpenPgPool();
+
+router.MapGet("/async-db", async (HttpRequest request) =>
+{
+    var min = request.Query.TryGetValue("min", out var vmin) ? vmin.GetInteger() : 10;
+    var max = request.Query.TryGetValue("max", out var vmax) ? vmax.GetInteger() : 50;
+
+    await using var cmd = pgDataSource.CreateCommand(
+        "SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN $1 AND $2 LIMIT 50");
+    cmd.Parameters.AddWithValue((double)min);
+    cmd.Parameters.AddWithValue((double)max);
+    await using var reader = await cmd.ExecuteReaderAsync();
+
+    var items = new List<object>();
+
+    while (await reader.ReadAsync())
+    {
+        items.Add(new
+        {
+            id = reader.GetInt32(0),
+            name = reader.GetString(1),
+            category = reader.GetString(2),
+            price = reader.GetDouble(3),
+            quantity = reader.GetInt32(4),
+            active = reader.GetBoolean(5),
+            tags = JsonSerializer.Deserialize<List<string>>(reader.GetString(6)),
+            rating = new { score = reader.GetDouble(7), count = reader.GetInt32(8) },
+        });
+    }
+
+    return new HttpResponse
+    {
+        Content = JsonContent.Create(new ListWithCount<object>(items))
+    };
+});
+
 await server.UseRouter(router).Build().StartAsync();
 
 return;
@@ -228,4 +265,19 @@ static SqliteConnection? OpenConnection()
     }
 
     return null;
+}
+
+static NpgsqlDataSource? OpenPgPool()
+{
+    var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (string.IsNullOrEmpty(dbUrl)) return null;
+    try
+    {
+        var uri = new Uri(dbUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        var connStr = $"Host={uri.Host};Port={uri.Port};Username={userInfo[0]};Password={userInfo[1]};Database={uri.AbsolutePath.TrimStart('/')};Maximum Pool Size=256;Minimum Pool Size=64;Multiplexing=true;No Reset On Close=true;Max Auto Prepare=4;Auto Prepare Min Usages=1";
+        var builder = new NpgsqlDataSourceBuilder(connStr);
+        return builder.Build();
+    }
+    catch { return null; }
 }
