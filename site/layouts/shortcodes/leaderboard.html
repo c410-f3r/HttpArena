@@ -23,16 +23,19 @@
   flex: 1;
   text-align: center;
   padding: 0.65rem 1.2rem;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: #64748b;
   cursor: pointer;
   border-radius: 4px;
-  border: none;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   background: transparent;
   transition: all 0.2s ease;
   user-select: none;
   letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .lb-tab:hover {
   color: #1e293b;
@@ -325,7 +328,7 @@ html.dark .lb-status-na { color: #64748b; }
 html.dark .lb-card { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(96, 165, 250, 0.15); box-shadow: 0 4px 16px rgba(96, 165, 250, 0.08), 0 1px 3px rgba(0, 0, 0, 0.3); }
 html.dark .lb-card:hover { box-shadow: 0 4px 16px rgba(96, 165, 250, 0.08), 0 1px 3px rgba(0, 0, 0, 0.3); }
 html.dark .lb-tabs { background: rgba(255, 255, 255, 0.08); }
-html.dark .lb-tab { color: #94a3b8; }
+html.dark .lb-tab { color: #94a3b8; border-color: rgba(255, 255, 255, 0.1); }
 html.dark .lb-tab:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.06); }
 html.dark .lb-tab.active { color: #93c5fd; background: rgba(59, 130, 246, 0.15); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3); font-weight: 700; }
 html.dark .lb-desc { color: #94a3b8; }
@@ -363,16 +366,17 @@ html.dark .lb-card-title { color: #ffffff; }
 </style>
 
 {{ $profiles := slice
+  (dict "id" "mixed"        "label" "Mixed Workload"        "conns" (slice 4096) "desc" "A realistic mix of request types: 3 baseline GETs, 2 baseline POSTs, 1 JSON processing, 1 SQLite DB lookup, 1 file upload (1 MB), 2 compression requests, 2 static file serves, and 2 async Postgres queries. Connections limited to 5 requests each. Measures overall framework performance under a diverse, real-world-like workload that exercises multiple code paths simultaneously.")
+  (dict "id" "mini"         "label" "Mini"                  "conns" (slice 128) "desc" "Same mixed workload as the Mixed test but with the server constrained to 4 CPUs and 16 GB memory. The load generator uses 4 threads and 128 connections. Measures how efficiently a framework performs under limited resources — closer to a typical production deployment than the full-hardware tests.")
   (dict "id" "baseline"     "label" "Baseline"              "conns" (slice 512 4096 16384) "desc" "Each connection sends one request at a time over persistent keep-alive connections. Container limited to 64 CPU threads. Mixed GET and POST requests to <code>/baseline11</code> with query parameter parsing, Content-Length bodies, and chunked Transfer-Encoding. Best of 3 runs.")
+  (dict "id" "pipelined"    "label" "Pipelined (16)"        "conns" (slice 512 4096 16384) "desc" "16 HTTP requests are sent back-to-back on each connection before waiting for responses. Uses a lightweight <code>GET /pipeline</code> endpoint that returns a fixed response, isolating raw I/O and pipeline handling from application logic. Frameworks that batch pipelined requests from the read buffer gain a significant advantage.")
   (dict "id" "limited-conn" "label" "Short-lived Con."     "conns" (slice 512 4096)       "desc" "Each connection is closed and re-established after 10 requests, forcing repeated TCP handshakes. Same mixed GET/POST workload as baseline. Measures how efficiently a framework handles connection setup and teardown — important for real-world scenarios where clients don't maintain long-lived connections.")
   (dict "id" "json"      "label" "JSON Processing"       "conns" (slice 4096 16384)       "desc" "Each request hits <code>GET /json</code>. The server loads a 50-item dataset at startup, computes a derived <code>total</code> field per item, and returns the full result as a JSON response (~10 KB). Measures object allocation, JSON serialization performance, and framework response overhead — the typical workload of a real-world API.")
   (dict "id" "upload"       "label" "Upload (20 MB)"        "conns" (slice 64 256 512)     "desc" "Each request sends a 20 MB binary payload via <code>POST /upload</code>. The server reads the entire body and returns its CRC32 checksum. Measures request body ingestion throughput — how efficiently a framework handles large uploads, including buffering, memory management, and I/O handling under sustained load.")
   (dict "id" "compression" "label" "Compression"           "conns" (slice 4096 16384) "desc" "Requests <code>GET /compression</code> with <code>Accept-Encoding: gzip</code>. The server loads a 6000-item dataset (~1 MB JSON) at startup and serves it gzip-compressed on the fly. Measures the throughput cost of real-time compression — only frameworks with built-in gzip support are eligible.")
-  (dict "id" "noisy"       "label" "Noisy"                 "conns" (slice 512 4096 16384) "desc" "Valid baseline requests interleaved with malformed noise — nonexistent paths, bad content-length, and raw binary. Only 2xx responses count. Measures resilience: how well a framework maintains throughput while rejecting garbage traffic.")
-  (dict "id" "mixed"        "label" "Mixed Workload"        "conns" (slice 4096) "desc" "A realistic mix of request types: 3 baseline GETs, 2 baseline POSTs, 1 JSON processing, 1 SQLite DB lookup, 1 file upload (1 MB), 2 compression requests, 2 static file serves, and 2 async Postgres queries. Connections limited to 5 requests each. Measures overall framework performance under a diverse, real-world-like workload that exercises multiple code paths simultaneously.")
   (dict "id" "static"       "label" "Static Files"          "conns" (slice 4096 16384) "desc" "Serves 20 pre-loaded static files (CSS, JS, HTML, fonts, images, JSON) from <code>/static/{filename}</code> over HTTP/1.1. Files are loaded into memory at startup. Requests cycle through all 20 files. Measures static file serving throughput, MIME type handling, and memory-mapped I/O efficiency.")
   (dict "id" "tcp-frag"     "label" "TCP Fragmentation"     "conns" (slice 512 4096 16384) "desc" "Same baseline workload but with loopback MTU forced to 69 bytes, causing extreme TCP fragmentation. Every request and response is split into multiple tiny segments (~29 bytes payload each). Measures how efficiently a framework's TCP stack handles segment reassembly, small-buffer I/O, and syscall overhead under fragmented network conditions.")
-  (dict "id" "pipelined"    "label" "Pipelined (16)"        "conns" (slice 512 4096 16384) "desc" "16 HTTP requests are sent back-to-back on each connection before waiting for responses. Uses a lightweight <code>GET /pipeline</code> endpoint that returns a fixed response, isolating raw I/O and pipeline handling from application logic. Frameworks that batch pipelined requests from the read buffer gain a significant advantage.")
+  (dict "id" "noisy"       "label" "Noisy"                 "conns" (slice 512 4096 16384) "desc" "Valid baseline requests interleaved with malformed noise — nonexistent paths, bad content-length, and raw binary. Only 2xx responses count. Measures resilience: how well a framework maintains throughput while rejecting garbage traffic.")
   (dict "id" "async-db"    "label" "Async DB"              "conns" (slice 1024) "desc" "Async Postgres query over 100K rows with no index on price, forcing a sequential scan per request. The framework manages its own connection pool and uses an async Postgres driver. Measures event loop scheduling, connection pooling efficiency, and async I/O throughput. Framework-only — engines are excluded.")
 }}
 
@@ -561,9 +565,9 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaa42</pre>
   <div class="lb-filters" style="margin:0 0 0 0;">
     <span class="lb-filters-label">Conn</span>
     <div class="lb-conn-tabs" data-for="{{ $p.id }}">
-      {{ if not (or (eq $p.id "mixed") (eq $p.id "compression")) }}<div class="lb-conn-tab active" data-conns="best">Best</div>{{ end }}
+      {{ if not (or (eq $p.id "mixed") (eq $p.id "mini") (eq $p.id "compression")) }}<div class="lb-conn-tab active" data-conns="best">Best</div>{{ end }}
     {{ range $ci, $c := $p.conns }}
-      <div class="lb-conn-tab{{ if or (eq $p.id "mixed") (eq $p.id "compression") }}{{ if eq $ci 0 }} active{{ end }}{{ end }}" data-conns="{{ $c }}">{{ $c }}</div>
+      <div class="lb-conn-tab{{ if or (eq $p.id "mixed") (eq $p.id "mini") (eq $p.id "compression") }}{{ if eq $ci 0 }} active{{ end }}{{ end }}" data-conns="{{ $c }}">{{ $c }}</div>
     {{ end }}
     </div>
   </div>
@@ -585,7 +589,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaa42</pre>
 
   {{ $isReconn := or (eq $p.id "limited-conn") (eq $p.id "noisy") (eq $p.id "static") }}
   {{ $isNoisy := eq $p.id "noisy" }}
-  <div class="lb-conn-panel{{ if not (or (eq $p.id "mixed") (eq $p.id "compression")) }} active{{ end }}" data-profile="{{ $p.id }}" data-conns="best">
+  <div class="lb-conn-panel{{ if not (or (eq $p.id "mixed") (eq $p.id "mini") (eq $p.id "compression")) }} active{{ end }}" data-profile="{{ $p.id }}" data-conns="best">
     <div class="lb">
       <div class="lb-row lb-header{{ if $isReconn }} lb-row-reconn{{ end }}{{ if $isNoisy }} lb-row-noisy{{ end }}">
         <div title="Rank by requests per second">#</div>
@@ -609,7 +613,7 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaa42</pre>
   {{ range $ci, $c := $p.conns }}
   {{ $key := printf "%s-%d" $p.id $c }}
   {{ $data := index site.Data $key }}
-  <div class="lb-conn-panel{{ if and (or (eq $p.id "mixed") (eq $p.id "compression")) (eq $ci 0) }} active{{ end }}" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
+  <div class="lb-conn-panel{{ if and (or (eq $p.id "mixed") (eq $p.id "mini") (eq $p.id "compression")) (eq $ci 0) }} active{{ end }}" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
   <div class="lb">
     <div class="lb-row lb-header{{ if $isReconn }} lb-row-reconn{{ end }}{{ if $isNoisy }} lb-row-noisy{{ end }}">
       <div title="Rank by requests per second">#</div>
@@ -676,6 +680,7 @@ function buildBestPanels() {
     /* Skip compression and mixed — handled by their own score functions */
     if (bestPanel.dataset.profile === 'compression') return;
     if (bestPanel.dataset.profile === 'mixed') return;
+    if (bestPanel.dataset.profile === 'mini') return;
 
     var parentPanel = bestPanel.closest('.lb-panel');
     var connPanels = parentPanel.querySelectorAll('.lb-conn-panel:not([data-conns="best"])');
@@ -790,7 +795,7 @@ function applyFilters() {
       }
     });
 
-    var isMixed = connPanel.dataset.profile === 'mixed';
+    var isMixed = connPanel.dataset.profile === 'mixed' || connPanel.dataset.profile === 'mini';
     if (!isCompression && !isMixed) {
       rows.forEach(function(row) {
         if (row.classList.contains('lb-hidden')) return;
@@ -1519,12 +1524,12 @@ function applyMixedPanel(panel) {
 
 function applyMixedScores() {
   /* Process connection panels */
-  document.querySelectorAll('.lb-conn-panel[data-profile="mixed"]:not([data-conns="best"])').forEach(applyMixedPanel);
+  document.querySelectorAll('.lb-conn-panel[data-profile="mixed"]:not([data-conns="best"]), .lb-conn-panel[data-profile="mini"]:not([data-conns="best"])').forEach(applyMixedPanel);
 
   /* Build best panel using mixed scores */
-  document.querySelectorAll('.lb-conn-panel[data-profile="mixed"][data-conns="best"]').forEach(function(bestPanel) {
+  document.querySelectorAll('.lb-conn-panel[data-profile="mixed"][data-conns="best"], .lb-conn-panel[data-profile="mini"][data-conns="best"]').forEach(function(bestPanel) {
     var parentPanel = bestPanel.closest('.lb-panel');
-    var connPanels = parentPanel.querySelectorAll('.lb-conn-panel[data-profile="mixed"]:not([data-conns="best"])');
+    var connPanels = parentPanel.querySelectorAll('.lb-conn-panel[data-profile="' + bestPanel.dataset.profile + '"]:not([data-conns="best"])');
     var best = {};
 
     connPanels.forEach(function(cp) {

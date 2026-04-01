@@ -56,7 +56,7 @@ fi
 
 # Mount volumes based on subscribed tests
 HARD_NOFILE=$(ulimit -Hn)
-if has_test "async-db" || has_test "mixed"; then
+if has_test "async-db" || has_test "mixed" || has_test "mini"; then
     docker_args=(-d --name "$CONTAINER_NAME" --network host --security-opt seccomp=unconfined
         --ulimit memlock=-1:-1 --ulimit nofile="$HARD_NOFILE:$HARD_NOFILE")
 else
@@ -74,11 +74,11 @@ if $needs_h2 && [ -d "$CERTS_DIR" ]; then
     docker_args+=(-p "$H2PORT:8443" -v "$CERTS_DIR:/certs:ro")
 fi
 
-if has_test "compression" || has_test "mixed"; then
+if has_test "compression" || has_test "mixed" || has_test "mini"; then
     docker_args+=(-v "$DATA_DIR/dataset-large.json:/data/dataset-large.json:ro")
 fi
 
-if has_test "mixed"; then
+if has_test "mixed" || has_test "mini"; then
     DB_FILE="$DATA_DIR/benchmark.db"
     if [ ! -f "$DB_FILE" ]; then
         echo "[db] benchmark.db not found, generating..."
@@ -87,7 +87,7 @@ if has_test "mixed"; then
     docker_args+=(-v "$DB_FILE:/data/benchmark.db:ro")
 fi
 
-if has_test "static" || has_test "static-h2" || has_test "static-h3" || has_test "mixed"; then
+if has_test "static" || has_test "static-h2" || has_test "static-h3" || has_test "mixed" || has_test "mini"; then
     docker_args+=(-v "$DATA_DIR/static:/data/static:ro")
 fi
 
@@ -99,7 +99,7 @@ if [ "$ENGINE" = "io_uring" ]; then
 fi
 
 # Start Postgres sidecar if async-db or mixed is needed
-if has_test "async-db" || has_test "mixed"; then
+if has_test "async-db" || has_test "mixed" || has_test "mini"; then
     echo "[postgres] Starting Postgres sidecar for validation..."
     docker rm -f "$PG_CONTAINER" 2>/dev/null || true
     docker run -d --name "$PG_CONTAINER" --network host \
@@ -231,7 +231,7 @@ wait_h2() {
 
 # ───── Baseline (GET/POST /baseline11) ─────
 
-if has_test "baseline" || has_test "limited-conn" || has_test "mixed"; then
+if has_test "baseline" || has_test "limited-conn" || has_test "mixed" || has_test "mini"; then
     BASELINE_DOCS="$DOCS_BASE/h1/baseline/validation"
     echo "[test] baseline endpoints"
     check "GET /baseline11?a=13&b=42" "55" "$BASELINE_DOCS" \
@@ -274,7 +274,7 @@ fi
 
 # ───── JSON Processing (GET /json) ─────
 
-if has_test "json" || has_test "mixed"; then
+if has_test "json" || has_test "mixed" || has_test "mini"; then
     JSON_DOCS="$DOCS_BASE/h1/json-processing/validation"
     echo "[test] json endpoint"
     response=$(curl -s --max-time 30 "http://localhost:$PORT/json")
@@ -311,7 +311,7 @@ fi
 
 # ───── Upload (POST /upload) ─────
 
-if has_test "upload" || has_test "mixed"; then
+if has_test "upload" || has_test "mixed" || has_test "mini"; then
     UPLOAD_DOCS="$DOCS_BASE/h1/upload/validation"
     echo "[test] upload endpoint"
     # Small upload: returns byte count
@@ -335,7 +335,7 @@ fi
 
 # ───── Compression (GET /compression) ─────
 
-if has_test "compression" || has_test "mixed"; then
+if has_test "compression" || has_test "mixed" || has_test "mini"; then
     COMP_DOCS="$DOCS_BASE/h1/compression/validation"
     echo "[test] compression endpoint"
 
@@ -422,7 +422,7 @@ fi
 
 # ───── DB (GET /db — SQLite, tested when framework has mixed test) ─────
 
-if has_test "mixed"; then
+if has_test "mixed" || has_test "mini"; then
     DB_DOCS="$DOCS_BASE/h1/database/validation"
     echo "[test] db endpoint (mixed test prerequisite)"
     response=$(curl -s --max-time 30 "http://localhost:$PORT/db?min=10&max=50")
@@ -490,7 +490,7 @@ fi
 
 # ───── Static Files H1 (GET /static/* over HTTP/1.1) ─────
 
-if has_test "static" || has_test "mixed"; then
+if has_test "static" || has_test "mixed" || has_test "mini"; then
     STATIC_DOCS="$DOCS_BASE/h1/static/validation"
     echo "[test] static endpoint"
     check_header "GET /static/reset.css Content-Type" "Content-Type" "text/css" "$STATIC_DOCS" \
@@ -556,7 +556,7 @@ fi
 
 # ───── Async Database (GET /async-db) ─────
 
-if has_test "async-db" || has_test "mixed"; then
+if has_test "async-db" || has_test "mixed" || has_test "mini"; then
     ASYNCDB_DOCS="$DOCS_BASE/h1/async-database/validation"
     echo "[test] async-db endpoint"
     response=$(curl -s --max-time 30 "http://localhost:$PORT/async-db?min=10&max=50")
