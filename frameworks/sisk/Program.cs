@@ -48,9 +48,24 @@ var largeJsonBytes = LoadJson();
 
 router.MapGet("/compression", r =>
 {
+    HttpContent baseContent = new ByteArrayContent(largeJsonBytes!);
+
+    if (r.Headers.AcceptEncoding?.Contains("gzip") == true)
+    {
+        baseContent = new GZipContent(baseContent);
+    }
+    else if (r.Headers.AcceptEncoding?.Contains("deflate") == true)
+    {
+        baseContent = new DeflateContent(baseContent);
+    }
+    else if (r.Headers.AcceptEncoding?.Contains("br") == true)
+    {
+        baseContent = new BrotliContent(baseContent);
+    }
+
     return new HttpResponse
     {
-        Content = new GZipContent(largeJsonBytes!),
+        Content = baseContent,
         Headers = new()
         {
             ContentType = "application/json"
@@ -68,9 +83,14 @@ router.MapGet("/json", r =>
     {
         processed.Add(new ProcessedItem
         {
-            Id = d.Id, Name = d.Name, Category = d.Category,
-            Price = d.Price, Quantity = d.Quantity, Active = d.Active,
-            Tags = d.Tags, Rating = d.Rating,
+            Id = d.Id,
+            Name = d.Name,
+            Category = d.Category,
+            Price = d.Price,
+            Quantity = d.Quantity,
+            Active = d.Active,
+            Tags = d.Tags,
+            Rating = d.Rating,
             Total = Math.Round(d.Price * d.Quantity, 2)
         });
     }
@@ -193,9 +213,14 @@ static byte[]? LoadJson()
         {
             var processed = largeItems.Select(d => new ProcessedItem
             {
-                Id = d.Id, Name = d.Name, Category = d.Category,
-                Price = d.Price, Quantity = d.Quantity, Active = d.Active,
-                Tags = d.Tags, Rating = d.Rating,
+                Id = d.Id,
+                Name = d.Name,
+                Category = d.Category,
+                Price = d.Price,
+                Quantity = d.Quantity,
+                Active = d.Active,
+                Tags = d.Tags,
+                Rating = d.Rating,
                 Total = Math.Round(d.Price * d.Quantity, 2)
             }).ToList();
 
