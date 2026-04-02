@@ -50,7 +50,7 @@ router.MapGet("/compression", r =>
 {
     return new HttpResponse
     {
-        Content = new BrotliContent(largeJsonBytes!),
+        Content = new GZipContent(largeJsonBytes!),
         Headers = new()
         {
             ContentType = "application/json"
