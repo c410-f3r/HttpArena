@@ -125,6 +125,12 @@ server.MapGet("/async-db", async (int min = 10, int max = 50) =>
     return new ListWithCount<object>(items);
 });
 
+server.UseWebSocketModule(ws => {
+    ws.OnUnknown(async (conn, ctx, msg) => {
+        await conn.SendTextAsync(msg.RawText);
+    });
+});
+
 await server.RunAsync();
 
 return;

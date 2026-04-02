@@ -18,6 +18,7 @@
     "tcp-frag",
     "async-db",
     "mixed",
-    "mini"
+    "mini",
+    "echo-ws"
   ]
 }
