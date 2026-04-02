@@ -5,7 +5,8 @@ using ServiceStack.Benchmarks;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://*:8080");
-// builder.Logging.ClearProviders();
+builder.Services.AddResponseCompression();
+builder.Logging.ClearProviders();
 
 var app = builder.Build();
 
@@ -17,6 +18,8 @@ if (Directory.Exists("/data/static"))
         RequestPath = "/static"
     });
 }
+
+app.UseResponseCompression();
 
 app.UseServiceStack(new AppHost(), options => {
     options.MapEndpoints();
