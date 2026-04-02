@@ -13,13 +13,7 @@ using Sisk.Core.Routing;
 var server = HttpServer.CreateBuilder()
                        .UseEngine<CadenteHttpServerEngine>()
                        .UseListeningPort(new ListeningPort(false, "0.0.0.0", 8080))
-                       .UseConfiguration(c =>
-                       {
-                           c.EnableAutomaticResponseCompression = true;
-                           c.AccessLogsStream = null;
-                           c.ErrorsLogsStream = null;
-                       });
-
+                       .UseMinimalConfiguration();
 
 Router router = new Router();
 
@@ -54,12 +48,14 @@ var largeJsonBytes = LoadJson();
 
 router.MapGet("/compression", r =>
 {
-    var response = new HttpResponse();
-
-    response.Content = new ByteArrayContent(largeJsonBytes);
-    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
-    return response;
+    return new HttpResponse
+    {
+        Content = new BrotliContent(largeJsonBytes!),
+        Headers = new()
+        {
+            ContentType = "application/json"
+        }
+    };
 });
 
 var datasetItems = LoadItems();
@@ -166,18 +162,8 @@ return;
 
 static string Sum(HttpRequest request)
 {
-    var a = 0;
-    var b = 0;
-
-    if (request.Query.TryGetValue("a", out var sa))
-    {
-        a = sa.GetInteger();
-    }
-
-    if (request.Query.TryGetValue("b", out var sb))
-    {
-        b = sb.GetInteger();
-    }
+    var a = request.Query["a"].MaybeNullOrEmpty()?.GetInteger() ?? 0;
+    var b = request.Query["b"].MaybeNullOrEmpty()?.GetInteger() ?? 0;
 
     var c = 0;
 
