@@ -37,14 +37,14 @@ public class BenchmarkServices : Service
         => File.Exists(primary) ? primary : File.Exists(fallback) ? fallback : null;
 
     // ── /baseline11 ───────────────────────────────────────────────────────────────
-    public int Get(Baseline11Get req) => req.A + req.B;
+    public HttpResult Get(Baseline11Get req) => ToResult(req.A + req.B);
 
-    public async Task<int> Post(Baseline11Post req)
+    public async Task<HttpResult> Post(Baseline11Post req)
     {
-        return req.A + req.B + int.Parse(await Request!.GetRawBodyAsync());
+        return ToResult(req.A + req.B + int.Parse(await Request!.GetRawBodyAsync()));
     }
 
-    public object Get(Baseline2Get req) => req.A + req.B;
+    public HttpResult Get(Baseline2Get req) => ToResult(req.A + req.B);
 
     // ── /pipeline ─────────────────────────────────────────────────────────────
     public object Get(PipelineGet _)
@@ -54,21 +54,18 @@ public class BenchmarkServices : Service
     }
 
     // ── /upload ───────────────────────────────────────────────────────────────
-    public async Task<long> Post(UploadPost _)
+    public async Task<HttpResult> Post(UploadPost _)
     {
         using var ms = new MemoryStream();
         await Request!.InputStream.CopyToAsync(ms);
-        return ms.Length;
+        return ToResult(ms.Length.ToString());
     }
 
     // ── /compression ──────────────────────────────────────────────────────────
-    public async Task Get(CompressionGet _)
+    public byte[] Get(CompressionGet _)
     {
-        if (LargeJson == null) { Response!.StatusCode = 500; return; }
-
         Response!.ContentType = "application/json";
-        
-        await Response.OutputStream.WriteAsync(LargeJson);
+        return LargeJson;
     }
 
     // ── /json ─────────────────────────────────────────────────────────────────
@@ -149,6 +146,11 @@ public class BenchmarkServices : Service
         }
 
         return new ListWithCount<object>(items);
+    }
+
+    private HttpResult ToResult<T>(T data)
+    {
+        return new HttpResult(data.ToString(), MimeTypes.PlainText);
     }
     
 }
