@@ -100,6 +100,26 @@
     "status_5xx": 0
   },
   {
+    "framework": "GenHTTP",
+    "language": "C#",
+    "rps": 1955364,
+    "avg_latency": "6.63ms",
+    "p99_latency": "21.40ms",
+    "cpu": "6774.1%",
+    "memory": "2.6GiB",
+    "connections": 16384,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "13.59MB/s",
+    "input_bw": "",
+    "reconnects": 0,
+    "status_2xx": 9776820,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "GenHTTP-WS",
     "language": "C#",
     "rps": 1947985,
