@@ -1,12 +1,12 @@
 ﻿using GenHTTP.Api.Content;
 using GenHTTP.Api.Protocol;
 
-using GenHTTP.Modules.Compression;
 using GenHTTP.Modules.IO;
 using GenHTTP.Modules.Layouting;
 using GenHTTP.Modules.Layouting.Provider;
 using GenHTTP.Modules.Reflection;
 using GenHTTP.Modules.Webservices;
+using GenHTTP.Modules.Websockets;
 
 using genhttp.Tests;
 
@@ -14,17 +14,21 @@ namespace genhttp;
 
 public static class Project
 {
+
     public static IHandlerBuilder Create()
     {
         var app = Layout.Create()
-            .AddPipeline()
-            .AddBaseline()
-            .AddUpload()
-            .AddJson()
-            .AddDatabase()
-            .AddCompression()
-            .AddStaticFiles()
-            .Add(Concern.From(AddHeader));
+                        .Add("pipeline", Content.From(Resource.FromString("ok")))
+                        .AddService<Baseline>("baseline11", mode: ExecutionMode.Auto)
+                        .AddService<Baseline>("baseline2", mode: ExecutionMode.Auto)
+                        .AddService<Upload>("upload", mode: ExecutionMode.Auto)
+                        .AddService<Json>("json", mode: ExecutionMode.Auto)
+                        .AddService<Database>("db", mode: ExecutionMode.Auto)
+                        .AddService<AsyncDatabase>("async-db", mode: ExecutionMode.Auto)
+                        .AddService<Compression>("compression", mode: ExecutionMode.Auto)
+                        .AddStaticFiles()
+                        .AddWebsocket()
+                        .Add(Concern.From(AddHeader));
 
         return app;
     }
@@ -43,38 +47,13 @@ public static class Project
         return app;
     }
 
-    private static LayoutBuilder AddPipeline(this LayoutBuilder app)
+    private static LayoutBuilder AddWebsocket(this LayoutBuilder app)
     {
-        return app.Add("pipeline", Content.From(Resource.FromString("ok")));
-    }
-    
-    private static LayoutBuilder AddBaseline(this LayoutBuilder app)
-    {
-        return app.AddService<Baseline>("baseline11", mode: ExecutionMode.Auto)
-                  .AddService<Baseline>("baseline2", mode: ExecutionMode.Auto);
-    }
+        var websocket = Websocket.Imperative()
+                                 .DoNotAllocateFrameData()
+                                 .Handler(new EchoHandler());
 
-    private static LayoutBuilder AddUpload(this LayoutBuilder app)
-    {
-        return app.AddService<Upload>("upload", mode: ExecutionMode.Auto);
-    }
-    
-    private static LayoutBuilder AddJson(this LayoutBuilder app)
-    {
-        return app.AddService<Json>("json", mode: ExecutionMode.Auto);
-    }
-    
-    private static LayoutBuilder AddDatabase(this LayoutBuilder app)
-    {
-        return app.AddService<Database>("db", mode: ExecutionMode.Auto)
-                  .AddService<AsyncDatabase>("async-db", mode: ExecutionMode.Auto);
-    }
-    
-    private static LayoutBuilder AddCompression(this LayoutBuilder app)
-    {
-        var service = ServiceResource.From<Compression>().ExecutionMode(ExecutionMode.Auto);
-
-        return app.Add("compression", service);
+        return app.Add("ws", websocket);
     }
 
     private static async ValueTask<IResponse?> AddHeader(IRequest request, IHandler content)
@@ -85,5 +64,5 @@ public static class Project
 
         return response;
     }
-    
+
 }

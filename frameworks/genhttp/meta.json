@@ -17,6 +17,8 @@
     "noisy",
     "mixed",
     "static",
-    "tcp-frag"
+    "tcp-frag",
+    "echo-ws",
+    "mini"
   ]
 }
