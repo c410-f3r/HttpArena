@@ -9,6 +9,7 @@ using SimpleW.Modules;
 using SimpleW.Benchmarks;
 
 using System.Net;
+using System.Reflection.Metadata;
 using System.Text.Json;
 
 var server = new SimpleWServer(IPAddress.Any, 8080);
@@ -126,9 +127,8 @@ server.MapGet("/async-db", async (int min = 10, int max = 50) =>
 });
 
 server.UseWebSocketModule(ws => {
-    ws.OnUnknown(async (conn, ctx, msg) => {
-        await conn.SendTextAsync(msg.RawText);
-    });
+    ws.OnBinary((conn, ctx, msg) => conn.SendBinaryAsync(msg));
+    ws.OnUnknown((conn, ctx, msg) => conn.SendTextAsync(msg.RawText));
 });
 
 await server.RunAsync();
