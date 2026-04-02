@@ -13,21 +13,32 @@ using System.Text.Json;
 
 var server = new SimpleWServer(IPAddress.Any, 8080);
 
-server.UseStaticFilesModule(options => {
-    options.Path = "/data/static";
-    options.Prefix = "/static/";
-    options.CacheTimeout = null; // test requirement for static
-    options.AutoIndex = false;
-});
+var options = new JsonSerializerOptions
+{
+    // validation fails otherwise
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+};
+
+server.ConfigureJsonEngine(new SystemTextJsonEngine(_ => options));
+
+if (Directory.Exists("/data/static"))
+{
+    server.UseStaticFilesModule(options => {
+        options.Path = "/data/static";
+        options.Prefix = "/static/";
+        options.CacheTimeout = null; // test requirement for static
+        options.AutoIndex = false;
+    });
+}
 
 server.MapGet("/baseline11", (int a, int b) => a + b);
-server.MapPost("/baseline11", (int a, int b, HttpRequest r) => a + b + ParseInt(r.Body));
+server.MapPost("/baseline11", (int a, int b, HttpSession s) => a + b + ParseInt(s.Request.Body));
 
 server.MapGet("/baseline2", (int a, int b) => a + b);
 
 server.MapGet("/pipeline", () => "ok");
 
-server.MapPost("/upload", (HttpRequest s) => s.Body.Length);
+server.MapPost("/upload", (HttpSession s) => s.Request.Body.Length);
 
 var largeJsonBytes = LoadJson();
 
@@ -125,8 +136,8 @@ static byte[]? LoadJson()
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
-
-    var largePath = "/data/dataset-large.json";
+    
+    var largePath = File.Exists("/data/dataset-large.json") ? "/data/dataset-large.json" : "../../../../../data/dataset-large.json";
 
     if (File.Exists(largePath))
     {
@@ -157,7 +168,7 @@ static List<DatasetItem>? LoadItems()
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    var datasetPath = Environment.GetEnvironmentVariable("DATASET_PATH") ?? "/data/dataset.json";
+    var datasetPath = File.Exists("/data/dataset.json") ? "/data/dataset.json" : "../../../../../data/dataset.json";
 
     if (File.Exists(datasetPath))
     {
