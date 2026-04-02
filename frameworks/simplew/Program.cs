@@ -36,7 +36,7 @@ server.MapPost("/baseline11", (int a, int b, HttpSession s) => a + b + ParseInt(
 
 server.MapGet("/baseline2", (int a, int b) => a + b);
 
-server.MapGet("/pipeline", () => "ok");
+server.MapGet("/pipeline", (HttpSession s) => s.Response.Text("ok"));
 
 server.MapPost("/upload", (HttpSession s) => s.Request.Body.Length);
 
