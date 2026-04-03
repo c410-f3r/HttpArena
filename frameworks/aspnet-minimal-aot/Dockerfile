@@ -1,7 +1,16 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends --no-install-suggests clang zlib1g-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY aspnet-minimal-aot.csproj ./
+RUN dotnet restore -r linux-x64
+
 COPY . .
-RUN dotnet publish -c Release -o out
+RUN dotnet publish -c Release -r linux-x64 --self-contained true --no-restore -o /app/out
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0
 
