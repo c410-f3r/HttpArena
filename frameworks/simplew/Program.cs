@@ -6,6 +6,7 @@ using Npgsql;
 
 using SimpleW;
 using SimpleW.Modules;
+using SimpleW.Benchmarks;
 
 using System.Net;
 using System.Text.Json;
