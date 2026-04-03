@@ -13,13 +13,7 @@ using Sisk.Core.Routing;
 var server = HttpServer.CreateBuilder()
                        .UseEngine<CadenteHttpServerEngine>()
                        .UseListeningPort(new ListeningPort(false, "0.0.0.0", 8080))
-                       .UseConfiguration(c =>
-                       {
-                           c.EnableAutomaticResponseCompression = true;
-                           c.AccessLogsStream = null;
-                           c.ErrorsLogsStream = null;
-                       });
-
+                       .UseMinimalConfiguration();
 
 Router router = new Router();
 
@@ -54,12 +48,29 @@ var largeJsonBytes = LoadJson();
 
 router.MapGet("/compression", r =>
 {
-    var response = new HttpResponse();
+    HttpContent baseContent = new ByteArrayContent(largeJsonBytes!);
 
-    response.Content = new ByteArrayContent(largeJsonBytes);
-    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+    if (r.Headers.AcceptEncoding?.Contains("gzip") == true)
+    {
+        baseContent = new GZipContent(baseContent);
+    }
+    else if (r.Headers.AcceptEncoding?.Contains("deflate") == true)
+    {
+        baseContent = new DeflateContent(baseContent);
+    }
+    else if (r.Headers.AcceptEncoding?.Contains("br") == true)
+    {
+        baseContent = new BrotliContent(baseContent);
+    }
 
-    return response;
+    return new HttpResponse
+    {
+        Content = baseContent,
+        Headers = new()
+        {
+            ContentType = "application/json"
+        }
+    };
 });
 
 var datasetItems = LoadItems();
@@ -72,9 +83,14 @@ router.MapGet("/json", r =>
     {
         processed.Add(new ProcessedItem
         {
-            Id = d.Id, Name = d.Name, Category = d.Category,
-            Price = d.Price, Quantity = d.Quantity, Active = d.Active,
-            Tags = d.Tags, Rating = d.Rating,
+            Id = d.Id,
+            Name = d.Name,
+            Category = d.Category,
+            Price = d.Price,
+            Quantity = d.Quantity,
+            Active = d.Active,
+            Tags = d.Tags,
+            Rating = d.Rating,
             Total = Math.Round(d.Price * d.Quantity, 2)
         });
     }
@@ -166,18 +182,8 @@ return;
 
 static string Sum(HttpRequest request)
 {
-    var a = 0;
-    var b = 0;
-
-    if (request.Query.TryGetValue("a", out var sa))
-    {
-        a = sa.GetInteger();
-    }
-
-    if (request.Query.TryGetValue("b", out var sb))
-    {
-        b = sb.GetInteger();
-    }
+    var a = request.Query["a"].MaybeNullOrEmpty()?.GetInteger() ?? 0;
+    var b = request.Query["b"].MaybeNullOrEmpty()?.GetInteger() ?? 0;
 
     var c = 0;
 
@@ -207,9 +213,14 @@ static byte[]? LoadJson()
         {
             var processed = largeItems.Select(d => new ProcessedItem
             {
-                Id = d.Id, Name = d.Name, Category = d.Category,
-                Price = d.Price, Quantity = d.Quantity, Active = d.Active,
-                Tags = d.Tags, Rating = d.Rating,
+                Id = d.Id,
+                Name = d.Name,
+                Category = d.Category,
+                Price = d.Price,
+                Quantity = d.Quantity,
+                Active = d.Active,
+                Tags = d.Tags,
+                Rating = d.Rating,
                 Total = Math.Round(d.Price * d.Quantity, 2)
             }).ToList();
 
