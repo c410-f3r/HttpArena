@@ -12,6 +12,7 @@
     "limited-conn",
     "noisy",
     "pipelined",
-    "json"
+    "json",
+    "upload"
   ]
 }
