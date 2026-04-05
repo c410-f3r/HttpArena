@@ -15,7 +15,6 @@
     "json",
     "upload",
     "static",
-    "compression",
     "sync-db",
     "async-db",
     "mixed",
