@@ -14,6 +14,7 @@
     "pipelined",
     "json",
     "upload",
-    "static"
+    "static",
+    "compression"
   ]
 }

@@ -6,3 +6,7 @@ spring:
   web:
     resources:
       static-locations: file:/data/static/
+server:
+  compression:
+    enabled: true
+    min-response-size: 500KB
