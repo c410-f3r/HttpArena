@@ -17,6 +17,9 @@
     "static",
     "compression",
     "sync-db",
-    "async-db"
+    "async-db",
+    "mixed",
+    "api-4",
+    "api-16"
   ]
 }
