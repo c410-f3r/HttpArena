@@ -15,6 +15,9 @@ import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.web.socket.config.annotation.EnableWebSocket;
+import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.sqlite.SQLiteDataSource;
 
 import javax.sql.DataSource;
@@ -23,7 +26,8 @@ import java.net.URISyntaxException;
 
 @SpringBootApplication
 @EnableConfigurationProperties(HttpArenaProperties.class)
-public class Application implements WebServerFactoryCustomizer<TomcatServletWebServerFactory> {
+@EnableWebSocket
+public class Application implements WebServerFactoryCustomizer<TomcatServletWebServerFactory>, WebSocketConfigurer {
 
 	private final ServerProperties serverProperties;
 
@@ -88,5 +92,10 @@ public class Application implements WebServerFactoryCustomizer<TomcatServletWebS
 		connector.setPort(8080);
 		connectorCustomizer.customize(connector);
 		factory.addAdditionalConnectors(connector);
+	}
+
+	@Override
+	public void registerWebSocketHandlers(final WebSocketHandlerRegistry registry) {
+		registry.addHandler(new EchoWebSocketHandler(), "/ws");
 	}
 }
