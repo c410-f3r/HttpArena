@@ -6,6 +6,7 @@ import org.postgresql.ds.PGSimpleDataSource;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -40,6 +41,7 @@ public class Application {
 
 	@Bean
 	@Qualifier("postgresql")
+	@ConditionalOnProperty(name = "httparena.postgres-url")
 	public DataSource postgresqlDataSource(HttpArenaProperties httpArenaProperties) throws URISyntaxException {
 		URI uri = new URI(httpArenaProperties.postgresUrl());
 		String jdbcUrl = "jdbc:postgresql://" + uri.getHost() + ":" + uri.getPort() + uri.getPath();
@@ -54,6 +56,7 @@ public class Application {
 
 	@Bean
 	@Qualifier("postgresql-pool")
+	@ConditionalOnProperty(name = "httparena.postgres-url")
 	public DataSource postgresqlPoolDataSource(@Qualifier("postgresql") DataSource dataSource) {
 		HikariConfig configuration = new HikariConfig();
 		configuration.setDataSource(dataSource);
@@ -62,6 +65,7 @@ public class Application {
 
 	@Bean
 	@Qualifier("postgresql")
+	@ConditionalOnProperty(name = "httparena.postgres-url")
 	public JdbcClient postgresqlJdbcClient(@Qualifier("postgresql-pool") DataSource dataSource) {
 		return JdbcClient.create(dataSource);
 	}

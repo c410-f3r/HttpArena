@@ -14,4 +14,4 @@ server:
     enabled: true
     min-response-size: 500KB
 
-httparena.postgres-url: ${DATABASE_URL}
+httparena.postgres-url: ${DATABASE_URL:false}

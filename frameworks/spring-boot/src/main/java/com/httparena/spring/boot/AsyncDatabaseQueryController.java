@@ -1,6 +1,7 @@
 package com.httparena.spring.boot;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/async-db")
+@ConditionalOnProperty(name = "httparena.postgres-url")
 public class AsyncDatabaseQueryController {
     private final JdbcClient jdbcClient;
     private final JsonMapper jsonMapper;
