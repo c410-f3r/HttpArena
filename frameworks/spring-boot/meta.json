@@ -11,6 +11,7 @@
     "tcp-frag",
     "limited-conn",
     "noisy",
-    "pipelined"
+    "pipelined",
+    "json"
   ]
 }
