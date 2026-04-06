@@ -1,6 +1,6 @@
 {{ $profiles := slice
-  (dict "id" "baseline-h2" "label" "Baseline (HTTP/2)" "conns" (slice 256 1024) "desc" "Same workload as the HTTP/1.1 baseline — <code>GET /baseline2</code> with query parameter parsing — but over encrypted HTTP/2 connections using TLS + ALPN. Benchmarked with <code>h2load</code> instead of gcannon. Measures how efficiently a framework handles HTTP/2 multiplexing and TLS overhead.")
-  (dict "id" "static-h2" "label" "Static Files (HTTP/2)" "conns" (slice 256 1024) "desc" "Serves 20 static files of various types and sizes (CSS, JS, HTML, fonts, SVG, WebP, JSON — totaling ~325 KB) over HTTP/2 with TLS. The load generator (<code>h2load</code>) requests all files using multiplexed streams, simulating a realistic browser page load. Measures static file serving throughput with HTTP/2 multiplexing.")
+  (dict "id" "baseline-h2" "label" "Baseline (HTTP/2)" "conns" (slice 256 1024) "desc" "Same workload as the HTTP/1.1 baseline — <code>GET /baseline2</code> with query parameter parsing — but over encrypted HTTP/2 connections using TLS + ALPN. Benchmarked with <code>h2load</code> instead of gcannon. Measures how efficiently a framework handles HTTP/2 multiplexing and TLS overhead. <a href='/docs/test-profiles/h2/baseline-h2/' class='lb-desc-link'>Learn more &rarr;</a>")
+  (dict "id" "static-h2" "label" "Static Files (HTTP/2)" "conns" (slice 256 1024) "desc" "Serves 20 static files of various types and sizes (CSS, JS, HTML, fonts, SVG, WebP, JSON — totaling ~325 KB) over HTTP/2 with TLS. The load generator (<code>h2load</code>) requests all files using multiplexed streams, simulating a realistic browser page load. Measures static file serving throughput with HTTP/2 multiplexing. <a href='/docs/test-profiles/h2/static-h2/' class='lb-desc-link'>Learn more &rarr;</a>")
 }}
 
 {{/* Build JSON data blob for round switching */}}
@@ -223,6 +223,7 @@ w.querySelectorAll('.lb-tab-h2').forEach(function(tab) {
     w.querySelectorAll('.lb-panel-h2').forEach(function(p) { p.classList.remove('active'); });
     w.querySelector('.lb-panel-h2[data-panel="' + tab.dataset.tab + '"]').classList.add('active');
     applyFilters_h2();
+    if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
 });
 
@@ -235,6 +236,7 @@ w.querySelectorAll('.lb-conn-tab').forEach(function(btn) {
     panel.querySelectorAll('.lb-conn-panel-h2').forEach(function(cp) { cp.classList.remove('active'); });
     panel.querySelector('.lb-conn-panel-h2[data-conns="' + btn.dataset.conns + '"]').classList.add('active');
     applyFilters_h2();
+    if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
 });
 
@@ -386,6 +388,7 @@ document.querySelectorAll('.lb-panel-h2 .lb-dropdown').forEach(function(dd) {
       }
       lbUpdateDropdowns_h2(filterKey, filterKey === 'engine' ? lbEngineLabels_h2 : null);
       applyFilters_h2();
+      if (window.dlScheduleUpdate) window.dlScheduleUpdate();
       ev.stopPropagation();
       return;
     }
@@ -413,11 +416,13 @@ document.querySelectorAll('.lb-panel-h2 .lb-search-input').forEach(function(inpu
     document.querySelectorAll('.lb-panel-h2 .lb-search-input').forEach(function(other) { if (other !== input) other.value = val; });
     document.querySelectorAll('.lb-panel-h2 .lb-search-clear').forEach(function(btn) { btn.style.display = val ? '' : 'none'; });
     applyFilters_h2();
+    if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
   clearBtn.addEventListener('click', function() {
     document.querySelectorAll('.lb-panel-h2 .lb-search-input').forEach(function(inp) { inp.value = ''; });
     document.querySelectorAll('.lb-panel-h2 .lb-search-clear').forEach(function(btn) { btn.style.display = 'none'; });
     applyFilters_h2();
+    if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
 });
 
@@ -438,6 +443,7 @@ w.querySelectorAll('.lb-type-filter').forEach(function(btn) {
       if (!anyOn) { btn.classList.add('active'); }
     }
     applyFilters_h2();
+    if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
 });
 
@@ -683,5 +689,11 @@ var obsH2 = new MutationObserver(function() { lastHeaderH2 = null; updateFloatin
 w.querySelectorAll('.lb-panel-h2, .lb-conn-panel-h2').forEach(function(el) {
   obsH2.observe(el, { attributes: true, attributeFilter: ['class'] });
 });
+
+/* Expose for deep linking */
+window.lbDropdownState_h2 = lbDropdownState_h2;
+window.lbSyncDropdowns_h2 = lbSyncDropdowns_h2;
+window.lbEngineLabels_h2 = lbEngineLabels_h2;
+window.applyFilters_h2 = applyFilters_h2;
 })();
 </script>
