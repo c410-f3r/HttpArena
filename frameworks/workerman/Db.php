@@ -2,7 +2,7 @@
 
 class Db
 {
-    private static SQLite3Stmt $prepared;
+    private static ?SQLite3Stmt $prepared;
 
     public static function init()
     {
