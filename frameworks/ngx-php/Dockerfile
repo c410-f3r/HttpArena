@@ -24,6 +24,7 @@ RUN wget -q http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
             --with-http_ssl_module \
             --with-http_v2_module \
             --with-http_v3_module \
+            --with-http_gzip_static_module \
             --add-module=/ngx-php/third_party/ngx_devel_kit \
             --add-module=/ngx-php >/dev/null && \
     make -j$(nproc) >/dev/null && make install >/dev/null
@@ -31,6 +32,9 @@ RUN wget -q http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
 RUN echo "opcache.jit=tracing" >> /etc/php/8.4/embed/conf.d/90-override.ini
 
 COPY --link . .
+
+RUN chmod +x /compress.sh
+RUN /compress.sh
 
 EXPOSE 8080 8443/tcp 8443/udp
 
