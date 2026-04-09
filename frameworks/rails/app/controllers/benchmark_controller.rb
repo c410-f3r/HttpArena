@@ -107,8 +107,8 @@ class BenchmarkController < ActionController::API
     min_val = (params[:min] || 10).to_i
     max_val = (params[:max] || 50).to_i
 
-    rows = self.class.get_db&.with do |connection|
-      connection.execute(DB_QUERY, [min_val, max_val])
+    rows = self.class.get_db_statement&.with do |statement|
+      statement.execute([min_val, max_val])
     end || []
 
     items = rows.map do |r|
@@ -166,15 +166,15 @@ class BenchmarkController < ActionController::API
 
   private
 
-  def self.get_db
-    @db ||= begin
+  def self.get_db_statement
+    @db_statement ||= begin
       return unless database_path
       max_connections = ENV.fetch('RAILS_MAX_THREADS', 4).to_i
       ConnectionPool.new(size: max_connections, timeout: 5) do
         db = SQLite3::Database.new(database_path, readonly: true)
         db.execute('PRAGMA mmap_size=268435456')
         db.results_as_hash = true
-        db
+        db.prepare(DB_QUERY)
       end
     end
   end
