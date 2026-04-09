@@ -26,7 +26,7 @@ class App < Sinatra::Base
     DATA_DIR = ENV.fetch('DATA_DIR', '/data')
     dataset_path = File.join DATA_DIR, 'dataset.json'
     if File.exist?(dataset_path)
-      set :dataset_items, JSON.parse(File.read(dataset_path))
+      set :dataset_items, JSON.parse(File.read(dataset_path)).freeze
     else
       set :dataset_items, nil
     end
@@ -38,7 +38,7 @@ class App < Sinatra::Base
       items = raw.map do |d|
         d.merge('total' => (d['price'] * d['quantity'] * 100).round / 100.0)
       end
-      set :large_json_payload, JSON.generate({ 'items' => items, 'count' => items.length })
+      set :large_json_payload, JSON.generate({ 'items' => items, 'count' => items.length }).freeze
     else
       set :large_json_payload, nil
     end
@@ -65,13 +65,13 @@ class App < Sinatra::Base
         ct = mime_types.fetch(ext, 'application/octet-stream')
         cache[name] = { data: File.binread(path), content_type: ct }
       end
-      set :static_files_cache, cache
+      set :static_files_cache, cache.freeze
     else
       set :static_files_cache, {}
     end
 
     # SQLite
-    set :database_path, File.join(DATA_DIR, 'benchmark.db')
+    set :database_path, File.join(DATA_DIR, 'benchmark.db').freeze
   end
 
   DB_QUERY = 'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT 50'.freeze
