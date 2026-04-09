@@ -4,7 +4,7 @@ require 'zlib'
 require 'pg'
 
 class BenchmarkController < ActionController::API
-  mattr_accessor :dataset, :dataset_large, :database_path, :static_files_cache
+  mattr_accessor :dataset, :dataset_large, :database_path, :static_files
 
   DATA_DIR = ENV.fetch('DATA_DIR', '/data')
   dataset_path = File.join(DATA_DIR, 'dataset.json')
@@ -37,7 +37,7 @@ class BenchmarkController < ActionController::API
     '.json'  => 'application/json'
   }.freeze
 
-  self.static_files_cache = {}
+  self.static_files = {}
   if File.exist?(static_dir)
     Dir.foreach(static_dir) do |name|
       next if name == '.' || name == '..'
@@ -45,7 +45,7 @@ class BenchmarkController < ActionController::API
       next unless File.file?(path)
       ext = File.extname(name)
       ct = MIME_TYPES.fetch(ext, 'application/octet-stream')
-      self.static_files_cache[name] = { data: File.binread(path), content_type: ct }
+      self.static_files[name] = { path: path, content_type: ct }
     end
   end
 
@@ -143,9 +143,8 @@ class BenchmarkController < ActionController::API
 
   def static_file
     filename = params[:filename]
-    entry = static_files_cache[filename] if static_files_cache
-    if entry
-      send_data entry[:data], type: entry[:content_type], disposition: :inline
+    if static_file = static_files[filename]
+      send_file static_file[:path], type: static_file[:content_type], disposition: :inline
     else
       head 404
     end
