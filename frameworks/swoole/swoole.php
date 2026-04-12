@@ -4,16 +4,9 @@ use Swoole\Http\Server;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 
-require __DIR__ . '/SQLite.php';
 require __DIR__ . '/PostgreSQL.php';
 
 $dataset = json_decode(file_get_contents('/data/dataset.json'), true);
-
-$data = json_decode(file_get_contents('/data/dataset-large.json'), true);
-foreach ($data as &$item) {
-    $item['total'] = $item['price'] * $item['quantity'];
-}
-$largeJson = json_encode(['items' => $data, 'count' => count($data)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 const MIME_TYPES = [
     'css'   => "text/css",
@@ -28,12 +21,16 @@ const MIME_TYPES = [
 $files = [];
 $dir   = new DirectoryIterator('/data/static');
 foreach ($dir as $fileInfo) {
-    if (!$fileInfo->isDot()) {
-        $files['/static/' . $fileInfo->getFilename()] = [
-            file_get_contents($fileInfo->getPathname()),
-            MIME_TYPES[pathinfo($fileInfo->getFilename(), PATHINFO_EXTENSION)] ?? 'application/octet-stream'
-        ];
-    }
+    if ($fileInfo->isDot()) continue;
+    $name = $fileInfo->getFilename();
+    if (str_ends_with($name, '.br') || str_ends_with($name, '.gz')) continue;
+    $base = $fileInfo->getPathname();
+    $files['/static/' . $name] = [
+        'data' => file_get_contents($base),
+        'mime' => MIME_TYPES[pathinfo($name, PATHINFO_EXTENSION)] ?? 'application/octet-stream',
+        'br'   => file_exists($base . '.br') ? file_get_contents($base . '.br') : null,
+        'gz'   => file_exists($base . '.gz') ? file_get_contents($base . '.gz') : null,
+    ];
 }
 
 $http = new Server('0.0.0.0', 8080);
@@ -42,73 +39,76 @@ $http->set([
     'enable_reuse_port'      => true,
     'enable_coroutine'       => false,
     'package_max_length'     => 30 * 1024 * 1024,
-    'http_compression_level' => 1
+    'http_compression_level' => 0
 ]);
 
 $http->on('workerStart', function (Server $server, int $workerId) {
-    SQLite::init();
     PostgreSQL::init();
 });
 
-$http->on('request', function (Request $request, Response $response) use ($dataset, $largeJson, $files) {
+$http->on('request', function (Request $request, Response $response) use ($dataset, $files) {
     $path = $request->server['request_uri'];
-    switch ($path) {
-        case '/pipeline':
-            $response->header['Content-Type'] = 'text/plain';
-            $response->end('ok');
-            return;
 
-        case '/baseline2':
-        case '/baseline11':
-            $sum = array_sum($request->get);
-            if ($request->server['request_method'] === 'POST') {
-                $sum += (int)$request->getContent();
-            }
+    if ($path === '/pipeline') {
+        $response->header['Content-Type'] = 'text/plain';
+        $response->end('ok');
+        return;
+    }
 
-            $response->header['Content-Type'] = 'text/plain';
-            $response->end($sum);
-            return;
+    if ($path === '/baseline2' || $path === '/baseline11') {
+        $sum = array_sum($request->get ?? []);
+        if ($request->server['request_method'] === 'POST') {
+            $sum += (int)$request->getContent();
+        }
+        $response->header['Content-Type'] = 'text/plain';
+        $response->end((string)$sum);
+        return;
+    }
 
-        case '/json':
-            $total = [];
-            foreach ($dataset as $item) {
-                $item['total'] = $item['price'] * $item['quantity'];
-                $total[]       = $item;
-            }
+    if (preg_match('#^/json/(\d+)$#', $path, $matches)) {
+        $count = min((int)$matches[1], count($dataset));
+        $m = (int)($request->get['m'] ?? 1);
+        if ($m === 0) $m = 1;
+        $items = [];
+        for ($i = 0; $i < $count; $i++) {
+            $item = $dataset[$i];
+            $item['total'] = $item['price'] * $item['quantity'] * $m;
+            $items[] = $item;
+        }
+        $response->header['Content-Type'] = 'application/json';
+        $response->end(json_encode(['items' => $items, 'count' => $count], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        return;
+    }
 
-            $response->header['Content-Type'] = 'application/json';
-            $response->end(json_encode(['items' => $total, 'count' => count($total)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            return;
+    if ($path === '/upload') {
+        $response->header['Content-Type'] = 'text/plain';
+        $response->end((string)strlen($request->getContent()));
+        return;
+    }
 
-        case '/upload':
-            $response->header['Content-Type'] = 'text/plain';
-            $response->end(strlen($request->getContent()));
-            return;
-
-        case '/compression':
-            $response->header['Content-Type'] = 'application/json';
-            $response->end($largeJson);
-            return;
-
-        case '/db':
-            $response->header['Content-Type'] = 'application/json';
-            $min                              = $request->get['min'] ?? 10;
-            $max                              = $request->get['max'] ?? 50;
-            $response->end(SQLite::query($min, $max));
-            return;
-
-        case '/async-db':
-            $response->header['Content-Type'] = 'application/json';
-            $min                              = $request->get['min'] ?? 10;
-            $max                              = $request->get['max'] ?? 50;
-            $response->end(PostgreSQL::query($min, $max));
-            return;
+    if ($path === '/async-db') {
+        $response->header['Content-Type'] = 'application/json';
+        $min   = (int)($request->get['min'] ?? 10);
+        $max   = (int)($request->get['max'] ?? 50);
+        $limit = max(1, min(50, (int)($request->get['limit'] ?? 50)));
+        $response->end(PostgreSQL::query($min, $max, $limit));
+        return;
     }
 
     if (str_starts_with($path, '/static/')) {
         if (isset($files[$path])) {
-            $response->header['Content-Type'] = $files[$path][1];
-            $response->end($files[$path][0]);
+            $f = $files[$path];
+            $response->header['Content-Type'] = $f['mime'];
+            $ae = $request->header['accept-encoding'] ?? '';
+            if ($f['br'] !== null && str_contains($ae, 'br')) {
+                $response->header['Content-Encoding'] = 'br';
+                $response->end($f['br']);
+            } elseif ($f['gz'] !== null && str_contains($ae, 'gzip')) {
+                $response->header['Content-Encoding'] = 'gzip';
+                $response->end($f['gz']);
+            } else {
+                $response->end($f['data']);
+            }
             return;
         }
     }
@@ -124,7 +124,7 @@ $port->set([
     'ssl_cert_file'          => '/certs/server.crt',
     'ssl_key_file'           => '/certs/server.key',
     'package_max_length'     => 30 * 1024 * 1024,
-    'http_compression_level' => 1,
+    'http_compression_level' => 0,
 ]);
 
 $http->start();

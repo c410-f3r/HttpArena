@@ -10,7 +10,6 @@
     "baseline",
     "pipelined",
     "limited-conn",
-    "noisy",
     "baseline-h2",
     "baseline-h3"
   ],

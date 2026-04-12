@@ -28,6 +28,15 @@ builder.WebHost.ConfigureKestrel(options =>
             lo.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
             lo.UseHttps(X509Certificate2.CreateFromPemFile(certPath, keyPath));
         });
+
+        // HTTP/1.1-only TLS listener for the json-tls profile. Kestrel
+        // advertises http/1.1 via ALPN so HTTP/1.1-only clients (wrk) negotiate
+        // correctly and never upgrade to h2.
+        options.ListenAnyIP(8081, lo =>
+        {
+            lo.Protocols = HttpProtocols.Http1;
+            lo.UseHttps(X509Certificate2.CreateFromPemFile(certPath, keyPath));
+        });
     }
 });
 
@@ -52,9 +61,7 @@ app.MapPost("/baseline11", Handlers.SumBody);
 app.MapGet("/baseline2", Handlers.Sum);
 
 app.MapPost("/upload", Handlers.Upload);
-app.MapGet("/json", Handlers.Json);
-app.MapGet("/compression", Handlers.Compression);
-app.MapGet("/db", Handlers.Database);
+app.MapGet("/json/{count}", Handlers.Json);
 app.MapGet("/async-db", Handlers.AsyncDatabase);
 
 app.MapStaticAssets();
