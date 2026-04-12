@@ -74,6 +74,7 @@
   "spring-jvm": {"dir": "spring-jvm", "description": "Spring Boot with embedded Tomcat on JDK 21 (HotSpot JVM with ZGC).", "repo": "https://github.com/spring-projects/spring-boot", "type": "tuned", "engine": "tomcat"},
   "spring-jvm-grpc": {"dir": "spring-jvm-grpc", "description": "Spring Boot gRPC server using grpc-spring-boot-starter with Netty transport on JDK 24.", "repo": "https://github.com/grpc-ecosystem/grpc-spring", "type": "tuned", "engine": "netty (grpc)"},
   "starlette": {"dir": "starlette", "description": "Starlette ASGI framework on Uvicorn (uvloop), multi-worker via gunicorn. The foundation FastAPI is built on.", "repo": "https://github.com/encode/starlette", "type": "tuned", "engine": "uvicorn"},
+  "swerver": {"dir": "swerver", "description": "Single-threaded event loop per worker with SO_REUSEPORT fork fan-out, native HTTP/1.1 + HTTP/2 + HTTP/3 (QUIC), kqueue/epoll/io_uring backends.", "repo": "https://github.com/justinGrosvenor/swerver", "type": "engine", "engine": "swerver"},
   "Swoole": {"dir": "swoole", "description": "Swoole is an event-driven, asynchronous, coroutine-based concurrency library with high performance for PHP.", "repo": "https://github.com/swoole/swoole-src", "type": "tuned", "engine": "Swoole"},
   "Swoole": {"dir": "swoole-websocket", "description": "Swoole is an event-driven, asynchronous, coroutine-based concurrency library with high performance for PHP.", "repo": "https://github.com/swoole/swoole-src", "type": "tuned", "engine": "Swoole"},
   "tonic-grpc": {"dir": "tonic-grpc", "description": "Rust gRPC server using tonic, a native Rust gRPC implementation built on top of hyper and tower.", "repo": "https://github.com/hyperium/tonic", "type": "tuned", "engine": "tonic"},
@@ -82,5 +83,5 @@
   "uwebsockets": {"dir": "uwebsockets", "description": "Native C++ HTTP/WebSocket server exposed as a Node.js addon. Uses µSockets event loop with epoll, bypassing Node's HTTP stack entirely.", "repo": "https://github.com/uNetworking/uWebSockets.js", "type": "engine", "engine": "uwebsockets"},
   "vertx": {"dir": "vertx", "description": "Eclipse Vert.x 4.5 — reactive toolkit on Netty with event-loop threading, JDK 21.", "repo": "https://github.com/eclipse-vertx/vert.x", "type": "engine", "engine": "netty"},
   "workerman": {"dir": "workerman", "description": "Workerman with PHP content handlers for all benchmark endpoints.", "repo": "https://github.com/walkor/Workerman", "type": "tuned", "engine": "workerman"},
-  "workerman-websocket": {"dir": "workerman-websocket", "description": "Workerman WebSocket echo server", "repo": "https://github.com/walkor/Workerman", "type": "tuned", "engine": "workerman"}
+  "workerman-websocket": {"dir": "workerman-websocket", "description": "An asynchronous event driven PHP socket framework. Supports HTTP, Websocket, SSL and other custom protocols.", "repo": "https://github.com/walkor/Workerman", "type": "production", "engine": "workerman"}
 }
