@@ -2,6 +2,57 @@
 
 Notable changes to test profiles, scoring, and validation.
 
+## 2026-04-12
+
+### Noisy test — removed
+
+The `noisy` (resilience) test profile has been removed entirely. It previously mixed valid baseline requests with malformed noise (bad paths, bad `Content-Length`, raw binary, bare CR, obs-fold, null bytes) and scored only 2xx responses. The profile was reference-only (not scored), and the insight it provided — which frameworks gracefully reject garbage traffic — is already exercised implicitly by the `baseline` test with realistic request shapes.
+
+**Removed:**
+- `noisy` profile from `benchmark.sh`, `benchmark-lite.sh`, and the Windows variants (profile entry, `PROFILE_ORDER`, readiness-check branch, load-gen dispatch branch)
+- Resilience block from `validate.sh` / `validate-windows.sh` (bad method + post-noise checks)
+- `noisy` from `inner/benchmark-{h1,test,per-test}.sh` profile lists
+- Test-profile documentation at `docs/test-profiles/h1/isolated/noisy/`
+- Shortcode references in `leaderboard-h1-workload.html`, `leaderboard-h1-isolated.html`, `leaderboard-composite.html` (including the `lb-row-noisy` CSS class + JS branches)
+- Landing page card and references in scoring/composite, running-locally/configuration, and add-framework/meta-json docs
+- Result directories (`results/noisy/`), site data files (`site/data/noisy-{512,4096,16384}.json`), and `noisy-*` keys from `site/data/rounds/2.json`
+
+The `requests/noise-*.raw` files (bad headers, binary, bare CR, etc.) remain on disk as a reference for anyone who wants to exercise resilience paths manually.
+
+### JSON Compressed profile — added to the website
+
+The `json-comp` profile was running in scripts but wasn't rendered anywhere in the site. Now:
+
+- **Leaderboard shortcodes**: `leaderboard-h1-isolated.html` has a new dict entry (JSON Compressed, conns 512/4096/16384); `leaderboard-composite.html` scores it alongside the plain `json` profile (scored, not engine-scored, same weight pattern).
+- **Dedicated docs page**: `docs/test-profiles/h1/isolated/json-compressed/` with `_index.md`, `implementation.md` (endpoint `/json/{count}?m={multiplier}`, counts × multiplier pairs, compression rules, parameters), and `validation.md` (the three `validate.sh` checks: `Content-Encoding` present with `Accept-Encoding`, body correctness across `(12,9) / (31,4) / (50,1)`, no `Content-Encoding` without `Accept-Encoding`).
+- **Landing page card**: new "JSON Compressed" card in `content/_index.md` next to JSON Processing, pointing at `/json/{count}?m=N`.
+- **Docs index**: new card in `docs/test-profiles/h1/isolated/_index.md`.
+- **Scoring table**: added to `docs/scoring/composite-score.md` as a scored H/1.1 Isolated profile.
+- **Running-locally config** and **add-framework/meta.json** docs updated with the new profile row.
+
+### `json-compressed` load-generator dispatch branch added
+
+`scripts/benchmark.sh` previously declared `[json-comp]="1|0|0-31,64-95|512,4096,16384|json-compressed"` but had **no matching `elif [ "$endpoint" = "json-compressed" ]` branch** in the load-gen dispatch. Runs fell through to the default `else` clause (three-raw baseline rotation with no `Accept-Encoding`), so all prior `results/json-comp/*` numbers were indistinguishable from `baseline` — same rps, same ~300 MB/s, same 2-byte "55" responses.
+
+Fixed by adding the branch (and mirroring into `benchmark-lite.sh` / `benchmark-lite-windows.sh`):
+
+```bash
+elif [ "$endpoint" = "json-compressed" ]; then
+    gc_args=("http://localhost:$PORT"
+        --raw "$REQUESTS_DIR/json-gzip-{1,5,10,15,25,40,50}.raw"
+        -c "$CONNS" -t "$THREADS" -d "$DURATION" -p "$pipeline" -r 25)
+```
+
+The `json-gzip-*.raw` files (which already existed in `requests/`) contain the same 7 `(count, m)` pairs as the plain `json-*.raw` variants plus an `Accept-Encoding: gzip, br` header. Post-fix, gcannon reports `Templates: 7` and response bodies carry `Content-Encoding: gzip` or `br` depending on what the framework's compression path produces.
+
+The stale "looks like baseline" `json-comp` result files under `results/json-comp/` and `site/data/json-comp-*.json` were deleted so the next `--save` run produces honest measurements.
+
+### `json-comp` connection counts
+
+`json-comp` moved from `512, 4096` to `512, 4096, 16384` — same pattern as `baseline` and `echo-ws` — to stress the compression path under extreme concurrent-connection pressure where middleware queuing shows up clearly. The 16384c run surfaces differences between frameworks that keep compression state per connection vs. those that allocate per request.
+
+Updated in `scripts/benchmark.sh`, `site/layouts/shortcodes/leaderboard-h1-isolated.html`, `site/layouts/shortcodes/leaderboard-composite.html`, `site/content/docs/running-locally/configuration.md`, and `site/content/docs/test-profiles/h1/isolated/json-compressed/implementation.md`.
+
 ## 2026-04-10
 
 ### JSON test — variable item count and multiplier
@@ -101,32 +152,3 @@ The `sync-db` test profile (SQLite range query over 100K rows) has been removed.
 - Result data (`sync-db-1024.json`)
 
 The `/db` endpoint code remains in framework source files but is no longer tested or scored.
-
-### Compression test — accept brotli
-
-The compression test (`GET /compression`) now accepts both gzip and brotli. The request template sends `Accept-Encoding: gzip, br` and the framework chooses which algorithm to use. Previously only gzip was accepted.
-
-Validation updated to accept `Content-Encoding: gzip` or `Content-Encoding: br`.
-
-### Compression test — free compression level
-
-The compression level restriction (previously: must use fastest level, e.g., gzip level 1) has been removed. Frameworks may use **any compression level** they choose. The bandwidth-adjusted scoring formula naturally balances the throughput vs. compression ratio tradeoff.
-
-Eligibility simplified: a framework only needs **built-in compression support** (gzip or brotli). The "configurable compression level" requirement has been dropped.
-
-### Compression test — squared bandwidth penalty
-
-The scoring formula for the compression test changed from a linear to a **squared** bandwidth penalty:
-
-**Before (linear):**
-```
-adjusted_rps = rps x (min_bw_per_req / bw_per_req)
-```
-
-**After (squared):**
-```
-ratio = min_bw_per_req / bw_per_req
-adjusted_rps = rps x ratio^2
-```
-
-This heavily rewards better compression. A framework with 2x the response size of the best compressor now loses **75%** of its score (was 50% with linear). This change, combined with free compression levels, means frameworks must carefully balance compression speed against compression ratio.
