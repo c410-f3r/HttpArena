@@ -4,7 +4,7 @@
     "port": 8443,
     "max_connections": 256,
     "static_root": "/data/static",
-    "workers": 16,
+    "workers": 0,
     "disable_middleware": true
   },
   "buffer_pool": {
