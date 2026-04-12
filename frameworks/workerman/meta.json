@@ -11,15 +11,15 @@
     "pipelined",
     "limited-conn",
     "json",
+    "json-comp",
     "upload",
-    "compression",
     "noisy",
     "static",
-    "tcp-frag",
     "api-4",
     "api-16",
-    "async-db",
-    "sync-db"
+    "async-db"
   ],
-  "maintainers": ["joanhey"]
+  "maintainers": [
+    "joanhey"
+  ]
 }

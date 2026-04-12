@@ -11,20 +11,20 @@
     "pipelined",
     "limited-conn",
     "json",
+    "json-comp",
     "upload",
-    "compression",
     "noisy",
     "api-4",
     "api-16",
     "db",
     "async-db",
-    "sync-db",
     "static",
-    "tcp-frag",
     "baseline-h2",
     "static-h2",
     "assets-4",
     "assets-16"
   ],
-  "maintainers": ["joanhey"]
+  "maintainers": [
+    "joanhey"
+  ]
 }

@@ -22,7 +22,7 @@ class PostgreSQL
         $pdo    = new PDO("pgsql:host=$host;port=$port;dbname=$db", $user, $pass, $option);
 
         self::$statement = $pdo->prepare(
-            'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT 50'
+            'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT ?'
         );
         self::$available = true;
     }
@@ -36,13 +36,13 @@ class PostgreSQL
         return self::$available;
     }
 
-    public static function query(int $min, int $max): bool|string
+    public static function query(float $min, float $max, int $limit = 50): bool|string
     {
         if (!self::ensureConnected()) {
             return '{"items":[],"count":0}';
         }
         try {
-            self::$statement->execute([$min, $max]);
+            self::$statement->execute([$min, $max, $limit]);
             $data = [];
             while ($row = self::$statement->fetch()) {
                 $data[] = [
