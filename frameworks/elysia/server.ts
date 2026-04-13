@@ -174,8 +174,7 @@ for (let i = 0; i < availableParallelism(); i++) {
 			)
 			.post(
 				"/upload",
-				({ request: { body } }) =>
-					(body as any as ArrayBuffer).byteLength,
+				({ body }) => (body as any as ArrayBuffer).byteLength,
 				{
 					parse: "arrayBuffer",
 				},
