@@ -12,6 +12,7 @@
     "limited-conn",
     "noisy",
     "static",
+    "async-db",
     "baseline-h2",
     "static-h2",
     "baseline-h3",
