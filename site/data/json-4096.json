@@ -319,6 +319,26 @@
     "status_5xx": 0
   },
   {
+    "framework": "rails",
+    "language": "Ruby",
+    "rps": 129525,
+    "avg_latency": "28.72ms",
+    "p99_latency": "65.90ms",
+    "cpu": "6463.1%",
+    "memory": "4.4GiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "458.72MB/s",
+    "input_bw": "6.18MB/s",
+    "reconnects": 24066,
+    "status_2xx": 647628,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "spring-boot",
     "language": "Java",
     "rps": 244820,

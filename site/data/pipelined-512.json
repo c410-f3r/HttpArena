@@ -399,6 +399,26 @@
     "status_5xx": 0
   },
   {
+    "framework": "rails",
+    "language": "Ruby",
+    "rps": 206368,
+    "avg_latency": "39.44ms",
+    "p99_latency": "103.30ms",
+    "cpu": "6440.6%",
+    "memory": "2.1GiB",
+    "connections": 512,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 16,
+    "bandwidth": "41.90MB/s",
+    "input_bw": "",
+    "reconnects": 805,
+    "status_2xx": 1031843,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "ringzero",
     "language": "C",
     "rps": 53499203,
