@@ -2,7 +2,6 @@ import os
 import sys
 import asyncio
 import json
-import threading
 import multiprocessing
 import zlib
 import sqlite3
@@ -17,6 +16,18 @@ import asyncpg
 CPU_COUNT = int(multiprocessing.cpu_count())
 WRK_COUNT = min(len(os.sched_getaffinity(0)), 128)
 WRK_COUNT = max(WRK_COUNT, 4)
+
+DATASET_LARGE_PATH = "/data/dataset-large.json"
+DATASET_PATH = os.environ.get("DATASET_PATH", "/data/dataset.json")
+DATASET_ITEMS = None
+try:
+    with open(DATASET_PATH) as file:
+        DATASET_ITEMS = json.load(file)
+except Exception:
+    pass
+
+STATIC_DIR = '/data/static/'
+STATIC_FILES = { }
 
 def load_static_files():
     global STATIC_FILES, STATIC_DIR
@@ -46,15 +57,6 @@ def load_static_files():
                 STATIC_FILES[key]['ENC']['br'] = key+'.br'
 
 load_static_files()
-
-DATASET_LARGE_PATH = "/data/dataset-large.json"
-DATASET_PATH = os.environ.get("DATASET_PATH", "/data/dataset.json")
-DATASET_ITEMS = None
-try:
-    with open(DATASET_PATH) as file:
-        DATASET_ITEMS = json.load(file)
-except Exception:
-    pass
 
 # -- Postgres DB ------------------------------------------------------------
 
@@ -116,14 +118,6 @@ def get_path_tail(scope):
     xpos = path.rfind('/')
     return path[xpos+1:] if xpos > 0 else ""
 
-def check_accept_encoding(scope, substr):
-    aenc = scope.get("headers", [ ]).get(b'accept-encoding', b'')
-    if aenc and substr == "*":
-        return True
-    if aenc and substr in aenc.decode():
-        return True
-    return False
-
 def get_header(scope: dict, name: str, def_value: str):
     name = name.lower()
     for hdr_name, value in scope.get("headers", [ ]):
@@ -131,23 +125,30 @@ def get_header(scope: dict, name: str, def_value: str):
             return value.decode('latin-1', errors="replace")
     return def_value
 
-def bild_resp(status: int, headers: list, body: str | bytes, contenc: str | None = None):
+def check_accept_encoding(scope, substr):
+    aenc = get_header(scope, 'Accept-Encoding', '')
+    if aenc and substr == "*":
+        return True
+    if aenc and substr in aenc:
+        return True
+    return False
+
+def make_resp(status: int, headers: list, body: str | bytes, contenc: str | None = None):
     if isinstance(body, str):
         body = body.encode('utf-8')
     if contenc and contenc != 'BR':
         if contenc == 'GZIP':
             body = zlib.compress(body, level = 1, wbits = 31)
-        if contenc:
-            headers.append( [ b'Content-Encoding', contenc.lower().encode() ] )
+        headers.append( [ b'Content-Encoding', contenc.lower().encode() ] )
     return status, headers, body
 
 def text_resp(body: str | bytes, status: int = 200, contenc: str | None = None):
-    return bild_resp(status, [[ b'Content-Type', b'text/plain; charset=utf-8' ]], body, contenc)
+    return make_resp(status, [[ b'Content-Type', b'text/plain; charset=utf-8' ]], body, contenc)
 
-def json_resp(body: dict | str, status: int = 200, contenc: str | None = None):
+def json_resp(body: dict, status: int = 200, contenc: str | None = None):
     if isinstance(body, dict):
         body = orjson.dumps(body)
-    return bild_resp(status, [[ b'Content-Type', b'application/json' ]], body, contenc)
+    return make_resp(status, [[ b'Content-Type', b'application/json' ]], body, contenc)
 
 # -- Routes -----------------------------------------------------------
 
@@ -217,7 +218,7 @@ async def async_db_endpoint(scope, receive, send):
         query_params = parse_qs(scope.get('query_string', b'').decode())
         min_val = float(query_params.get('min')[0])
         max_val = float(query_params.get('max')[0])
-        lim_val = float(query_params.get("limit")[0])
+        lim_val = int(query_params.get("limit")[0])
         db_conn = await DATABASE_POOL.acquire()
         try:
             rows = await db_conn.fetch(DATABASE_QUERY, min_val, max_val, lim_val)
@@ -250,11 +251,11 @@ async def static_file_endpoint(scope, receive, send):
     entry = STATIC_FILES.get(filename)
     if entry is None:
         return text_resp(b'Not found', status = 404)
-    if check_accept_encoding(env, 'br') and 'br' in entry['ENC']:
+    if check_accept_encoding(scope, 'br') and 'br' in entry['ENC']:
         entry = STATIC_FILES[entry['ENC']['br']]
-    elif check_accept_encoding(env, 'gzip') and 'gzip' in entry['ENC']:
+    elif check_accept_encoding(scope, 'gzip') and 'gzip' in entry['ENC']:
         entry = STATIC_FILES[entry['ENC']['gzip']]
-    return bild_resp(200, [[ b'Content-Type', entry['TYPE'] ]], entry['data'], contenc = entry['enc'])
+    return make_resp(200, [[ b'Content-Type', entry['TYPE'] ]], entry['data'], contenc = entry['enc'])
 
 async def upload_endpoint(scope, receive, send):
     size = 0
@@ -273,7 +274,7 @@ ROUTES = {
     '/json/': json_endpoint,
     '/json-comp/': json_endpoint,
     '/upload': upload_endpoint,
-    '/static/': static_endpoint,
+    '/static/': static_file_endpoint,
     '/async-db': async_db_endpoint,
 }
 
