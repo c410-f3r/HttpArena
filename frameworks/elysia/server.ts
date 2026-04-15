@@ -139,13 +139,17 @@ if (cluster.isPrimary) {
 				return { items: [], count: 0 };
 			}
 		})
-		.post(
-			"/upload",
-			({ body }) => (body as ArrayBuffer).byteLength,
-			{
-				parse: "arrayBuffer",
-			},
-		)
+		.post("/upload", async ({ request }) => {
+			let size = 0;
+			if (request.body) {
+				for await (const chunk of request.body as any) {
+					size += (chunk as Uint8Array).byteLength;
+				}
+			}
+			return new Response(String(size), {
+				headers: { "content-type": "text/plain" },
+			});
+		})
 		.onError(({ code }) => {
 			if (code === "NOT_FOUND") return status(404);
 		})
