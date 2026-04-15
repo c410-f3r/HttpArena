@@ -263,12 +263,6 @@ run_one() {
         output=$("${tool//-/_}_run" "${gc_args[@]}")
         stats_stop
 
-        # Persist raw load-generator output so parser regressions can be
-        # investigated after the fact.
-        local _raw_log_dir="$ROOT_DIR/site/static/logs/$profile/$CONNS"
-        mkdir -p "$_raw_log_dir"
-        printf '%s\n' "$output" > "$_raw_log_dir/${FRAMEWORK}.${tool}.run${run}.txt"
-
         echo "$output" | grep -Ev '^(Warm-up|Main benchmark duration|Stopped all clients|progress: [0-9]+% of clients started|spawning thread #[0-9]+|[0-9]*Warm-up phase is over for thread #[0-9]+)' || true
         info "CPU $STATS_AVG_CPU | Mem $STATS_PEAK_MEM"
         [ -n "$STATS_BREAKDOWN" ] && info "  $STATS_BREAKDOWN"
