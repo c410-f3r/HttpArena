@@ -4,54 +4,19 @@ require 'zlib'
 require 'pg'
 
 class BenchmarkController < ActionController::API
-  mattr_accessor :dataset, :dataset_large, :database_path, :static_files
+  mattr_accessor :dataset
 
   DATA_DIR = ENV.fetch('DATA_DIR', '/data')
   dataset_path = File.join(DATA_DIR, 'dataset.json')
-  dataset_large_path = File.join(DATA_DIR, 'dataset-large.json')
-  database_path = File.join(DATA_DIR, 'benchmark.db')
   static_dir = File.join(DATA_DIR, 'static')
 
   if File.exist?(dataset_path)
     self.dataset = JSON.parse(File.read(dataset_path)).freeze
   end
 
-  if File.exist?(dataset_large_path)
-    raw = JSON.parse(File.read(dataset_large_path))
-    items = raw.map { |d| d.merge('total' => (d['price'] * d['quantity'] * 100).round / 100.0) }
-    self.dataset_large = JSON.generate({ 'items' => items, 'count' => items.length }).freeze
-  end
+  FileUtils.cp_r(File.join(DATA_DIR, 'static'), Rails.root.join('public', 'static'))
 
-  if File.exist?(database_path)
-    self.database_path = database_path
-  end
-
-  # Load static files into memory
-  MIME_TYPES = {
-    '.css'   => 'text/css',
-    '.js'    => 'application/javascript',
-    '.html'  => 'text/html',
-    '.woff2' => 'font/woff2',
-    '.svg'   => 'image/svg+xml',
-    '.webp'  => 'image/webp',
-    '.json'  => 'application/json'
-  }.freeze
-
-  self.static_files = {}
-  if File.exist?(static_dir)
-    Dir.foreach(static_dir) do |name|
-      next if name == '.' || name == '..'
-      path = File.join(static_dir, name)
-      next unless File.file?(path)
-      ext = File.extname(name)
-      ct = MIME_TYPES.fetch(ext, 'application/octet-stream')
-      self.static_files[name] = { path: path, content_type: ct }
-    end
-  end
-  self.static_files.freeze
-
-  DB_QUERY = 'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT 50'.freeze
-  PG_QUERY = 'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN $1 AND $2 LIMIT 50'.freeze
+  PG_QUERY = 'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN $1 AND $2 LIMIT $3'.freeze
 
   def pipeline
     render plain: 'ok'
@@ -63,8 +28,7 @@ class BenchmarkController < ActionController::API
       total += v.to_i
     end
     if request.post?
-      body_str = request.body.read
-      total += body_str.to_i
+      total += request.body.read.to_i
     end
     render plain: total.to_s
   end
@@ -78,77 +42,58 @@ class BenchmarkController < ActionController::API
   end
 
   def json_endpoint
-    if dataset
-      items = dataset.map { |d| d.merge('total' => (d['price'] * d['quantity'] * 100).round / 100.0) }
-      body = JSON.generate({ 'items' => items, 'count' => items.length })
-      response.headers['content-type'] = 'application/json'
-      render plain: body
+    return head(500) unless dataset
+
+    m = (params['m'] || 1).to_i
+    count = params['count'].to_i
+    items = dataset.slice(0, count).map do |d|
+      d.merge('total' => d['price'] * d['quantity'] * m)
+    end
+
+    result = JSON.generate({ 'items' => items, 'count' => items.length })
+
+    if accept_encodings = request.headers['Accept-Encoding']
+      types = accept_encodings.split(',').map(&:strip)
+      if types.include? 'gzip'
+        sio = StringIO.new
+        gz = Zlib::GzipWriter.new(sio, 1)
+        gz.write(result)
+        gz.close
+        response.headers['content-type'] = 'application/json'
+        response.headers['content-encoding'] = 'gzip'
+        send_data sio.string, disposition: :inline
+      else
+        response.headers['content-type'] = 'application/json'
+        render plain: result
+      end
     else
-      head 500
-    end
-  end
-
-  def compression
-    accept_encodings = request.headers['Accept-Encoding'].split(',').map(&:strip)
-    if accept_encodings.include? 'gzip'
-      sio = StringIO.new
-      gz = Zlib::GzipWriter.new(sio, 1)
-      gz.write(self.class.dataset_large)
-      gz.close
       response.headers['content-type'] = 'application/json'
-      response.headers['content-encoding'] = 'gzip'
-      send_data sio.string, disposition: :inline
-    else
-      render json: self.class.dataset_large
+      render plain: result
     end
-  end
-
-  def db
-    min_val = (params[:min] || 10).to_i
-    max_val = (params[:max] || 50).to_i
-
-    rows = self.class.get_db_statement&.with do |statement|
-      statement.execute([min_val, max_val])
-    end || []
-
-    items = rows.map do |r|
-      {
-        'id' => r['id'], 'name' => r['name'], 'category' => r['category'],
-        'price' => r['price'], 'quantity' => r['quantity'], 'active' => r['active'] == 1,
-        'tags' => JSON.parse(r['tags']),
-        'rating' => { 'score' => r['rating_score'], 'count' => r['rating_count'] }
-      }
-    end
-    render json: { items: items, count: items.length }
   end
 
   def async_db
     min_val = (params[:min] || 10).to_i
     max_val = (params[:max] || 50).to_i
+    limit = (params['limit'] || 50).to_i.clamp(1, 50)
 
     rows = self.class.get_async_db&.with do |connection|
-      connection.exec_prepared('select', [min_val, max_val])
+      connection.exec_prepared('select', [min_val, max_val, limit])
     end || []
 
     items = rows.map do |r|
       {
-        'id' => r['id'].to_i, 'name' => r['name'], 'category' => r['category'],
-        'price' => r['price'].to_f, 'quantity' => r['quantity'].to_i,
+        'id' => r['id'],
+        'name' => r['name'],
+        'category' => r['category'],
+        'price' => r['price'],
+        'quantity' => r['quantity'],
         'active' => r['active'] == 't',
         'tags' => JSON.parse(r['tags']),
-        'rating' => { 'score' => r['rating_score'].to_f, 'count' => r['rating_count'].to_i }
+        'rating' => { 'score' => r['rating_score'], 'count' => r['rating_count'] }
       }
     end
     render json: { items: items, count: items.length }
-  end
-
-  def static_file
-    filename = params[:filename]
-    if static_file = static_files[filename]
-      send_file static_file[:path], type: static_file[:content_type], disposition: :inline
-    else
-      head 404
-    end
   end
 
   def upload
@@ -165,19 +110,6 @@ class BenchmarkController < ActionController::API
   end
 
   private
-
-  def self.get_db_statement
-    @db_statement ||= begin
-      return unless database_path
-      max_connections = ENV.fetch('RAILS_MAX_THREADS', 4).to_i
-      ConnectionPool.new(size: max_connections, timeout: 5) do
-        db = SQLite3::Database.new(database_path, readonly: true)
-        db.execute('PRAGMA mmap_size=268435456')
-        db.results_as_hash = true
-        db.prepare(DB_QUERY)
-      end
-    end
-  end
 
   def self.get_async_db
     @async_db ||= begin
