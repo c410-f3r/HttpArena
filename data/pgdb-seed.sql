@@ -100015,3 +100015,23 @@ COPY items (id, name, category, price, quantity, active, tags, rating_score, rat
 \.
 
 -- Verify: SELECT COUNT(*) FROM items; -- should return 100000
+
+-- ── production-stack users table ────────────────────────────────────────────
+-- Used by the /api/me cache-aside path. Four seed rows matching the four
+-- sessions pre-seeded in data/redis-seed.txt (bench-session-001..004 map
+-- to user IDs 42, 17, 8, 99 respectively). The aspnet handler reads the
+-- X-User-Id header set by the edge (via authsvc), does a cache lookup via
+-- IDistributedCache, and falls through to this table on miss with a 30s TTL.
+
+CREATE TABLE users (
+    id    INTEGER PRIMARY KEY,
+    name  TEXT NOT NULL,
+    email TEXT NOT NULL,
+    plan  TEXT NOT NULL
+);
+
+INSERT INTO users VALUES
+    (42, 'Alice Chen',    'alice@bench.local',  'pro'),
+    (17, 'Bob Martinez',  'bob@bench.local',    'free'),
+    (8,  'Carla Nguyen',  'carla@bench.local',  'pro'),
+    (99, 'Dmitri Volkov', 'dmitri@bench.local', 'enterprise');
