@@ -15,9 +15,7 @@ class App < Roda
     opts[:dataset_items] = JSON.parse(File.read(dataset_path))
   end
 
-  root = File.expand_path(__dir__)
-  FileUtils.cp_r(File.join(DATA_DIR, 'static'), File.join(root, 'public', 'static'))
-  plugin :static, ['/static']
+  plugin :public, root: DATA_DIR, gzip: true, brotli: true
 
   PG_QUERY = 'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN $1 AND $2 LIMIT $3'.freeze
 
@@ -28,6 +26,8 @@ class App < Roda
 
   route do |r|
     r.root { 'ok' }
+
+    r.public
 
     r.is 'pipeline' do
       render_plain 'ok'
