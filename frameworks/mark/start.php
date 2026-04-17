@@ -28,7 +28,7 @@ $api->count = (int) shell_exec('nproc');
 
 $api->get('/pipeline', 'pipeline');
 $api->any('/baseline11', 'baseline11');
-$api->any('/json/{count:\d+}', 'json');
+$api->get('/json/{count:\d+}', 'json');
 $api->post('/upload', 'upload');
 $api->get('/async-db', 'asyncDb');
 $api->get('/static/{path}', 'files');
