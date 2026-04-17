@@ -100016,6 +100016,10 @@ COPY items (id, name, category, price, quantity, active, tags, rating_score, rat
 
 -- Verify: SELECT COUNT(*) FROM items; -- should return 100000
 
+-- Sequence for CRUD test POST inserts. Starts above the seeded range
+-- so explicit-ID inserts don't collide with seeded rows.
+CREATE SEQUENCE IF NOT EXISTS items_id_seq START 100001;
+
 -- ── production-stack users table ────────────────────────────────────────────
 -- Used by the /api/me cache-aside path. Four seed rows matching the four
 -- sessions pre-seeded in data/redis-seed.txt (bench-session-001..004 map
