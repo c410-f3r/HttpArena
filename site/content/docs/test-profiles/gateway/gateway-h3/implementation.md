@@ -3,7 +3,7 @@ title: Implementation Guidelines
 ---
 {{< type-rules production="Must ship exactly two services — one HTTP/3-capable reverse proxy and one application server. The proxy must be a widely-used, production-grade server with QUIC support (Caddy, nginx 1.25+ with ngx_http_v3_module, Envoy, HAProxy 2.8+, h2o). No custom QUIC implementations. No caches, load balancers, or additional sidecars beyond the two services. The proxy must serve /static/* directly from disk; the server must serve /baseline2, /json, and /async-db using standard framework middleware." tuned="Same two-service shape as production. May optimize proxy configuration (worker counts, buffer sizes, keepalive tuning, QUIC parameter tuning). May tune the proxy-to-server protocol (h1/h2c/UDS). Server may use any caching or optimization strategy on its own endpoints." engine="No specific rules. May use custom QUIC implementations. Ranked separately from frameworks." >}}
 
-The Gateway-H3 test is the HTTP/3 sibling of [Gateway-64](../../h2-gateway/gateway-64/). Same endpoint surface, same two-service shape, same 64-CPU budget, same 20-URI round-robin mix — **the only difference is the edge protocol**. The load generator sends requests over QUIC to port 8443 (UDP), the proxy terminates h3 + TLS, and the upstream backend is still reached over plain h1 (or whatever the entry chooses internally).
+The Gateway-H3 test is the HTTP/3 sibling of [Gateway-64](../gateway-h2/). Same endpoint surface, same two-service shape, same 64-CPU budget, same 20-URI round-robin mix — **the only difference is the edge protocol**. The load generator sends requests over QUIC to port 8443 (UDP), the proxy terminates h3 + TLS, and the upstream backend is still reached over plain h1 (or whatever the entry chooses internally).
 
 ## Architecture
 
@@ -34,7 +34,7 @@ The H/2 Gateway numbers can't predict any of this. Running the same workload ove
 
 ## Endpoint responsibilities
 
-Same as [Gateway-64](../../h2-gateway/gateway-64/implementation/#endpoint-responsibilities):
+Same as [Gateway-64](../gateway-h2/implementation/#endpoint-responsibilities):
 
 | Path | Handled by | Role |
 |---|---|---|
@@ -113,7 +113,7 @@ Proxy options (pick one):
 
 ## CPU allocation
 
-Identical to [Gateway-64](../../h2-gateway/gateway-64/implementation/#cpu-allocation) — 64 logical CPUs (32 physical + 32 SMT siblings) split freely between proxy and server, with SMT-sibling pairing required. See the Gateway-64 page for the full rules.
+Identical to [Gateway-64](../gateway-h2/implementation/#cpu-allocation) — 64 logical CPUs (32 physical + 32 SMT siblings) split freely between proxy and server, with SMT-sibling pairing required. See the Gateway-64 page for the full rules.
 
 ## Workload
 

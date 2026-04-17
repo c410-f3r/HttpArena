@@ -160,7 +160,7 @@ Every production-stack entry ships `compose.production-stack.yml` with exactly f
 
 ### Required compose settings
 
-Same as [Gateway-64](../h2-gateway/gateway-64/implementation/#required-compose-settings): `network_mode: host`, pinned `cpuset`, `seccomp:unconfined`, and memlock/nofile ulimits on all four services.
+Same as [Gateway-64](../gateway-h2/implementation/#required-compose-settings): `network_mode: host`, pinned `cpuset`, `seccomp:unconfined`, and memlock/nofile ulimits on all four services.
 
 ### Environment variables
 

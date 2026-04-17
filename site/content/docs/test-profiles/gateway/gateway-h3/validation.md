@@ -2,7 +2,7 @@
 title: Validation
 ---
 
-The Gateway-H3 validation flow reuses the same checks as [Gateway-64](../../h2-gateway/gateway-64/validation/) — same endpoints, same expected responses, same anti-cheat probes. The only differences:
+The Gateway-H3 validation flow reuses the same checks as [Gateway-64](../gateway-h2/validation/) — same endpoints, same expected responses, same anti-cheat probes. The only differences:
 
 - A separate `compose.gateway-h3.yml` is built and started (instead of `compose.gateway.yml`).
 - Endpoint probes go to the same proxy on port 8443 but use `curl --http2` rather than `curl --http3`.
@@ -11,7 +11,7 @@ Why curl `--http2` for an h3 test? Most curl builds don't ship HTTP/3 support by
 
 ## Checks performed
 
-Same set as [Gateway-64 validation](../../h2-gateway/gateway-64/validation/):
+Same set as [Gateway-64 validation](../gateway-h2/validation/):
 
 1. HTTPS port responds within 30 seconds
 2. HTTP/2 protocol negotiation (as a proxy-health sanity check)

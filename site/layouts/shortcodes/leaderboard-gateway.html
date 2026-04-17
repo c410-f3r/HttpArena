@@ -1,38 +1,40 @@
 {{ $profiles := slice
-  (dict "id" "gateway-h3" "label" "Gateway-H3" "conns" (slice 64 256) "desc" "Two-service Docker Compose stack (proxy + server) with HTTP/3 + QUIC at the edge. Same 20-URI mix as Gateway-64 (static 30%, JSON 35%, baseline 20%, async-db 15%) and same 64-CPU budget — only the edge protocol differs. <a href='/docs/test-profiles/h3-gateway/gateway-h3/' class='lb-desc-link'>Learn more &rarr;</a>")
+  (dict "id" "gateway-64" "label" "Gateway H2" "conns" (slice 512 1024) "desc" "Two-service stack (proxy + server) over HTTP/2 + TLS. Mixed workload: static 30%, JSON 35%, baseline 20%, async-db 15%. 64 CPUs split freely. <a href='/docs/test-profiles/gateway/gateway-h2/' class='lb-desc-link'>Learn more &rarr;</a>")
+  (dict "id" "gateway-h3" "label" "Gateway H3" "conns" (slice 64 256) "desc" "Same two-service stack as Gateway H2 but with HTTP/3 + QUIC at the edge. Same 20-URI mix, same 64-CPU budget. <a href='/docs/test-profiles/gateway/gateway-h3/' class='lb-desc-link'>Learn more &rarr;</a>")
+  (dict "id" "production-stack" "label" "Production Stack H2" "conns" (slice 256 1024) "desc" "Four-service CRUD API (edge + Redis + JWT auth + server). 10K-item working set, JWT verified every request, cache-aside reads + POST writes. <a href='/docs/test-profiles/gateway/production-stack/' class='lb-desc-link'>Learn more &rarr;</a>")
 }}
 
 {{/* Build JSON data blob for round switching */}}
-{{ $lbH2GwData := dict }}
+{{ $lbGwData := dict }}
 {{ range $profiles }}
   {{ $pid := .id }}
   {{ range .conns }}
     {{ $key := printf "%s-%d" $pid . }}
     {{ $data := index site.Data $key }}
     {{ if $data }}
-      {{ $lbH2GwData = merge $lbH2GwData (dict $key $data) }}
+      {{ $lbGwData = merge $lbGwData (dict $key $data) }}
     {{ end }}
   {{ end }}
 {{ end }}
 <script>
-var lbH2GwCurrentData = {{ $lbH2GwData | jsonify | safeJS }};
-var lbH2GwCurrentMeta = {{ site.Data.frameworks | jsonify | safeJS }};
-var lbH2GwProfiles = {{ $profiles | jsonify | safeJS }};
+var lbGwCurrentData = {{ $lbGwData | jsonify | safeJS }};
+var lbGwCurrentMeta = {{ site.Data.frameworks | jsonify | safeJS }};
+var lbGwProfiles = {{ $profiles | jsonify | safeJS }};
 </script>
 
-<div class="lb-type-note-h3gw" style="margin-top:1rem; margin-bottom:0.75rem; padding:0.85rem 1.25rem; border-radius:0.5rem; background:linear-gradient(135deg, rgba(59,130,246,0.04), rgba(139,92,246,0.04)); border:1px solid rgba(59,130,246,0.15); color:#1e293b; font-size:1.02rem; line-height:1.7;">
+<div class="lb-type-note-gw" style="margin-top:1rem; margin-bottom:0.75rem; padding:0.85rem 1.25rem; border-radius:0.5rem; background:linear-gradient(135deg, rgba(59,130,246,0.04), rgba(139,92,246,0.04)); border:1px solid rgba(59,130,246,0.15); color:#1e293b; font-size:1.02rem; line-height:1.7;">
 </div>
 <style>
-html.dark .lb-type-note-h3gw { color: #e2e8f0 !important; background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.08)) !important; border-color: rgba(59,130,246,0.25) !important; }
+html.dark .lb-type-note-gw { color: #e2e8f0 !important; background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.08)) !important; border-color: rgba(59,130,246,0.25) !important; }
 </style>
 
 {{ range $i, $p := $profiles }}
-<div class="lb-panel-h3gw{{ if eq $i 0 }} active{{ end }}" data-panel="{{ $p.id }}" data-conns="{{ delimit $p.conns "," }}" style="margin-top:1rem;">
+<div class="lb-panel-gw{{ if eq $i 0 }} active{{ end }}" data-panel="{{ $p.id }}" data-conns="{{ delimit $p.conns "," }}" style="margin-top:1rem;">
   <div class="lb-card">
   <div class="lb-card-title">Results</div>
   <div class="lb-tabs">
   {{ range $j, $pp := $profiles }}
-    <div class="lb-tab-h3gw{{ if eq $pp.id $p.id }} active{{ end }}" data-tab="{{ $pp.id }}">{{ $pp.label }}</div>
+    <div class="lb-tab-gw{{ if eq $pp.id $p.id }} active{{ end }}" data-tab="{{ $pp.id }}">{{ $pp.label }}</div>
   {{ end }}
   </div>
 
@@ -70,7 +72,7 @@ html.dark .lb-type-note-h3gw { color: #e2e8f0 !important; background: linear-gra
   </div>
   <div style="font-size:0.75rem; color:#94a3b8; margin:0 0 0.75rem 0;">Click a row to expand details</div>
 
-  <div class="lb-conn-panel-h3gw active" data-profile="{{ $p.id }}" data-conns="best">
+  <div class="lb-conn-panel-gw active" data-profile="{{ $p.id }}" data-conns="best">
     <div class="lb">
       <div class="lb-row lb-header">
         <div title="Rank by requests per second">#</div>
@@ -91,7 +93,7 @@ html.dark .lb-type-note-h3gw { color: #e2e8f0 !important; background: linear-gra
   {{ range $ci, $c := $p.conns }}
   {{ $key := printf "%s-%d" $p.id $c }}
   {{ $data := index site.Data $key }}
-  <div class="lb-conn-panel-h3gw" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
+  <div class="lb-conn-panel-gw" data-profile="{{ $p.id }}" data-conns="{{ $c }}">
   <div class="lb">
     <div class="lb-row lb-header">
       <div title="Rank by requests per second">#</div>
@@ -114,7 +116,7 @@ html.dark .lb-type-note-h3gw { color: #e2e8f0 !important; background: linear-gra
     {{ $pct := mul (div (float $r.rps) (float $maxRps)) 100.0 }}
     {{ $meta := index site.Data.frameworks $r.framework }}
     {{ $s2xx := int ($r.status_2xx | default 0) }}{{ $s3xx := int ($r.status_3xx | default 0) }}{{ $s4xx := int ($r.status_4xx | default 0) }}{{ $s5xx := int ($r.status_5xx | default 0) }}{{ $errs := add $s4xx $s5xx }}
-    <div class="lb-row" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-type="{{ with $meta }}{{ .type | default "production" }}{{ end }}" data-engine="{{ with $meta }}{{ .engine | default "" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}" data-s2xx="{{ $s2xx }}" data-s3xx="{{ $s3xx }}" data-s4xx="{{ $s4xx }}" data-s5xx="{{ $s5xx }}" {{ if $r.tpl_static }}data-tpl-static="{{ int $r.tpl_static }}" data-tpl-json="{{ int ($r.tpl_json | default 0) }}" data-tpl-async-db="{{ int ($r.tpl_async_db | default 0) }}" data-tpl-baseline="{{ int ($r.tpl_baseline | default 0) }}"{{ end }} data-cpu-breakdown="{{ $r.cpu_breakdown | default "" }}">
+    <div class="lb-row" data-lang="{{ $r.language | default "" }}" data-name="{{ $r.framework }}" data-rps="{{ printf "%.0f" $r.rps }}" data-type="{{ with $meta }}{{ .type | default "production" }}{{ end }}" data-engine="{{ with $meta }}{{ .engine | default "" }}{{ end }}" data-desc="{{ with $meta }}{{ .description }}{{ end }}" data-repo="{{ with $meta }}{{ .repo }}{{ end }}" data-s2xx="{{ $s2xx }}" data-s3xx="{{ $s3xx }}" data-s4xx="{{ $s4xx }}" data-s5xx="{{ $s5xx }}" {{ if $r.tpl_static }}data-tpl-static="{{ int $r.tpl_static }}" data-tpl-json="{{ int ($r.tpl_json | default 0) }}" data-tpl-async-db="{{ int ($r.tpl_async_db | default 0) }}" data-tpl-baseline="{{ int ($r.tpl_baseline | default 0) }}"{{ end }}{{ if $r.tpl_items }}data-tpl-static="{{ int ($r.tpl_static | default 0) }}" data-tpl-items="{{ int $r.tpl_items }}" data-tpl-baseline="{{ int ($r.tpl_baseline | default 0) }}" data-tpl-me="{{ int ($r.tpl_me | default 0) }}"{{ end }} data-cpu-breakdown="{{ $r.cpu_breakdown | default "" }}">
       {{ $ftype := "framework" }}{{ with $meta }}{{ $ftype = .type | default "production" }}{{ end }}
       <div class="lb-rank">{{ add $j 1 }}</div>
       <div class="lb-name">{{ $r.framework }}</div>
@@ -123,7 +125,19 @@ html.dark .lb-type-note-h3gw { color: #e2e8f0 !important; background: linear-gra
       <div class="lb-stat">{{ $r.bandwidth | default "—" }}</div>
       <div class="lb-status">{{ if or (gt $s2xx 0) (gt $errs 0) }}<span class="{{ if gt $errs 0 }}lb-status-err{{ else }}lb-status-ok{{ end }}">{{ if gt $errs 0 }}{{ lang.FormatNumber 0 $errs }}{{ else }}✓{{ end }}</span><div class="lb-status-tip"><div><b>2xx:</b> {{ lang.FormatNumber 0 $s2xx }}</div><div><b>3xx:</b> {{ lang.FormatNumber 0 $s3xx }}</div><div><b>4xx:</b> {{ lang.FormatNumber 0 $s4xx }}</div><div><b>5xx:</b> {{ lang.FormatNumber 0 $s5xx }}</div></div>{{ else }}<span class="lb-status-na">—</span>{{ end }}</div>
       <div class="lb-bar-cell">
-        {{ if $r.tpl_static }}
+        {{ if $r.tpl_items }}
+          {{/* Production-stack categories: Static / Items / Baseline / Me */}}
+          {{ $total := add (int ($r.tpl_static | default 0)) (add (int $r.tpl_items) (add (int ($r.tpl_baseline | default 0)) (int ($r.tpl_me | default 0)))) }}
+          {{ if gt $total 0 }}
+          <div style="display:flex;height:14px;border-radius:3px;overflow:hidden;background:#f1f5f9;" title="Static: {{ lang.FormatNumber 0 ($r.tpl_static | default 0) }} ({{ printf "%.0f" (mul (div (float ($r.tpl_static | default 0)) (float $total)) 100) }}%)  Items: {{ lang.FormatNumber 0 $r.tpl_items }} ({{ printf "%.0f" (mul (div (float $r.tpl_items) (float $total)) 100) }}%)  Baseline: {{ lang.FormatNumber 0 ($r.tpl_baseline | default 0) }} ({{ printf "%.0f" (mul (div (float ($r.tpl_baseline | default 0)) (float $total)) 100) }}%)  Me: {{ lang.FormatNumber 0 ($r.tpl_me | default 0) }} ({{ printf "%.0f" (mul (div (float ($r.tpl_me | default 0)) (float $total)) 100) }}%)">
+            <div style="width:{{ printf "%.1f" (mul (div (float ($r.tpl_static | default 0)) (float $total)) 100) }}%;background:#3b82f6;"></div>
+            <div style="width:{{ printf "%.1f" (mul (div (float $r.tpl_items) (float $total)) 100) }}%;background:#f59e0b;"></div>
+            <div style="width:{{ printf "%.1f" (mul (div (float ($r.tpl_baseline | default 0)) (float $total)) 100) }}%;background:#10b981;"></div>
+            <div style="width:{{ printf "%.1f" (mul (div (float ($r.tpl_me | default 0)) (float $total)) 100) }}%;background:#8b5cf6;"></div>
+          </div>
+          {{ end }}
+        {{ else if $r.tpl_static }}
+          {{/* Gateway categories: Static / JSON / Async DB / Baseline */}}
           {{ $total := add (int ($r.tpl_static | default 0)) (add (int ($r.tpl_json | default 0)) (add (int ($r.tpl_async_db | default 0)) (int ($r.tpl_baseline | default 0)))) }}
           {{ if gt $total 0 }}
           <div style="display:flex;height:14px;border-radius:3px;overflow:hidden;background:#f1f5f9;" title="Static: {{ lang.FormatNumber 0 $r.tpl_static }} ({{ printf "%.0f" (mul (div (float $r.tpl_static) (float $total)) 100) }}%)  JSON: {{ lang.FormatNumber 0 ($r.tpl_json | default 0) }} ({{ printf "%.0f" (mul (div (float ($r.tpl_json | default 0)) (float $total)) 100) }}%)  Async DB: {{ lang.FormatNumber 0 ($r.tpl_async_db | default 0) }} ({{ printf "%.0f" (mul (div (float ($r.tpl_async_db | default 0)) (float $total)) 100) }}%)  Baseline: {{ lang.FormatNumber 0 ($r.tpl_baseline | default 0) }} ({{ printf "%.0f" (mul (div (float ($r.tpl_baseline | default 0)) (float $total)) 100) }}%)">
@@ -132,8 +146,6 @@ html.dark .lb-type-note-h3gw { color: #e2e8f0 !important; background: linear-gra
             <div style="width:{{ printf "%.1f" (mul (div (float ($r.tpl_async_db | default 0)) (float $total)) 100) }}%;background:#8b5cf6;"></div>
             <div style="width:{{ printf "%.1f" (mul (div (float ($r.tpl_baseline | default 0)) (float $total)) 100) }}%;background:#10b981;"></div>
           </div>
-          {{ else }}
-          <div class="lb-bar lb-bar-{{ add $j 1 }}" style="width: {{ printf "%.1f" $pct }}%"></div>
           {{ end }}
         {{ else }}
         <div class="lb-bar lb-bar-{{ add $j 1 }}" style="width: {{ printf "%.1f" $pct }}%"></div>
@@ -153,18 +165,18 @@ html.dark .lb-type-note-h3gw { color: #e2e8f0 !important; background: linear-gra
 </div>
 {{ end }}
 
-<div class="lb-header-floating" id="lb-floating-header-h3gw"></div>
+<div class="lb-header-floating" id="lb-floating-header-gw"></div>
 
 <style>
-.lb-panel-h3gw { display: none; }
-.lb-panel-h3gw.active { display: block; margin-top: 1rem; }
-.lb-conn-panel-h3gw { display: none; }
-.lb-conn-panel-h3gw.active { display: block; }
+.lb-panel-gw { display: none; }
+.lb-panel-gw.active { display: block; margin-top: 1rem; }
+.lb-conn-panel-gw { display: none; }
+.lb-conn-panel-gw.active { display: block; }
 /* Gateway grid: # Name Conn Req/s BW Err Bar CPU Mem AvgLat P99 */
-.lb-panel-h3gw .lb-row {
+.lb-panel-gw .lb-row {
   grid-template-columns: 2.5rem 14rem 3.5rem 7rem 7rem 3rem 1fr 5.5rem 5rem 5.5rem 4.5rem;
 }
-.lb-tab-h3gw {
+.lb-tab-gw {
   flex: 1;
   text-align: center;
   padding: 0.65rem 1.2rem;
@@ -179,31 +191,31 @@ html.dark .lb-type-note-h3gw { color: #e2e8f0 !important; background: linear-gra
   user-select: none;
   letter-spacing: -0.01em;
 }
-.lb-tab-h3gw:hover {
+.lb-tab-gw:hover {
   color: #1e293b;
   background: rgba(255, 255, 255, 0.5);
 }
-.lb-tab-h3gw.active {
+.lb-tab-gw.active {
   color: #92400e;
   background: #fff;
   box-shadow: 0 2px 8px rgba(234, 179, 8, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
   font-weight: 700;
 }
-html.dark .lb-tab-h3gw { color: #94a3b8; }
-html.dark .lb-tab-h3gw:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.06); }
-html.dark .lb-tab-h3gw.active { color: #fbbf24; background: rgba(234, 179, 8, 0.15); box-shadow: 0 2px 8px rgba(234, 179, 8, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3); }
+html.dark .lb-tab-gw { color: #94a3b8; }
+html.dark .lb-tab-gw:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.06); }
+html.dark .lb-tab-gw.active { color: #fbbf24; background: rgba(234, 179, 8, 0.15); box-shadow: 0 2px 8px rgba(234, 179, 8, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3); }
 </style>
 
 <script>
 (function() {
 var barClasses = ['lb-bar-1', 'lb-bar-2', 'lb-bar-3', 'lb-bar-4', 'lb-bar-5'];
-var w = document.getElementById('lb-h3gw-wrapper');
+var w = document.getElementById('lb-gateway-wrapper');
 
 /* Build "Best" panels */
 function buildBest() {
-  w.querySelectorAll('.lb-conn-panel-h3gw[data-conns="best"]').forEach(function(bestPanel) {
-    var parentPanel = bestPanel.closest('.lb-panel-h3gw');
-    var connPanels = parentPanel.querySelectorAll('.lb-conn-panel-h3gw:not([data-conns="best"])');
+  w.querySelectorAll('.lb-conn-panel-gw[data-conns="best"]').forEach(function(bestPanel) {
+    var parentPanel = bestPanel.closest('.lb-panel-gw');
+    var connPanels = parentPanel.querySelectorAll('.lb-conn-panel-gw:not([data-conns="best"])');
     var best = {};
     connPanels.forEach(function(cp) {
       cp.querySelectorAll('.lb-row:not(.lb-header)').forEach(function(row) {
@@ -235,11 +247,17 @@ function buildBest() {
 buildBest();
 
 /* Profile tabs — clicking switches panels */
-w.querySelectorAll('.lb-tab-h3gw').forEach(function(tab) {
+w.querySelectorAll('.lb-tab-gw').forEach(function(tab) {
   tab.addEventListener('click', function() {
-    w.querySelectorAll('.lb-panel-h3gw').forEach(function(p) { p.classList.remove('active'); });
-    w.querySelector('.lb-panel-h3gw[data-panel="' + tab.dataset.tab + '"]').classList.add('active');
-    applyFilters_h3gw();
+    var targetId = tab.dataset.tab;
+    // Switch panels
+    w.querySelectorAll('.lb-panel-gw').forEach(function(p) { p.classList.remove('active'); });
+    var targetPanel = w.querySelector('.lb-panel-gw[data-panel="' + targetId + '"]');
+    targetPanel.classList.add('active');
+    // Highlight the correct tab in the newly visible panel
+    targetPanel.querySelectorAll('.lb-tab-gw').forEach(function(t) { t.classList.remove('active'); });
+    targetPanel.querySelector('.lb-tab-gw[data-tab="' + targetId + '"]').classList.add('active');
+    applyFilters_gw();
     if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
 });
@@ -247,23 +265,23 @@ w.querySelectorAll('.lb-tab-h3gw').forEach(function(tab) {
 /* Conn tabs */
 w.querySelectorAll('.lb-conn-tab').forEach(function(btn) {
   btn.addEventListener('click', function() {
-    var panel = btn.closest('.lb-panel-h3gw');
+    var panel = btn.closest('.lb-panel-gw');
     panel.querySelectorAll('.lb-conn-tab').forEach(function(t) { t.classList.remove('active'); });
     btn.classList.add('active');
-    panel.querySelectorAll('.lb-conn-panel-h3gw').forEach(function(cp) { cp.classList.remove('active'); });
-    panel.querySelector('.lb-conn-panel-h3gw[data-conns="' + btn.dataset.conns + '"]').classList.add('active');
-    applyFilters_h3gw();
+    panel.querySelectorAll('.lb-conn-panel-gw').forEach(function(cp) { cp.classList.remove('active'); });
+    panel.querySelector('.lb-conn-panel-gw[data-conns="' + btn.dataset.conns + '"]').classList.add('active');
+    applyFilters_gw();
     if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
 });
 
-function applyFilters_h3gw(activePanel) {
-  var langState = lbDropdownState_h3gw.lang;
-  var engineState = lbDropdownState_h3gw.engine;
+function applyFilters_gw(activePanel) {
+  var langState = lbDropdownState_gw.lang;
+  var engineState = lbDropdownState_gw.engine;
   var allLangs = langState.selected.size === langState.all.size;
   var allEngines = engineState.selected.size === engineState.all.size;
 
-  if (!activePanel) activePanel = w.querySelector('.lb-panel-h3gw.active') || w;
+  if (!activePanel) activePanel = w.querySelector('.lb-panel-gw.active') || w;
 
   var showAll = activePanel.querySelector('.lb-type-filter[data-type="all"]').classList.contains('active');
   var showEngine = showAll || activePanel.querySelector('.lb-type-filter[data-type="engine"]').classList.contains('active');
@@ -272,7 +290,7 @@ function applyFilters_h3gw(activePanel) {
 
   w.classList.toggle('lb-show-all', showAll);
 
-  var typeNote = document.querySelector('.lb-type-note-h3gw');
+  var typeNote = document.querySelector('.lb-type-note-gw');
   if (typeNote) {
     var defs = [];
     if (showProduction) defs.push('<span class="lb-type-badge lb-type-badge-production"><span class="lb-type-square" style="background:#22c55e;"></span> Production</span> Standard framework configuration. Must follow production-specific implementation rules for each test.');
@@ -281,13 +299,13 @@ function applyFilters_h3gw(activePanel) {
     typeNote.innerHTML = defs.join('<br>');
   }
 
-  var activeSearchInput = activePanel.querySelector('.lb-search-input') || document.querySelector('.lb-panel-h3gw .lb-search-input');
+  var activeSearchInput = activePanel.querySelector('.lb-search-input') || document.querySelector('.lb-panel-gw .lb-search-input');
   var searchVal = activeSearchInput ? activeSearchInput.value.toLowerCase().trim() : '';
   var terms = searchVal ? searchVal.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
 
   buildBest();
 
-  w.querySelectorAll('.lb-conn-panel-h3gw').forEach(function(connPanel) {
+  w.querySelectorAll('.lb-conn-panel-gw').forEach(function(connPanel) {
     var rows = connPanel.querySelectorAll('.lb-row:not(.lb-header)');
     var visibleIdx = 0;
     var maxRps = 0;
@@ -325,28 +343,28 @@ function applyFilters_h3gw(activePanel) {
 }
 
 /* Dropdown filter system */
-var lbDropdownState_h3gw = {};
-var lbLangs_h3gw = new Set();
-var lbEngines_h3gw = new Set();
-var lbEngineLabels_h3gw = {};
-document.querySelectorAll('.lb-conn-panel-h3gw .lb-row:not(.lb-header), .lb-conn-panel-h3gw.active .lb-row:not(.lb-header)').forEach(function(row) {
-  if (row.dataset.lang) lbLangs_h3gw.add(row.dataset.lang);
+var lbDropdownState_gw = {};
+var lbLangs_gw = new Set();
+var lbEngines_gw = new Set();
+var lbEngineLabels_gw = {};
+document.querySelectorAll('.lb-conn-panel-gw .lb-row:not(.lb-header), .lb-conn-panel-gw.active .lb-row:not(.lb-header)').forEach(function(row) {
+  if (row.dataset.lang) lbLangs_gw.add(row.dataset.lang);
   var engine = row.dataset.engine;
-  if (engine) { var key = engine.toLowerCase(); lbEngines_h3gw.add(key); if (!lbEngineLabels_h3gw[key]) lbEngineLabels_h3gw[key] = engine; }
+  if (engine) { var key = engine.toLowerCase(); lbEngines_gw.add(key); if (!lbEngineLabels_gw[key]) lbEngineLabels_gw[key] = engine; }
 });
 // Fallback: also scan rows in panel containers
-document.querySelectorAll('.lb-panel-h3gw .lb-row:not(.lb-header)').forEach(function(row) {
-  if (row.dataset.lang) lbLangs_h3gw.add(row.dataset.lang);
+document.querySelectorAll('.lb-panel-gw .lb-row:not(.lb-header)').forEach(function(row) {
+  if (row.dataset.lang) lbLangs_gw.add(row.dataset.lang);
   var engine = row.dataset.engine;
-  if (engine) { var key = engine.toLowerCase(); lbEngines_h3gw.add(key); if (!lbEngineLabels_h3gw[key]) lbEngineLabels_h3gw[key] = engine; }
+  if (engine) { var key = engine.toLowerCase(); lbEngines_gw.add(key); if (!lbEngineLabels_gw[key]) lbEngineLabels_gw[key] = engine; }
 });
 
-lbDropdownState_h3gw.lang = { all: new Set(lbLangs_h3gw), selected: new Set(lbLangs_h3gw) };
-lbDropdownState_h3gw.engine = { all: new Set(lbEngines_h3gw), selected: new Set(lbEngines_h3gw) };
+lbDropdownState_gw.lang = { all: new Set(lbLangs_gw), selected: new Set(lbLangs_gw) };
+lbDropdownState_gw.engine = { all: new Set(lbEngines_gw), selected: new Set(lbEngines_gw) };
 
-function lbSyncDropdowns_h3gw(filterKey, labels) {
-  var state = lbDropdownState_h3gw[filterKey];
-  document.querySelectorAll('.lb-panel-h3gw .lb-dropdown[data-filter="' + filterKey + '"]').forEach(function(wrapper) {
+function lbSyncDropdowns_gw(filterKey, labels) {
+  var state = lbDropdownState_gw[filterKey];
+  document.querySelectorAll('.lb-panel-gw .lb-dropdown[data-filter="' + filterKey + '"]').forEach(function(wrapper) {
     var menu = wrapper.querySelector('.lb-dropdown-menu');
     var countEl = wrapper.querySelector('.lb-dropdown-count');
     var sorted = Array.from(state.all).sort();
@@ -371,12 +389,12 @@ function lbSyncDropdowns_h3gw(filterKey, labels) {
     countEl.textContent = isAll ? '' : state.selected.size;
   });
 }
-lbSyncDropdowns_h3gw('lang', null);
-lbSyncDropdowns_h3gw('engine', lbEngineLabels_h3gw);
+lbSyncDropdowns_gw('lang', null);
+lbSyncDropdowns_gw('engine', lbEngineLabels_gw);
 
-function lbUpdateDropdowns_h3gw(filterKey, labels) {
-  var state = lbDropdownState_h3gw[filterKey];
-  document.querySelectorAll('.lb-panel-h3gw .lb-dropdown[data-filter="' + filterKey + '"]').forEach(function(wrapper) {
+function lbUpdateDropdowns_gw(filterKey, labels) {
+  var state = lbDropdownState_gw[filterKey];
+  document.querySelectorAll('.lb-panel-gw .lb-dropdown[data-filter="' + filterKey + '"]').forEach(function(wrapper) {
     var menu = wrapper.querySelector('.lb-dropdown-menu');
     var countEl = wrapper.querySelector('.lb-dropdown-count');
     var isAll = state.selected.size === state.all.size;
@@ -391,12 +409,12 @@ function lbUpdateDropdowns_h3gw(filterKey, labels) {
   });
 }
 
-document.querySelectorAll('.lb-panel-h3gw .lb-dropdown').forEach(function(dd) {
+document.querySelectorAll('.lb-panel-gw .lb-dropdown').forEach(function(dd) {
   dd.addEventListener('click', function(ev) {
     var ddItem = ev.target.closest('.lb-dropdown-item');
     if (ddItem) {
       var filterKey = dd.dataset.filter;
-      var state = lbDropdownState_h3gw[filterKey];
+      var state = lbDropdownState_gw[filterKey];
       var val = ddItem.dataset.val;
       if (val === '__all__') {
         if (state.selected.size === state.all.size) state.selected.clear();
@@ -405,8 +423,8 @@ document.querySelectorAll('.lb-panel-h3gw .lb-dropdown').forEach(function(dd) {
         if (state.selected.has(val)) { state.selected.delete(val); if (state.selected.size === 0) state.selected = new Set(state.all); }
         else state.selected.add(val);
       }
-      lbUpdateDropdowns_h3gw(filterKey, filterKey === 'engine' ? lbEngineLabels_h3gw : null);
-      applyFilters_h3gw();
+      lbUpdateDropdowns_gw(filterKey, filterKey === 'engine' ? lbEngineLabels_gw : null);
+      applyFilters_gw();
       if (window.dlScheduleUpdate) window.dlScheduleUpdate();
       ev.stopPropagation();
       return;
@@ -416,31 +434,31 @@ document.querySelectorAll('.lb-panel-h3gw .lb-dropdown').forEach(function(dd) {
       ev.stopPropagation();
       var menu = dd.querySelector('.lb-dropdown-menu');
       var wasOpen = menu.style.display !== 'none';
-      document.querySelectorAll('.lb-panel-h3gw .lb-dropdown-menu').forEach(function(m) { m.style.display = 'none'; });
+      document.querySelectorAll('.lb-panel-gw .lb-dropdown-menu').forEach(function(m) { m.style.display = 'none'; });
       if (!wasOpen) menu.style.display = '';
     }
   });
 });
 
 document.addEventListener('click', function(ev) {
-  if (!ev.target.closest('.lb-panel-h3gw .lb-dropdown')) {
-    document.querySelectorAll('.lb-panel-h3gw .lb-dropdown-menu').forEach(function(m) { m.style.display = 'none'; });
+  if (!ev.target.closest('.lb-panel-gw .lb-dropdown')) {
+    document.querySelectorAll('.lb-panel-gw .lb-dropdown-menu').forEach(function(m) { m.style.display = 'none'; });
   }
 });
 
-document.querySelectorAll('.lb-panel-h3gw .lb-search-input').forEach(function(input) {
+document.querySelectorAll('.lb-panel-gw .lb-search-input').forEach(function(input) {
   var clearBtn = input.parentElement.querySelector('.lb-search-clear');
   input.addEventListener('input', function() {
     var val = input.value;
-    document.querySelectorAll('.lb-panel-h3gw .lb-search-input').forEach(function(other) { if (other !== input) other.value = val; });
-    document.querySelectorAll('.lb-panel-h3gw .lb-search-clear').forEach(function(btn) { btn.style.display = val ? '' : 'none'; });
-    applyFilters_h3gw();
+    document.querySelectorAll('.lb-panel-gw .lb-search-input').forEach(function(other) { if (other !== input) other.value = val; });
+    document.querySelectorAll('.lb-panel-gw .lb-search-clear').forEach(function(btn) { btn.style.display = val ? '' : 'none'; });
+    applyFilters_gw();
     if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
   clearBtn.addEventListener('click', function() {
-    document.querySelectorAll('.lb-panel-h3gw .lb-search-input').forEach(function(inp) { inp.value = ''; });
-    document.querySelectorAll('.lb-panel-h3gw .lb-search-clear').forEach(function(btn) { btn.style.display = 'none'; });
-    applyFilters_h3gw();
+    document.querySelectorAll('.lb-panel-gw .lb-search-input').forEach(function(inp) { inp.value = ''; });
+    document.querySelectorAll('.lb-panel-gw .lb-search-clear').forEach(function(btn) { btn.style.display = 'none'; });
+    applyFilters_gw();
     if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
 });
@@ -461,7 +479,7 @@ w.querySelectorAll('.lb-type-filter').forEach(function(btn) {
       var anyOn = Array.from(typeButtons).some(function(f) { return f.classList.contains('active'); });
       if (!anyOn) { btn.classList.add('active'); }
     }
-    applyFilters_h3gw();
+    applyFilters_gw();
     if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
 });
@@ -563,7 +581,7 @@ w.addEventListener('click', function(e) {
   var s4xx = Number(row.dataset.s4xx || 0);
   var s5xx = Number(row.dataset.s5xx || 0);
   var cpuBreakdown = row.dataset.cpuBreakdown || '';
-  var connPanel = row.closest('.lb-conn-panel-h3gw');
+  var connPanel = row.closest('.lb-conn-panel-gw');
   var profile = connPanel ? connPanel.dataset.profile : '';
   var connCount = connPanel ? connPanel.dataset.conns : '';
   if (connCount === 'best') connCount = row.querySelector('.lb-conns').textContent.replace(/,/g, '').trim();
@@ -606,10 +624,10 @@ w.addEventListener('click', function(e) {
 /* Round switching for H2 leaderboard */
 window.addEventListener('roundChanged', function(ev) {
   var roundId = ev.detail.round;
-  var data = roundId === null ? lbH2GwCurrentData : (window.roundsData[roundId] || lbH2GwCurrentData);
-  var fwMeta = roundId === null ? lbH2GwCurrentMeta : (data._frameworks || lbH2GwCurrentMeta);
+  var data = roundId === null ? lbGwCurrentData : (window.roundsData[roundId] || lbGwCurrentData);
+  var fwMeta = roundId === null ? lbGwCurrentMeta : (data._frameworks || lbGwCurrentMeta);
 
-  document.querySelectorAll('#lb-h3gw-wrapper .lb-conn-panel-h3gw:not([data-conns="best"])').forEach(function(panel) {
+  document.querySelectorAll('#lb-gateway-wrapper .lb-conn-panel-gw:not([data-conns="best"])').forEach(function(panel) {
     var profile = panel.dataset.profile;
     var conns = panel.dataset.conns;
     var key = profile + '-' + conns;
@@ -676,19 +694,19 @@ window.addEventListener('roundChanged', function(ev) {
   });
 
   buildBest();
-  w.querySelectorAll('.lb-panel-h3gw').forEach(function(p) {
-    applyFilters_h3gw(p);
+  w.querySelectorAll('.lb-panel-gw').forEach(function(p) {
+    applyFilters_gw(p);
   });
 });
-applyFilters_h3gw();
+applyFilters_gw();
 
 /* Floating header on scroll */
-var floaterH2 = document.getElementById('lb-floating-header-h3gw');
+var floaterH2 = document.getElementById('lb-floating-header-gw');
 var lastHeaderH2 = null;
 function updateFloatingHeaderH2() {
-  var activePanel = w.querySelector('.lb-panel-h3gw.active');
+  var activePanel = w.querySelector('.lb-panel-gw.active');
   if (!activePanel) { floaterH2.style.display = 'none'; return; }
-  var activeConn = activePanel.querySelector('.lb-conn-panel-h3gw.active');
+  var activeConn = activePanel.querySelector('.lb-conn-panel-gw.active');
   if (!activeConn) { floaterH2.style.display = 'none'; return; }
   var header = activeConn.querySelector('.lb-row.lb-header');
   if (!header) { floaterH2.style.display = 'none'; return; }
@@ -719,15 +737,15 @@ floaterH2.addEventListener('click', function(e) {
   if (real) { real.click(); lastHeaderH2 = null; updateFloatingHeaderH2(); }
 });
 var obsH2 = new MutationObserver(function() { lastHeaderH2 = null; updateFloatingHeaderH2(); });
-w.querySelectorAll('.lb-panel-h3gw, .lb-conn-panel-h3gw').forEach(function(el) {
+w.querySelectorAll('.lb-panel-gw, .lb-conn-panel-gw').forEach(function(el) {
   obsH2.observe(el, { attributes: true, attributeFilter: ['class'] });
 });
 
 /* Expose for deep linking */
-window.lbDropdownState_h3gw = lbDropdownState_h3gw;
-window.lbSyncDropdowns_h3gw = lbSyncDropdowns_h3gw;
-window.lbEngineLabels_h3gw = lbEngineLabels_h3gw;
-window.applyFilters_h3gw = applyFilters_h3gw;
+window.lbDropdownState_gw = lbDropdownState_gw;
+window.lbSyncDropdowns_gw = lbSyncDropdowns_gw;
+window.lbEngineLabels_gw = lbEngineLabels_gw;
+window.applyFilters_gw = applyFilters_gw;
 })();
 </script>
 

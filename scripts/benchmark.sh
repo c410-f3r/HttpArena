@@ -205,7 +205,7 @@ run_one() {
     # best_rps starts at -1 so that the *first* measurement always wins,
     # even if its rps is 0 (ws-echo, zero-traffic regressions). Without this,
     # BEST_M would carry stale metrics from a previous profile.
-    local best_rps=-1 best_output="" best_cpu="0%" best_mem="0MiB"
+    local best_rps=-1 best_output="" best_cpu="0%" best_mem="0MiB" best_breakdown=""
     BEST_M=()
     local run
 
@@ -241,6 +241,7 @@ run_one() {
             best_output="$output"
             best_cpu="$STATS_AVG_CPU"
             best_mem="$STATS_PEAK_MEM"
+            best_breakdown="$STATS_BREAKDOWN"
             BEST_M=()
             for k in "${!m[@]}"; do BEST_M[$k]="${m[$k]}"; done
         fi
@@ -279,6 +280,12 @@ save_result() {
     local dir="$RESULTS_DIR/$profile/$CONNS"
     mkdir -p "$dir"
 
+    local cpu_extra=""
+    if [ -n "$best_breakdown" ]; then
+        cpu_extra=",
+  \"cpu_breakdown\": \"$best_breakdown\""
+    fi
+
     local tpl_extra=""
     if [ "$profile" = "api-4" ] || [ "$profile" = "api-16" ]; then
         tpl_extra=",
@@ -299,6 +306,17 @@ save_result() {
   \"tpl_baseline\": $(( total * 4 / 20 )),
   \"tpl_json\": $(( total * 7 / 20 )),
   \"tpl_async_db\": $(( total * 3 / 20 ))"
+    elif [ "$profile" = "production-stack" ] \
+         && [ "${BEST_M[status_2xx]:-0}" -gt 0 ] 2>/dev/null; then
+        # Production-stack mix from reads file (20K URIs):
+        # 6000 static (30%) / 2000 baseline (10%) / 10000 items (50%) / 2000 me (10%).
+        # Writes (POST /api/items) add to items but are small (~5% of traffic).
+        local total=${BEST_M[status_2xx]}
+        tpl_extra=",
+  \"tpl_static\": $(( total * 30 / 100 )),
+  \"tpl_baseline\": $(( total * 10 / 100 )),
+  \"tpl_items\": $(( total * 50 / 100 )),
+  \"tpl_me\": $(( total * 10 / 100 ))"
     fi
 
     cat > "$dir/${FRAMEWORK}.json" <<EOF
@@ -319,7 +337,7 @@ save_result() {
   "status_2xx": ${BEST_M[status_2xx]:-0},
   "status_3xx": ${BEST_M[status_3xx]:-0},
   "status_4xx": ${BEST_M[status_4xx]:-0},
-  "status_5xx": ${BEST_M[status_5xx]:-0}${tpl_extra}
+  "status_5xx": ${BEST_M[status_5xx]:-0}${tpl_extra}${cpu_extra}
 }
 EOF
     info "saved results/$profile/$CONNS/${FRAMEWORK}.json"
