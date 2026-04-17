@@ -52,6 +52,13 @@
     "type": "tuned",
     "engine": "io_uring"
   },
+  "aspnet-minimal + caddy": {
+    "dir": "aspnet-minimal_caddy",
+    "description": "ASP.NET minimal API behind Caddy, serving HTTP/3 (QUIC) at the edge with h1 forwarding to Kestrel.",
+    "repo": "https://github.com/dotnet/aspnetcore",
+    "type": "production",
+    "engine": "kestrel"
+  },
   "aspnet-minimal + nginx": {
     "dir": "aspnet-minimal_nginx",
     "description": "ASP.NET Core minimal API behind an Nginx reverse proxy. Nginx handles TLS termination and static files, proxying dynamic endpoints to Kestrel over HTTP/1.1.",

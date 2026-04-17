@@ -155,12 +155,22 @@ html.dark .test-card-endpoint { color: #64748b; }
 </div>
 
 <div class="tests-proto">
-<span class="tests-proto-label tests-proto-h2">H/2 Gateway</span>
+<span class="tests-proto-label tests-proto-h2">Gateway</span>
 <div class="tests-grid">
-  <a class="test-card" href="docs/test-profiles/h2-gateway/gateway-64">
-    <div class="test-card-title">Gateway-64</div>
-    <div class="test-card-desc">Reverse proxy + application server — mixed static, JSON, and async-db workload over HTTP/2 with TLS. 64 CPUs split between proxy and server.</div>
+  <a class="test-card" href="docs/test-profiles/gateway/gateway-h2">
+    <div class="test-card-title">Gateway H2</div>
+    <div class="test-card-desc">Two-service proxy + server stack over HTTP/2 + TLS. Mixed workload: static, JSON, baseline, async-db.</div>
     <div class="test-card-endpoint">proxy:8443 → server (h2)</div>
+  </a>
+  <a class="test-card" href="docs/test-profiles/gateway/gateway-h3">
+    <div class="test-card-title">Gateway H3</div>
+    <div class="test-card-desc">Same two-service stack as Gateway H2 but with HTTP/3 + QUIC at the edge.</div>
+    <div class="test-card-endpoint">proxy:8443 → server (h3/quic)</div>
+  </a>
+  <a class="test-card" href="docs/test-profiles/gateway/production-stack">
+    <div class="test-card-title">Production Stack H2</div>
+    <div class="test-card-desc">Four-service CRUD API: edge + Redis + JWT auth sidecar + server. 10K-item cache-aside, concurrent reads + writes.</div>
+    <div class="test-card-endpoint">edge:8443 → authsvc → server → redis/postgres</div>
   </a>
 </div>
 </div>
