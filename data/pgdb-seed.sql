@@ -100016,6 +100016,10 @@ COPY items (id, name, category, price, quantity, active, tags, rating_score, rat
 
 -- Verify: SELECT COUNT(*) FROM items; -- should return 100000
 
+-- Index for CRUD list queries (WHERE category = $1 ORDER BY id).
+-- Without this, every list request does a sequential scan of 100K rows.
+CREATE INDEX IF NOT EXISTS idx_items_category_id ON items (category, id);
+
 -- Sequence for CRUD test POST inserts. Starts above the seeded range
 -- so explicit-ID inserts don't collide with seeded rows.
 CREATE SEQUENCE IF NOT EXISTS items_id_seq START 100001;
