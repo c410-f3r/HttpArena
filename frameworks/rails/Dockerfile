@@ -21,6 +21,6 @@ RUN bundle install --jobs=$(nproc)
 
 COPY . .
 
-EXPOSE 8080
+EXPOSE 8080 8081
 
 CMD ["bin/rails", "server"]
