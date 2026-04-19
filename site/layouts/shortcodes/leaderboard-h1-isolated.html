@@ -627,11 +627,21 @@ function buildH1IsoBestPanels() {
 }
 buildH1IsoBestPanels();
 
-/* Profile tabs — each panel has its own set; clicking switches panels */
+/* Profile tabs — each panel has its own set; clicking switches panels. */
 lbH1IsoRoot.querySelectorAll('.lb-tab').forEach(function(tab) {
   tab.addEventListener('click', function() {
+    var tabId = tab.dataset.tab;
     lbH1IsoRoot.querySelectorAll('.lb-panel').forEach(function(p) { p.classList.remove('active'); });
-    lbH1IsoRoot.querySelector('[data-panel="' + tab.dataset.tab + '"]').classList.add('active');
+    var target = lbH1IsoRoot.querySelector('[data-panel="' + tabId + '"]');
+    if (!target) return;
+    target.classList.add('active');
+    // Sync the tab-highlight state inside the newly-visible panel. Hugo pre-
+    // renders each panel's tab bar with .active on the matching tab, but the
+    // state can drift once JS mutates tabs elsewhere — explicit reset keeps
+    // the highlight consistent with the visible panel.
+    target.querySelectorAll('.lb-tab').forEach(function(t) { t.classList.remove('active'); });
+    var activeTab = target.querySelector('.lb-tab[data-tab="' + tabId + '"]');
+    if (activeTab) activeTab.classList.add('active');
     applyH1IsoFilters();
     if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });

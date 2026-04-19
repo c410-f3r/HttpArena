@@ -618,8 +618,15 @@ buildH1WkBestPanels();
 /* Profile tabs — each panel has its own set; clicking switches panels */
 lbH1WkRoot.querySelectorAll('.lb-tab').forEach(function(tab) {
   tab.addEventListener('click', function() {
+    var tabId = tab.dataset.tab;
     lbH1WkRoot.querySelectorAll('.lb-panel').forEach(function(p) { p.classList.remove('active'); });
-    lbH1WkRoot.querySelector('[data-panel="' + tab.dataset.tab + '"]').classList.add('active');
+    var target = lbH1WkRoot.querySelector('[data-panel="' + tabId + '"]');
+    if (!target) return;
+    target.classList.add('active');
+    // Sync the tab-highlight state inside the newly-visible panel.
+    target.querySelectorAll('.lb-tab').forEach(function(t) { t.classList.remove('active'); });
+    var activeTab = target.querySelector('.lb-tab[data-tab="' + tabId + '"]');
+    if (activeTab) activeTab.classList.add('active');
     applyH1WkFilters();
     if (window.dlScheduleUpdate) window.dlScheduleUpdate();
   });
