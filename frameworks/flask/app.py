@@ -5,18 +5,14 @@ import json
 import gzip
 import mimetypes
 
-
-mimetypes.add_type('.woff2' , 'font/woff2')
-mimetypes.add_type('.webp'  , 'image/webp')
-
 import psycopg_pool
 import psycopg.rows 
 
-from flask import Flask, request, make_response, Response, 
+from flask import Flask, request, make_response, Response 
 from flask import send_from_directory, jsonify
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder = None)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 
 
@@ -61,7 +57,7 @@ def db_close():
     DATABASE_POOL = None
 
 def db_setup():
-    global DATABASE_POOL, DATABASE_URL, WRK_COUNT
+    global DATABASE_POOL, DATABASE_URL, PG_POOL_MIN_SIZE, PG_POOL_MAX_SIZE, WRK_COUNT
     db_close()
     if not DATABASE_URL:
         return
@@ -85,21 +81,6 @@ db_setup()
 
         
 # -- flask features ----------------------------------------------------------
-
-'''
-@app.after_request
-def add_server_header(response):
-    response.headers['Server'] = 'Flask'
-    return response
-
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
-
-app.json_encoder = CustomJSONEncoder
-'''
 
 @app.after_request
 def compress_response(response):
@@ -146,9 +127,9 @@ def pipeline():
 @app.route('/baseline11', methods=['GET', 'POST'])
 def baseline11():
     total = 0
-    for v in request.args.values():
+    for val in request.args.values():
         try:
-            total += int(v)
+            total += int(val)
         except ValueError:
             pass
     if request.method == 'POST' and request.data:
@@ -184,7 +165,7 @@ def async_db_endpoint():
     try:
         min_val = request.args.get('min', type=float)
         max_val = request.args.get('max', type=float)
-        limit = request.args.get('limit', type=float)
+        limit = request.args.get('limit', type=int)
         with DATABASE_POOL.connection() as db_conn:
             rows = db_conn.execute(DATABASE_QUERY, (min_val, max_val, limit)).fetchall()
         items = [
@@ -219,7 +200,9 @@ def upload_endpoint():
     return str(size)
 
 
-@app.route('/static/<path:filename>')
-def static_endpoint(filename):
-    return send_from_directory('/data/static', filename)
+mimetypes.add_type('.woff2', 'font/woff2')
+mimetypes.add_type('.webp', 'image/webp')
 
+@app.route('/static/<path:filepath>')
+def static_endpoint(filepath):
+    return send_from_directory('/data/static', filepath)
