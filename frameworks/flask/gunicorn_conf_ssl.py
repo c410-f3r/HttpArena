@@ -6,7 +6,7 @@ import gunicorn
 
 _CPU_COUNT = int(multiprocessing.cpu_count())
 _WRK_COUNT = min(len(os.sched_getaffinity(0)), 128)
-_WRK_COUNT = max(WRK_COUNT, 4)
+_WRK_COUNT = max(_WRK_COUNT, 4)
 
 
 bind = "0.0.0.0:8081"
