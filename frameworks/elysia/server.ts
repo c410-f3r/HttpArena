@@ -34,7 +34,10 @@ if (cluster.isPrimary) {
 			assets: "/data/static",
 			prefix: "/static",
 		}))
-		.get("/pipeline", "ok")
+		.get("/pipeline", ({ set }) => {
+			set.headers["content-type"] = "text/plain";
+			return "ok";
+		})
 		.get("/baseline11", ({ query }) => {
 			let sum = 0;
 			for (const v of Object.values(query)) sum += +v || 0;
