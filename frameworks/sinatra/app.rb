@@ -6,6 +6,12 @@ Bundler.require(:default)
 require 'zlib'
 require 'pg'
 
+class Hash
+  def symbolize_keys!
+    transform_keys! { |key| key.to_sym }
+  end
+end
+
 module Sinatra
   class Request < Rack::Request
     # Rack::Request sees the body of a POST request without content-type set as form data.
@@ -35,7 +41,12 @@ class App < Sinatra::Base
     DATA_DIR = ENV.fetch('DATA_DIR', '/data')
     dataset_path = File.join DATA_DIR, 'dataset.json'
     if File.exist?(dataset_path)
-      set :dataset_items, JSON.parse(File.read(dataset_path)).freeze
+      items = JSON.parse(File.read(dataset_path)).map do |item|
+        item.symbolize_keys!
+        item[:rating].symbolize_keys!
+        item
+      end
+      set :dataset_items, items.freeze
     else
       set :dataset_items, nil
     end
@@ -76,10 +87,10 @@ class App < Sinatra::Base
     m = (request.params['m'] || 1).to_i
 
     items = dataset.slice(0, count).map do |d|
-      d.merge('total' => (d['price'] * d['quantity'] * m))
+      d.merge(total: (d[:price] * d[:quantity] * m))
     end
 
-    result = JSON.generate('items' => items, 'count' => items.length)
+    result = JSON.generate(items: items, count: items.length)
 
     if accept_encodings = request.get_header('HTTP_ACCEPT_ENCODING')
       if accept_encodings.include?('gzip')
@@ -112,19 +123,19 @@ class App < Sinatra::Base
       connection.exec_prepared('select', [min_val, max_val, limit])
     end || []
 
-    items = rows.map do |r|
+    items = rows.map do |row|
       {
-        'id' => r['id'],
-        'name' => r['name'],
-        'category' => r['category'],
-        'price' => r['price'],
-        'quantity' => r['quantity'],
-        'active' => r['active'] == 1,
-        'tags' => JSON.parse(r['tags']),
-        'rating' => { 'score' => r['rating_score'], 'count' => r['rating_count'] }
+        id: row['id'],
+        name: row['name'],
+        category: row['category'],
+        price: row['price'],
+        quantity: row['quantity'],
+        active: row['active'] == 1,
+        tags: JSON.parse(row['tags']),
+        rating: { score: row['rating_score'], count: row['rating_count'] }
       }
     end
-    render_json JSON.generate({ 'items' => items, 'count' => items.length })
+    render_json JSON.generate(items: items, count: items.length)
   end
 
   private
