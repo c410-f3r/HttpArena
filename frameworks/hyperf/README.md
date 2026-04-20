@@ -22,7 +22,7 @@ A coroutine framework that focuses on hyperspeed and flexibility. Building micro
 | `/async-db`          | GET       | `async-db`         |
 | `/upload`            | POST      | `upload`           |
 | `/static/{filename}` | GET       | `static`           |
-| `/ws/`               | WEBSOCKET | `ws`               |
+| `/ws`               | WEBSOCKET | `ws`               |
 
 
 ## Notes
