@@ -4,4 +4,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 8080
-CMD [ "python3", "launcher.py" , "python3", "app.py", "--host", "0.0.0.0", "--port", "8080", "--log-level", "ERROR" ]
+ENV ROBYN_PORT=8080
+ENV ROBYN_HOST=0.0.0.0
+ENV ROBYN_CLIENT_TIMEOUT=30
+ENV ROBYN_KEEP_ALIVE_TIMEOUT=20
+CMD [ "python3", "app.py" ]

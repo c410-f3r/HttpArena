@@ -4,6 +4,7 @@ import multiprocessing
 import json
 
 from robyn import Robyn, Headers, Request, Response, jsonify
+from robyn.argument_parser import Config as RobynConfig
 from robyn.types import PathParams
 
 
@@ -23,11 +24,21 @@ except Exception:
     pass
 
 
-# -- APP ---------------------------------------------------------------------
+# -- APP init --------------------------------------------------------------------
 
-app = Robyn(__file__)
+class SpecialConfig(RobynConfig):
+    def __init__(self):
+        super().__init__()
+        self.workers = 2
+        self.processes = WRK_COUNT
+        self.log_level = "ERROR"
 
-app.set_request_header("server", "Robyn")
+app = Robyn(__file__, config = SpecialConfig())
+
+app.set_response_header("server", "Robyn")
+
+app.serve_directory(route = "/static", directory_path = "/data/static")
+
 
 # -- Routes ------------------------------------------------------------------
 
@@ -40,18 +51,14 @@ def pipeline():
 @app.post("/baseline11")
 def baseline11(request: Request):
     total = 0
-    for val in request.query_params.values():
-        try:
-            total += int(val)
-        except ValueError:
-            pass
+    total += int(request.query_params.get("a", "0"))
+    total += int(request.query_params.get("b", "0"))
     if request.method == "POST":
         body = request.body
-        if body:
-            try:
-                total += int(body.strip())
-            except ValueError:
-                pass
+        try:
+            total += int(body.strip())
+        except Exception:
+            pass
     return str(total)
 
 
@@ -62,7 +69,7 @@ def json_endpoint(request: Request):
         return "No dataset", 500
     try:
         count = int(request.path_params["count"])
-        m_val = float(query_params.get("m"))
+        m_val = float(request.query_params.get("m", "0"))
         items = [ ]
         for idx, dsitem in enumerate(DATASET_ITEMS):
             if idx >= count:
@@ -76,11 +83,13 @@ def json_endpoint(request: Request):
 
 
 @app.post("/upload")
-async def upload_endpoint(request: Request):
+def upload_endpoint(request: Request):
     size = len(request.body)
     return str(size)
 
 
-app.serve_directory(route = "/static", directory_path = "/data/static")
+# -- APP executor -----------------------------------------------------------
 
+if __name__ == "__main__":
+    app.start(host="0.0.0.0", port=8080)
 
