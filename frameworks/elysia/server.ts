@@ -1,4 +1,5 @@
 import { Elysia, status } from "elysia";
+import { staticPlugin } from "@elysiajs/static";
 
 import { SQL } from "bun";
 
@@ -29,16 +30,10 @@ if (cluster.isPrimary) {
 		.headers({
 			server: "Elysia",
 		})
-		.get("/static/*", async ({ params, set }) => {
-			const rel = (params as any)["*"];
-			const file = Bun.file(`/data/static/${rel}`);
-			if (!(await file.exists())) {
-				set.status = 404;
-				return "Not Found";
-			}
-			if (file.type) set.headers["content-type"] = file.type;
-			return file;
-		})
+		.use(staticPlugin({
+			assets: "/data/static",
+			prefix: "/static",
+		}))
 		.get("/pipeline", "ok")
 		.get("/baseline11", ({ query }) => {
 			let sum = 0;
