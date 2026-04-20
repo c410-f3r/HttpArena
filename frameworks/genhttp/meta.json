@@ -12,6 +12,7 @@
     "limited-conn",
     "json",
     "json-comp",
+    "json-tls",
     "upload",
     "async-db",
     "static",
@@ -19,5 +20,7 @@
     "api-4",
     "api-16"
   ],
-  "maintainers": []
+  "maintainers": [
+    "Kaliumhexacyanoferrat"
+  ]
 }
