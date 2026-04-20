@@ -17,7 +17,6 @@ use Psr\Container\ContainerInterface;
 
 ini_set('display_errors', 'on');
 ini_set('display_startup_errors', 'on');
-ini_set('memory_limit', '2G');
 
 error_reporting(E_ALL);
 
