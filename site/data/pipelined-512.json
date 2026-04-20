@@ -488,6 +488,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "libreactorng",
+    "language": "C",
+    "rps": 39172777,
+    "avg_latency": "208us",
+    "p99_latency": "405us",
+    "cpu": "6502.0%",
+    "memory": "68MiB",
+    "connections": 512,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 16,
+    "bandwidth": "4.16GB/s",
+    "reconnects": 0,
+    "status_2xx": 195863888,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "mark",
     "language": "PHP",
     "rps": 3130339,
