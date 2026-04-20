@@ -8,7 +8,7 @@ Clone the repo and (optionally) install native load generators. If you'd rather 
 ## Clone the repository
 
 ```bash
-git clone https://github.com/SaltyAom/HttpArena.git
+git clone https://github.com/MDA2AV/HttpArena.git
 cd HttpArena
 ```
 
