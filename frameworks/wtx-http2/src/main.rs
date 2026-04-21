@@ -35,10 +35,10 @@ async fn main() -> wtx::Result<()> {
     .with_conn_aux(move |_| Ok(ConnAux { dataset: dataset.clone() }))
     .tokio(
       "0.0.0.0:8082",
-      |error| eprintln!("{error:?}"),
+      |_error| {},
       |_| Ok(()),
       |_| Ok(()),
-      |error| eprintln!("{error:?}"),
+      |_error| {},
     )
     .await
 }
