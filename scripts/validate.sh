@@ -135,6 +135,9 @@ for i in $(seq 1 30); do
     if curl -s --max-time 2 -o /dev/null -w '' "http://localhost:$PORT/baseline11?a=1&b=1" 2>/dev/null; then
         break
     fi
+    if curl -s --max-time 2 -o /dev/null -w '' "http://localhost:$PORT/health" 2>/dev/null; then
+        break
+    fi
     if [ "$i" -eq 30 ]; then
         echo "FAIL: Server did not start within 30s"
         exit 1
