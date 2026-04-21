@@ -8,5 +8,5 @@ RUN RUSTFLAGS="-C target-cpu=native" cargo build --release
 
 FROM debian:bookworm-slim
 COPY --from=build /app/target/release/httparena-wtx-http2 /server
-EXPOSE 8080
+EXPOSE 8082
 CMD ["/server"]
