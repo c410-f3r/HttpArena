@@ -155,6 +155,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "lute",
+    "language": "Luau",
+    "rps": 1683799,
+    "avg_latency": "1.70ms",
+    "p99_latency": "1.70ms",
+    "cpu": "5635.8%",
+    "memory": "334MiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "6.88GB",
+    "reconnects": 0,
+    "status_2xx": 8585952,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "ngx-php",
     "language": "PHP",
     "rps": 804422,

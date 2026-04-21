@@ -177,6 +177,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "lute",
+    "language": "Luau",
+    "rps": 3080002,
+    "avg_latency": "165us",
+    "p99_latency": "331us",
+    "cpu": "5814.5%",
+    "memory": "269MiB",
+    "connections": 512,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "20.56MB/s",
+    "reconnects": 0,
+    "status_2xx": 15400010,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "node-websocket",
     "language": "JS",
     "rps": 1969290,
