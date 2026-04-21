@@ -7,7 +7,6 @@
   "repo": "https://github.com/c410-f3r/wtx",
   "enabled": true,
   "tests": [
-    "baseline-h2",
-    "json"
+    "baseline-h2"
   ]
 }
