@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import multiprocessing
-import zlib
+import gzip
 import sqlite3
 import mimetypes
 from urllib.parse import parse_qs
@@ -118,19 +118,19 @@ def check_accept_encoding(env, substr):
         return True
     return False
 
-def make_resp(status: int, headers: list, body: str | bytes, contenc: str | None = None):
+def make_resp(status: int, headers: list, body, contenc = None):
     if isinstance(body, str):
         body = body.encode('utf-8')
     if contenc and contenc != 'BR':
         if contenc == 'GZIP':
-            body = zlib.compress(body, level = 1, wbits = 31)
+            body = gzip.compress(body, compresslevel = 1)
         headers.append( ('Content-Encoding', contenc.lower()) )
     return status, headers, body
 
-def text_resp(body: str | bytes, status: int = 200, contenc: str | None = None):
+def text_resp(body, status: int = 200, contenc = None):
     return make_resp(status, [ ( 'Content-Type', 'text/plain; charset=utf-8' ) ], body, contenc)
 
-def json_resp(body: dict, status: int = 200, contenc: str | None = None):
+def json_resp(body: dict, status: int = 200, contenc = None):
     if isinstance(body, dict):
         body = orjson.dumps(body)
     return make_resp(status, [ ('Content-Type', 'application/json') ], body, contenc)
