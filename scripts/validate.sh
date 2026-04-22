@@ -226,21 +226,38 @@ fail_with_link() {
     FAIL=$((FAIL + 1))
 }
 
+dump_debug() {
+    local trace="$1"
+    local response="$2"
+    if [ -n "$trace" ] && [ -s "$trace" ]; then
+        echo "        ─── wire trace ───"
+        sed 's/^/        /' "$trace"
+    fi
+    if [ -n "$response" ]; then
+        echo "        ─── response ───"
+        printf '%s\n' "$response" | sed 's/^/        /'
+    fi
+    [ -n "$trace" ] && rm -f "$trace"
+}
+
 check() {
     local label="$1"
     local expected_body="$2"
     local docs_url="$3"
     shift 3
-    local response
-    response=$(curl -s --max-time 30 -D- "$@" || true)
+    local response trace
+    trace=$(mktemp)
+    response=$(curl -s --max-time 30 -D- --trace-ascii "$trace" "$@" || true)
     local body
     body=$(echo "$response" | tail -1)
 
     if [ "$body" = "$expected_body" ]; then
         echo "  PASS [$label]"
         PASS=$((PASS + 1))
+        rm -f "$trace"
     else
         fail_with_link "[$label]: expected body '$expected_body', got '$body'" "$docs_url"
+        dump_debug "$trace" "$response"
     fi
 }
 
@@ -249,14 +266,22 @@ check_status() {
     local expected_status="$2"
     local docs_url="$3"
     shift 3
-    local http_code
-    http_code=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$@" || true)
+    local http_code trace body_file
+    trace=$(mktemp)
+    body_file=$(mktemp)
+    http_code=$(curl -s --max-time 30 -o "$body_file" -D "$body_file.hdr" -w '%{http_code}' --trace-ascii "$trace" "$@" || true)
 
     if [ "$http_code" = "$expected_status" ]; then
         echo "  PASS [$label] (HTTP $http_code)"
         PASS=$((PASS + 1))
+        rm -f "$trace" "$body_file" "$body_file.hdr"
     else
         fail_with_link "[$label]: expected HTTP $expected_status, got HTTP $http_code" "$docs_url"
+        local response=""
+        [ -s "$body_file.hdr" ] && response=$(cat "$body_file.hdr")
+        [ -s "$body_file" ] && response="${response}$(cat "$body_file")"
+        dump_debug "$trace" "$response"
+        rm -f "$body_file" "$body_file.hdr"
     fi
 }
 
@@ -272,23 +297,53 @@ check_fragmented() {
     local expected_body="$2"
     local docs_url="$3"
     shift 3
-    local body
-    body=$(PORT="$PORT" python3 -c '
+    local body trace
+    trace=$(mktemp)
+    body=$(PORT="$PORT" TRACE="$trace" python3 -c '
 import os, socket, sys, time
 port = int(os.environ["PORT"])
+trace_path = os.environ.get("TRACE", "")
 frags = sys.argv[1:]
-s = socket.create_connection(("localhost", port), timeout=5)
-s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle coalescing
-for i, f in enumerate(frags):
-    s.sendall(f.encode("latin-1"))
-    if i < len(frags) - 1:
-        time.sleep(0.03)
+sent = b""
 buf = b""
-while True:
-    chunk = s.recv(4096)
-    if not chunk: break
-    buf += chunk
-s.close()
+wire_error = ""
+s = None
+try:
+    s = socket.create_connection(("localhost", port), timeout=5)
+    s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle coalescing
+    for i, f in enumerate(frags):
+        data = f.encode("latin-1")
+        s.sendall(data)
+        sent += data
+        if i < len(frags) - 1:
+            time.sleep(0.03)
+    while True:
+        chunk = s.recv(4096)
+        if not chunk: break
+        buf += chunk
+except socket.timeout:
+    wire_error = "socket.timeout (server never closed; client blocked in recv)"
+except Exception as e:
+    wire_error = type(e).__name__ + ": " + str(e)
+finally:
+    if s is not None:
+        try: s.close()
+        except Exception: pass
+    # Always write the trace — even (especially) on failure. Without this
+    # the wire dump is empty on the exact error paths where you need it.
+    if trace_path:
+        try:
+            with open(trace_path, "w") as tf:
+                tf.write("=> Send (" + str(len(sent)) + " bytes across " + str(len(frags)) + " fragment(s))\n")
+                tf.write(sent.decode("latin-1", errors="replace"))
+                tf.write("\n<= Recv (" + str(len(buf)) + " bytes)\n")
+                tf.write(buf.decode("latin-1", errors="replace"))
+                if wire_error:
+                    tf.write("\n<!> " + wire_error + "\n")
+                else:
+                    tf.write("\n")
+        except Exception:
+            pass
 resp = buf.decode("latin-1", errors="replace")
 try:
     head, raw = resp.split("\r\n\r\n", 1)
@@ -333,8 +388,10 @@ sys.stdout.write(body.strip())
     if [ "$body" = "$expected_body" ]; then
         echo "  PASS [$label]"
         PASS=$((PASS + 1))
+        rm -f "$trace"
     else
         fail_with_link "[$label]: expected body '$expected_body', got '$body'" "$docs_url"
+        dump_debug "$trace" ""
     fi
 }
 
@@ -344,8 +401,9 @@ check_header() {
     local expected_value="$3"
     local docs_url="$4"
     shift 4
-    local headers
-    headers=$(curl -s --max-time 30 -D- -o /dev/null "$@" || true)
+    local headers trace
+    trace=$(mktemp)
+    headers=$(curl -s --max-time 30 -D- -o /dev/null --trace-ascii "$trace" "$@" || true)
     local value
     value=$(echo "$headers" | grep -i "^${header_name}:" | sed 's/^[^:]*: *//' | tr -d '\r' || true)
 
@@ -356,8 +414,10 @@ check_header() {
     if [ "$value" = "$expected_value" ] || [[ "$value" == "$expected_value;"* ]] || [ "$norm_value" = "$norm_expected" ] || [[ "$norm_value" == "$norm_expected;"* ]]; then
         echo "  PASS [$label] ($header_name: $value)"
         PASS=$((PASS + 1))
+        rm -f "$trace"
     else
         fail_with_link "[$label]: expected $header_name '$expected_value', got '$value'" "$docs_url"
+        dump_debug "$trace" "$headers"
     fi
 }
 
