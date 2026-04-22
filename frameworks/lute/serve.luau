@@ -2,31 +2,6 @@ local server = require("@lute/net/server")
 local fs = require("@std/fs")
 local json = require("@std/json")
 
-local STATIC_DIR = "/data/static"
-local CONTENT_TYPES: { [string]: string } = {
-	css = "text/css",
-	js = "application/javascript",
-	json = "application/json",
-	html = "text/html",
-	woff2 = "font/woff2",
-	svg = "image/svg+xml",
-	webp = "image/webp",
-}
-
-local COMPRESSIBLE: { [string]: boolean } = {
-	css = true, js = true, json = true, html = true, svg = true,
-}
-
-local STATIC_HEADERS: { [string]: { [string]: string } } = {}
-local STATIC_HEADERS_BR: { [string]: { [string]: string } } = {}
-local STATIC_HEADERS_GZ: { [string]: { [string]: string } } = {}
-for ext, mime in CONTENT_TYPES do
-	STATIC_HEADERS[ext] = { ["Content-Type"] = mime }
-	STATIC_HEADERS_BR[ext] = { ["Content-Type"] = mime, ["Content-Encoding"] = "br" }
-	STATIC_HEADERS_GZ[ext] = { ["Content-Type"] = mime, ["Content-Encoding"] = "gzip" }
-end
-local OCTET_HEADERS = { ["Content-Type"] = "application/octet-stream" }
-
 local TEXT_HEADERS = { ["Content-Type"] = "text/plain" }
 local JSON_HEADERS = { ["Content-Type"] = "application/json" }
 local NOT_FOUND = { status = 404, body = "", headers = TEXT_HEADERS }
@@ -91,40 +66,6 @@ local function handle(req, srv)
 			return { body = buildJson(count, m), headers = JSON_HEADERS }
 		end
 		return NOT_FOUND
-	end
-
-	if string.sub(path, 1, 8) == "/static/" then
-		local name = string.sub(path, 9)
-
-		if name == "" or string.find(name, "/", 1, true) then
-			return NOT_FOUND
-		end
-		local ext = string.match(name, "%.([%w]+)$") or ""
-		local fullPath = STATIC_DIR .. "/" .. name
-
-		if COMPRESSIBLE[ext] then
-			local accept = req.headers["accept-encoding"] or req.headers["Accept-Encoding"]
-			if accept then
-				if string.find(accept, "br", 1, true) then
-					local ok, body = pcall(fs.readFileToString, fullPath .. ".br")
-					if ok then
-						return { body = body, headers = STATIC_HEADERS_BR[ext] }
-					end
-				end
-				if string.find(accept, "gzip", 1, true) then
-					local ok, body = pcall(fs.readFileToString, fullPath .. ".gz")
-					if ok then
-						return { body = body, headers = STATIC_HEADERS_GZ[ext] }
-					end
-				end
-			end
-		end
-
-		local ok, body = pcall(fs.readFileToString, fullPath)
-		if not ok then
-			return NOT_FOUND
-		end
-		return { body = body, headers = STATIC_HEADERS[ext] or OCTET_HEADERS }
 	end
 
 	return NOT_FOUND

@@ -13,7 +13,6 @@
     "json",
     "json-tls",
     "upload",
-    "static",
     "echo-ws"
   ],
   "maintainers": ["nicell"]
