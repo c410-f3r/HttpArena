@@ -304,28 +304,46 @@ import os, socket, sys, time
 port = int(os.environ["PORT"])
 trace_path = os.environ.get("TRACE", "")
 frags = sys.argv[1:]
-s = socket.create_connection(("localhost", port), timeout=5)
-s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle coalescing
 sent = b""
-for i, f in enumerate(frags):
-    data = f.encode("latin-1")
-    s.sendall(data)
-    sent += data
-    if i < len(frags) - 1:
-        time.sleep(0.03)
 buf = b""
-while True:
-    chunk = s.recv(4096)
-    if not chunk: break
-    buf += chunk
-s.close()
-if trace_path:
-    with open(trace_path, "w") as tf:
-        tf.write("=> Send (" + str(len(sent)) + " bytes across " + str(len(frags)) + " fragment(s))\n")
-        tf.write(sent.decode("latin-1", errors="replace"))
-        tf.write("\n<= Recv (" + str(len(buf)) + " bytes)\n")
-        tf.write(buf.decode("latin-1", errors="replace"))
-        tf.write("\n")
+wire_error = ""
+s = None
+try:
+    s = socket.create_connection(("localhost", port), timeout=5)
+    s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # no Nagle coalescing
+    for i, f in enumerate(frags):
+        data = f.encode("latin-1")
+        s.sendall(data)
+        sent += data
+        if i < len(frags) - 1:
+            time.sleep(0.03)
+    while True:
+        chunk = s.recv(4096)
+        if not chunk: break
+        buf += chunk
+except socket.timeout:
+    wire_error = "socket.timeout (server never closed; client blocked in recv)"
+except Exception as e:
+    wire_error = type(e).__name__ + ": " + str(e)
+finally:
+    if s is not None:
+        try: s.close()
+        except Exception: pass
+    # Always write the trace — even (especially) on failure. Without this
+    # the wire dump is empty on the exact error paths where you need it.
+    if trace_path:
+        try:
+            with open(trace_path, "w") as tf:
+                tf.write("=> Send (" + str(len(sent)) + " bytes across " + str(len(frags)) + " fragment(s))\n")
+                tf.write(sent.decode("latin-1", errors="replace"))
+                tf.write("\n<= Recv (" + str(len(buf)) + " bytes)\n")
+                tf.write(buf.decode("latin-1", errors="replace"))
+                if wire_error:
+                    tf.write("\n<!> " + wire_error + "\n")
+                else:
+                    tf.write("\n")
+        except Exception:
+            pass
 resp = buf.decode("latin-1", errors="replace")
 try:
     head, raw = resp.split("\r\n\r\n", 1)
