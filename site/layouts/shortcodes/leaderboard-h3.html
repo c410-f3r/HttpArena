@@ -21,12 +21,6 @@ var lbH3CurrentMeta = {{ site.Data.frameworks | jsonify | safeJS }};
 var lbH3Profiles = {{ $profiles | jsonify | safeJS }};
 </script>
 
-<div class="h3-disclaimer" style="margin-top:1rem; padding:0.75rem 1.25rem; border-radius:0.5rem; background:rgba(234,179,8,0.08); border:1px solid rgba(234,179,8,0.3); color:#78350f; font-size:0.95rem; line-height:1.6;">
-  <span style="margin-right:0.4rem;">&#9888;&#65039;</span><strong>Experimental:</strong> HTTP/3 benchmarks use <strong>oha</strong> as the load generator, which has known limitations with QUIC — including performance issues in headless mode and inability to fully saturate high-performance servers. These results are useful for relative comparison between frameworks but may not reflect true peak throughput. We'll update these benchmarks as better HTTP/3 load generators become available.
-</div>
-<style>
-html.dark .h3-disclaimer { color: #fff !important; background: rgba(234,179,8,0.12) !important; border-color: rgba(234,179,8,0.4) !important; }
-</style>
 
 <div class="lb-type-note-h3" style="margin-top:1rem; margin-bottom:0.75rem; padding:0.85rem 1.25rem; border-radius:0.5rem; background:linear-gradient(135deg, rgba(59,130,246,0.04), rgba(139,92,246,0.04)); border:1px solid rgba(59,130,246,0.15); color:#1e293b; font-size:1.02rem; line-height:1.7;">
 </div>
@@ -436,21 +430,34 @@ document.querySelectorAll('.lb-panel-h3 .lb-search-input').forEach(function(inpu
   });
 });
 
+/* Type filters — mirrored across every panel's copy so the selection
+ * survives inner-tab (profile) switches. Each panel pre-renders its own
+ * button set; toggling only the clicked element would leave sibling
+ * panels at their defaults. */
 w.querySelectorAll('.lb-type-filter').forEach(function(btn) {
   btn.addEventListener('click', function() {
     var type = btn.dataset.type;
-    var allBtn = w.querySelector('.lb-type-filter[data-type="all"]');
-    var typeButtons = w.querySelectorAll('.lb-type-filter:not([data-type="all"])');
+    var allBtns = w.querySelectorAll('.lb-type-filter[data-type="all"]');
     if (type === 'all') {
-      var allActive = allBtn.classList.contains('active');
-      typeButtons.forEach(function(f) { f.classList.toggle('active', !allActive); });
-      allBtn.classList.toggle('active', !allActive);
+      var allActive = btn.classList.contains('active');
+      w.querySelectorAll('.lb-type-filter').forEach(function(f) {
+        f.classList.toggle('active', !allActive);
+      });
     } else {
-      btn.classList.toggle('active');
-      var allOn = Array.from(typeButtons).every(function(f) { return f.classList.contains('active'); });
-      allBtn.classList.toggle('active', allOn);
-      var anyOn = Array.from(typeButtons).some(function(f) { return f.classList.contains('active'); });
-      if (!anyOn) { btn.classList.add('active'); }
+      var isNowActive = !btn.classList.contains('active');
+      w.querySelectorAll('.lb-type-filter[data-type="' + type + '"]').forEach(function(f) {
+        f.classList.toggle('active', isNowActive);
+      });
+      var firstPanel = w.querySelector('.lb-panel-h3') || w;
+      var panelTypeBtns = firstPanel.querySelectorAll('.lb-type-filter:not([data-type="all"])');
+      var everyOn = Array.from(panelTypeBtns).every(function(f) { return f.classList.contains('active'); });
+      allBtns.forEach(function(f) { f.classList.toggle('active', everyOn); });
+      var anyOn = Array.from(panelTypeBtns).some(function(f) { return f.classList.contains('active'); });
+      if (!anyOn) {
+        w.querySelectorAll('.lb-type-filter[data-type="' + type + '"]').forEach(function(f) {
+          f.classList.add('active');
+        });
+      }
     }
     applyFilters_h3();
     if (window.dlScheduleUpdate) window.dlScheduleUpdate();
