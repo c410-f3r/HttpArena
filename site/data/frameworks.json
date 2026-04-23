@@ -185,6 +185,13 @@
     "type": "tuned",
     "engine": "frankenphp"
   },
+  "genhttp-kestrel": {
+    "dir": "genhttp-kestrel",
+    "description": "Lightweight, embeddable and modular C# web server.",
+    "repo": "https://github.com/Kaliumhexacyanoferrat/GenHTTP",
+    "type": "production",
+    "engine": "kestrel"
+  },
   "genhttp": {
     "dir": "genhttp",
     "description": "Lightweight, embeddable and modular C# web server.",
