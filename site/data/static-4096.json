@@ -367,6 +367,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "genhttp-kestrel",
+    "language": "C#",
+    "rps": 148013,
+    "avg_latency": "32.05ms",
+    "p99_latency": "32.05ms",
+    "cpu": "6146.6%",
+    "memory": "906MiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "8.78GB",
+    "reconnects": 0,
+    "status_2xx": 754893,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "go-fasthttp",
     "language": "Go",
     "rps": 624024,
