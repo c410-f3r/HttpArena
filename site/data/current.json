@@ -10,7 +10,7 @@
   "docker": "29.3.0",
   "docker_runtime": "runc",
   "governor": "performance",
-  "commit": "0929a08e",
+  "commit": "2b35869d",
   "tcp": {
     "lo_mtu": "1500",
     "congestion": "cubic",
