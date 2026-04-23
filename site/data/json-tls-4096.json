@@ -194,6 +194,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "Swoole",
+    "language": "PHP",
+    "rps": 776894,
+    "avg_latency": "5.37ms",
+    "p99_latency": "5.37ms",
+    "cpu": "6497.1%",
+    "memory": "355MiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "2.66GB",
+    "reconnects": 0,
+    "status_2xx": 3962375,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "uvicorn",
     "language": "Python",
     "rps": 336946,
