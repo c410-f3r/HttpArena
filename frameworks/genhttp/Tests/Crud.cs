@@ -1,10 +1,10 @@
-﻿using System.Text.Json;
+﻿using System.Collections.Concurrent;
+using System.Text.Json;
 using GenHTTP.Api.Content;
 using GenHTTP.Api.Protocol;
 using genhttp.Infrastructure;
 using GenHTTP.Modules.Reflection;
 using GenHTTP.Modules.Webservices;
-using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
 
 namespace genhttp.Tests;
@@ -13,7 +13,7 @@ public class Crud
 {
     private static readonly NpgsqlDataSource? PgDataSource = Postgres.OpenPool();
 
-    private static readonly IMemoryCache Cache = new MemoryCache(new MemoryCacheOptions());
+    private static readonly ConcurrentDictionary<int, ProcessedItem> Cache = new();
 
     [ResourceMethod]
     public async Task<CrudListResponse> List(string category = "electronics", int page = 1, int limit = 10)
@@ -56,9 +56,7 @@ public class Crud
     [ResourceMethod(":id")]
     public async ValueTask<Result<ProcessedItem>> Get(int id)
     {
-        var cached = Cache.Get<ProcessedItem>(id);
-
-        if (cached != null)
+        if (Cache.TryGetValue(id, out var cached))
         {
             return new Result<ProcessedItem>(cached).Header("X-Cache", "HIT");
         }
@@ -70,7 +68,7 @@ public class Crud
             throw new ProviderException(ResponseStatus.NotFound, $"Item with ID {id} does not exist");
         }
 
-        Cache.Set(id, item);
+        Cache.TryAdd(id, item);
 
         return new Result<ProcessedItem>(item).Header("X-Cache", "MISS");
     }
@@ -113,7 +111,7 @@ public class Crud
             throw new ProviderException(ResponseStatus.NotFound, $"Item with ID {id} does not exist");
         }
 
-        Cache.Remove(id);
+        Cache.TryRemove(id, out _);
 
         return item;
     }
