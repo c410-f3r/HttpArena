@@ -6,14 +6,16 @@ using ServiceStack;
 
 public class BenchmarkServices : Service
 {
+    private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
+
     private static readonly List<DatasetItem>? Items = LoadItems();
-    
+
     static List<DatasetItem>? LoadItems()
     {
         var path = Resolve("/data/dataset.json", "../../../../../../data/dataset.json");
         if (path == null) return null;
 
-        return JsonSerializer.Deserialize<List<DatasetItem>>(File.ReadAllText(path));
+        return JsonSerializer.Deserialize<List<DatasetItem>>(File.ReadAllText(path), JsonOpts);
     }
 
     static string? Resolve(string primary, string fallback)
