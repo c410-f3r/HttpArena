@@ -79,6 +79,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "dogrider",
+    "language": "C#",
+    "rps": 3268792,
+    "avg_latency": "156us",
+    "p99_latency": "864us",
+    "cpu": "5860.9%",
+    "memory": "2.3GiB",
+    "connections": 512,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "21.82MB/s",
+    "reconnects": 0,
+    "status_2xx": 16343961,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "genhttp",
     "language": "C#",
     "rps": 2290988,

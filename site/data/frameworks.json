@@ -129,6 +129,13 @@
     "type": "tuned",
     "engine": "deno"
   },
+  "dogrider": {
+    "dir": "dogrider",
+    "description": "GenHTTP websockets with zerg backend",
+    "repo": "https://github.com/MDA2AV/dogrider",
+    "type": "production",
+    "engine": "zerg"
+  },
   "elysia": {
     "dir": "elysia",
     "description": "An ergonomic framework for Humans",
