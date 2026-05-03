@@ -178,6 +178,13 @@
     "type": "production",
     "engine": "gunicorn"
   },
+  "fleck": {
+    "dir": "fleck",
+    "description": "C# websockets framework",
+    "repo": "https://github.com/statianzo/Fleck",
+    "type": "production",
+    "engine": "fleck"
+  },
   "Fletch": {
     "dir": "fletch",
     "description": "Express-inspired HTTP framework for Dart with radix-tree routing, middleware chains, signed sessions, and built-in DI.",

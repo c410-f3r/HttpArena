@@ -190,26 +190,40 @@ if [ "$GATEWAY_ONLY" = "false" ]; then
         need_h2c_probe=true
     fi
 
-    echo "[wait] Waiting for server..."
-    for i in $(seq 1 30); do
-        if curl -s --max-time 2 -o /dev/null -w '' "http://localhost:$PORT/baseline11?a=1&b=1" 2>/dev/null; then
-            break
-        fi
-        if [ "$need_tls_probe" = "true" ] && \
-           curl -sk --http2 --max-time 2 -o /dev/null -w '' "https://localhost:$H2PORT/baseline2?a=1&b=1" 2>/dev/null; then
-            break
-        fi
-        if [ "$need_h2c_probe" = "true" ] && \
-           curl -s --http2-prior-knowledge --max-time 2 -o /dev/null -w '' "http://localhost:$H2C_PORT/baseline2?a=1&b=1" 2>/dev/null; then
-            break
-        fi
-        if [ "$i" -eq 30 ]; then
-            echo "FAIL: Server did not start within 30s"
-            exit 1
-        fi
-        sleep 1
+    # Pure-WebSocket frameworks (e.g. Fleck) don't speak HTTP at all, so the
+    # curl probes below would never succeed. Skip the wait when every
+    # subscribed test is a WS-only profile.
+    _ws_only=true
+    for _t in $TESTS; do
+        case "$_t" in
+            echo-ws|echo-ws-pipeline) ;;
+            *) _ws_only=false; break ;;
+        esac
     done
-    echo "[ready] Server is up"
+    if [ "$_ws_only" = "true" ] && [ -n "$TESTS" ]; then
+        echo "[wait] ws-only framework — skipping readiness probe"
+    else
+        echo "[wait] Waiting for server..."
+        for i in $(seq 1 30); do
+            if curl -s --max-time 2 -o /dev/null -w '' "http://localhost:$PORT/baseline11?a=1&b=1" 2>/dev/null; then
+                break
+            fi
+            if [ "$need_tls_probe" = "true" ] && \
+               curl -sk --http2 --max-time 2 -o /dev/null -w '' "https://localhost:$H2PORT/baseline2?a=1&b=1" 2>/dev/null; then
+                break
+            fi
+            if [ "$need_h2c_probe" = "true" ] && \
+               curl -s --http2-prior-knowledge --max-time 2 -o /dev/null -w '' "http://localhost:$H2C_PORT/baseline2?a=1&b=1" 2>/dev/null; then
+                break
+            fi
+            if [ "$i" -eq 30 ]; then
+                echo "FAIL: Server did not start within 30s"
+                exit 1
+            fi
+            sleep 1
+        done
+        echo "[ready] Server is up"
+    fi
 fi
 
 # ───── Helpers ─────
