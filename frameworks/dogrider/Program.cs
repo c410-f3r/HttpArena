@@ -13,8 +13,8 @@ internal static class Program
             {
                 Ip = "0.0.0.0",
                 Port = 8080,
-                Backlog = 65535,
-                ReactorCount = 16,
+                Backlog = 16384,
+                ReactorCount = 64,
                 AcceptorConfig = new AcceptorConfig(
                     RingFlags: 0,
                     SqCpuThread: -1,
@@ -24,29 +24,21 @@ internal static class Program
                     CqTimeout: 100_000_000,
                     IPVersion: IPVersion.IPv4Only
                 ),
-                ReactorConfigs = Enumerable.Range(0, 16).Select(_ => new ReactorConfig(
+                ReactorConfigs = Enumerable.Range(0, 64).Select(_ => new ReactorConfig(
                     RingFlags: (1u << 12) | (1u << 13), // SINGLE_ISSUER | DEFER_TASKRUN
                     SqCpuThread: -1,
                     SqThreadIdleMs: 100,
-                    RingEntries: 1 * 1024,
+                    RingEntries: 16 * 1024,
                     RecvBufferSize: 1 * 1024,
                     BufferRingEntries: 16 * 1024,
                     BatchCqes: 4096,
-                    MaxConnectionsPerReactor: 1 * 384,
+                    MaxConnectionsPerReactor: 1 * 512,
                     CqTimeout: 1_000_000,
-                    ConnectionBufferRingEntries: 32,
+                    ConnectionBufferRingEntries: 128,
                     IncrementalBufferConsumption: false
                 )).ToArray()
             }, 
             handler: new EchoHandlerPipelined());
-        
-        /*
-        await using var server = new Dogrider(
-            ip: "0.0.0.0",
-            port: 8080,
-            reactorCount: Math.Max(1, 16),
-            handler: new EchoHandler());
-        */
 
         server.Start();
         
@@ -67,9 +59,6 @@ internal static class Program
 
 internal sealed class EchoHandlerPipelined : Handler
 {
-    
-    private static ReadOnlySpan<byte> _hello => "hello"u8;
-    
     public async ValueTask HandleAsync(IConnection connection)
     {
         while (true)
@@ -94,14 +83,12 @@ internal sealed class EchoHandlerPipelined : Handler
                 {
                     case FrameType.Text:
                         
-                        //connection.Write(frame.Data);
-                        connection.Write(_hello);
+                        connection.Write(frame.Payload.FirstSpan);
                         break;
                     
                     case FrameType.Binary:
                         
-                        //connection.Write(frame.Data, FrameType.Binary);
-                        connection.Write(_hello, FrameType.Binary);
+                        connection.Write(frame.Payload.FirstSpan);
                         break;
                     
                     case FrameType.Ping:

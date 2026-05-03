@@ -7,7 +7,8 @@
   "repo": "https://github.com/MDA2AV/dogrider",
   "enabled": true,
   "tests": [
-    "echo-ws"
+    "echo-ws",
+    "echo-ws-pipeline"
   ],
   "maintainers": [
     "MDA2AV"

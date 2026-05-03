@@ -138,6 +138,26 @@ framework_wait_ready() {
     local probe_url
     local -a probe_extra=()
 
+    # Pure-WebSocket frameworks (e.g. Fleck) don't speak HTTP at all, so the
+    # curl probe below would never succeed. If every subscribed test is a
+    # WS-only profile, sleep briefly to let the container bind its listener
+    # (sub-second on most runtimes) and skip the HTTP probe.
+    if [ -n "$FRAMEWORK_TESTS" ]; then
+        local _t _all_ws=true
+        IFS=',' read -ra _ws_tests_arr <<< "$FRAMEWORK_TESTS"
+        for _t in "${_ws_tests_arr[@]}"; do
+            case "$_t" in
+                echo-ws|echo-ws-pipeline) ;;
+                *) _all_ws=false; break ;;
+            esac
+        done
+        if $_all_ws; then
+            info "ws-only framework — skipping HTTP probe (sleep 2s for startup)"
+            sleep 2
+            return 0
+        fi
+    fi
+
     info "waiting for server..."
 
     case "$endpoint" in
