@@ -3,6 +3,12 @@
     "license": "MIT",
     "minimum-stability": "dev",
     "prefer-stable": true,
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/YanGusik/symfony-spawn"
+        }
+    ],
     "require": {
         "php": ">=8.6",
         "ext-ctype": "*",
@@ -17,7 +23,7 @@
         "symfony/framework-bundle": "7.4.*",
         "symfony/runtime": "7.4.*",
         "symfony/yaml": "7.4.*",
-        "yangusik/symfony-spawn": "*"
+        "yangusik/symfony-spawn": "dev-main"
     },
     "config": {
         "allow-plugins": {
