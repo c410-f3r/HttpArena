@@ -1,6 +1,6 @@
 FROM trueasync/php-true-async:0.7.0-alpha.3-php8.6-alpine
 
-RUN apk add --no-cache git
+RUN apk add --no-cache git openssh-client
 
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
@@ -8,7 +8,7 @@ WORKDIR /app
 
 COPY composer.json ./
 
-RUN APP_ENV=prod composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
+RUN APP_ENV=prod COMPOSER_MAX_PARALLEL_HTTP=1 composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
 
 COPY . .
 
