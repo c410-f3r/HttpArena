@@ -24,7 +24,11 @@ opcache.jit_buffer_size=128M\n\
 opcache.memory_consumption=256\n\
 opcache.max_accelerated_files=10000\n\
 opcache.validate_timestamps=0\n\
-memory_limit=2048M\n" > /etc/php.d/99-benchmark.ini
+memory_limit=2048M\n\
+post_max_size=32M\n\
+upload_max_filesize=32M\n\
+zlib.output_compression_level=6\n\
+zlib.output_compression=On\n" > /etc/php.d/99-benchmark.ini
 
 ENV GODEBUG=cgocheck=0
 ENV GOGC=1000
