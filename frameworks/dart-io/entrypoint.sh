@@ -15,8 +15,8 @@ echo "[dart-io] spawning $n dart processes on port $port (nproc=$n)"
 # The LD_PRELOAD shim above ensures SO_REUSEPORT is set so the kernel
 # distributes incoming connections evenly across all N processes.
 for i in $(seq 1 $((n - 1))); do
-    /server/bin/server "$port" &
+    /server/bin/benchmark_http_server "$port" &
 done
 
 # Last worker runs in the foreground as PID 1 so Docker signals reach it.
-exec /server/bin/server "$port"
+exec /server/bin/benchmark_http_server "$port"
