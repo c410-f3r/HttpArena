@@ -4,20 +4,20 @@
 
 ## Profiles
 
-Covered:
+Covered (16 of 28 profiles):
 
 - `baseline`, `pipelined`, `limited-conn`
 - `json`, `json-comp`, `json-tls`
 - `upload`
 - `async-db`, `api-4`, `api-16`
 - `static`
+- `fortunes`, `crud`
 - `baseline-h2`
 - `echo-ws`, `echo-ws-pipeline`
 
 Deferred (tracked under [HttpArena coverage gaps](https://github.com/arizona-framework/roadrunner/blob/main/docs/roadmap.md) in the roadrunner roadmap):
 
 - `static-h2`: needs `{sendfile, _}` over h2 in roadrunner.
-- `fortunes`, `crud`: bench-app endpoints, not roadrunner gaps.
 - `baseline-h2c`, `json-h2c`: roadrunner is h2-over-TLS-only today; h2c (cleartext h2) is a roadrunner-side gap.
 - `baseline-h3`, `static-h3`: roadrunner has no HTTP/3 stack yet.
 - `unary-grpc`, `stream-grpc`, TLS variants: no gRPC stack.
