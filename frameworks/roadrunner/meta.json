@@ -11,7 +11,8 @@
     "pipelined",
     "json",
     "json-comp",
-    "json-tls"
+    "json-tls",
+    "upload"
   ],
   "maintainers": ["williamthome"]
 }

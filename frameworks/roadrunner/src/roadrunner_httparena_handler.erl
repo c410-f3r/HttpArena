@@ -9,7 +9,8 @@ routes() ->
     [
         {~"/baseline11", ?MODULE, undefined},
         {~"/pipeline", ?MODULE, undefined},
-        {~"/json/:count", ?MODULE, undefined}
+        {~"/json/:count", ?MODULE, undefined},
+        {~"/upload", ?MODULE, undefined}
     ].
 
 -spec handle(roadrunner_req:request()) -> roadrunner_handler:result().
@@ -22,8 +23,14 @@ handle_route(~"/pipeline", Req) ->
     {roadrunner_resp:text(200, ~"ok"), Req};
 handle_route(<<"/json/", _/binary>>, Req) ->
     json_endpoint(Req);
+handle_route(~"/upload", Req) ->
+    upload_endpoint(Req);
 handle_route(_, Req) ->
     {roadrunner_resp:not_found(), Req}.
+
+upload_endpoint(Req) ->
+    {ok, Body, Req2} = roadrunner_req:read_body(Req),
+    {roadrunner_resp:text(200, integer_to_binary(byte_size(Body))), Req2}.
 
 baseline11(Req) ->
     A = qs_int(~"a", Req, 0),
