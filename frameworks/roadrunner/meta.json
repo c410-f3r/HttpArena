@@ -18,6 +18,7 @@
     "api-4",
     "api-16",
     "static",
+    "fortunes",
     "baseline-h2",
     "echo-ws",
     "echo-ws-pipeline"

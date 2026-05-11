@@ -13,6 +13,7 @@ routes() ->
         {~"/json/:count", ?MODULE, undefined},
         {~"/upload", ?MODULE, undefined},
         {~"/async-db", ?MODULE, undefined},
+        {~"/fortunes", ?MODULE, undefined},
         {~"/ws", ?MODULE, undefined},
         {~"/static/*path", roadrunner_static, #{dir => static_dir()}}
     ].
@@ -39,6 +40,8 @@ handle_route(~"/upload", Req) ->
     upload_endpoint(Req);
 handle_route(~"/async-db", Req) ->
     async_db_endpoint(Req);
+handle_route(~"/fortunes", Req) ->
+    fortunes_endpoint(Req);
 handle_route(~"/ws", Req) ->
     {{websocket, roadrunner_httparena_ws, undefined}, Req};
 handle_route(_, Req) ->
@@ -81,6 +84,32 @@ row_to_json({Id, Name, Cat, Price, Qty, Active, TagsJsonb, RScore, RCount}) ->
 clamp(N, Lo, _Hi) when N < Lo -> Lo;
 clamp(N, _Lo, Hi) when N > Hi -> Hi;
 clamp(N, _Lo, _Hi) -> N.
+
+fortunes_endpoint(Req) ->
+    Rows =
+        case roadrunner_httparena_db:query(~"SELECT id, message FROM fortune", []) of
+            {ok, _Cols, R} -> R;
+            _ -> []
+        end,
+    Runtime = {0, ~"Additional fortune added at request time."},
+    Sorted = lists:keysort(2, [Runtime | Rows]),
+    Body = render_fortunes(Sorted),
+    {roadrunner_resp:html(200, Body), Req}.
+
+render_fortunes(Rows) ->
+    [
+        ~"<!doctype html><html><head><title>Fortunes</title></head><body><table><tr><th>id</th><th>message</th></tr>",
+        [render_fortune_row(Id, Msg) || {Id, Msg} <- Rows],
+        ~"</table></body></html>"
+    ].
+
+render_fortune_row(Id, Msg) ->
+    [~"<tr><td>", integer_to_binary(Id), ~"</td><td>", html_escape(Msg), ~"</td></tr>"].
+
+html_escape(Bin) when is_binary(Bin) ->
+    B1 = binary:replace(Bin, ~"&", ~"&amp;", [global]),
+    B2 = binary:replace(B1, ~"<", ~"&lt;", [global]),
+    binary:replace(B2, ~">", ~"&gt;", [global]).
 
 baseline(Req) ->
     A = qs_int(~"a", Req, 0),
