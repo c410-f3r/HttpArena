@@ -6,8 +6,8 @@
 start(_StartType, _StartArgs) ->
     {ok, SupPid} = roadrunner_httparena_sup:start_link(),
     ok = roadrunner_httparena_dataset:load(),
-    HttpPort = application:get_env(roadrunner_httparena, http_port, 8080),
     Routes = roadrunner_httparena_handler:routes(),
+    HttpPort = application:get_env(roadrunner_httparena, http_port, 8080),
     {ok, _} = roadrunner:start_listener(httparena_http, #{
         port => HttpPort,
         routes => Routes,
@@ -15,7 +15,34 @@ start(_StartType, _StartArgs) ->
         %% 25 MB headroom for the upload profile (validator goes up to 20 MB).
         max_content_length => 26214400
     }),
+    case tls_opts() of
+        {ok, TlsOpts} ->
+            TlsPort = application:get_env(roadrunner_httparena, tls_port, 8081),
+            {ok, _} = roadrunner:start_listener(httparena_tls, #{
+                port => TlsPort,
+                routes => Routes,
+                middlewares => [roadrunner_compress],
+                max_content_length => 26214400,
+                tls => TlsOpts
+            });
+        skip ->
+            ok
+    end,
     {ok, SupPid}.
 
 stop(_State) ->
     ok.
+
+tls_opts() ->
+    Cert = env_path("TLS_CERT_PATH", tls_cert, "/certs/server.crt"),
+    Key = env_path("TLS_KEY_PATH", tls_key, "/certs/server.key"),
+    case filelib:is_regular(Cert) andalso filelib:is_regular(Key) of
+        true -> {ok, [{certfile, Cert}, {keyfile, Key}]};
+        false -> skip
+    end.
+
+env_path(EnvVar, AppKey, Default) ->
+    case os:getenv(EnvVar) of
+        false -> application:get_env(roadrunner_httparena, AppKey, Default);
+        V -> V
+    end.

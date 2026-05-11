@@ -10,7 +10,8 @@
     "baseline",
     "pipelined",
     "json",
-    "json-comp"
+    "json-comp",
+    "json-tls"
   ],
   "maintainers": ["williamthome"]
 }
