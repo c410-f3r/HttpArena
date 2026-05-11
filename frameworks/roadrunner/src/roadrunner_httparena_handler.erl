@@ -8,6 +8,7 @@
 routes() ->
     [
         {~"/baseline11", ?MODULE, undefined},
+        {~"/baseline2", ?MODULE, undefined},
         {~"/pipeline", ?MODULE, undefined},
         {~"/json/:count", ?MODULE, undefined},
         {~"/upload", ?MODULE, undefined},
@@ -20,7 +21,9 @@ handle(Req) ->
     handle_route(roadrunner_req:path(Req), Req).
 
 handle_route(~"/baseline11", Req) ->
-    baseline11(Req);
+    baseline(Req);
+handle_route(~"/baseline2", Req) ->
+    baseline(Req);
 handle_route(~"/pipeline", Req) ->
     {roadrunner_resp:text(200, ~"ok"), Req};
 handle_route(<<"/json/", _/binary>>, Req) ->
@@ -72,7 +75,7 @@ clamp(N, Lo, _Hi) when N < Lo -> Lo;
 clamp(N, _Lo, Hi) when N > Hi -> Hi;
 clamp(N, _Lo, _Hi) -> N.
 
-baseline11(Req) ->
+baseline(Req) ->
     A = qs_int(~"a", Req, 0),
     B = qs_int(~"b", Req, 0),
     {BodyN, Req2} =

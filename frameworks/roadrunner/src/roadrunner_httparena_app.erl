@@ -25,6 +25,15 @@ start(_StartType, _StartArgs) ->
                 middlewares => [roadrunner_compress],
                 max_content_length => 26214400,
                 tls => TlsOpts
+            }),
+            H2Port = application:get_env(roadrunner_httparena, h2_port, 8443),
+            H2TlsOpts = [{alpn_preferred_protocols, [~"h2", ~"http/1.1"]} | TlsOpts],
+            {ok, _} = roadrunner:start_listener(httparena_h2, #{
+                port => H2Port,
+                routes => Routes,
+                middlewares => [roadrunner_compress],
+                max_content_length => 26214400,
+                tls => H2TlsOpts
             });
         skip ->
             ok
