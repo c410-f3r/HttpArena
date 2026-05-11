@@ -11,6 +11,7 @@ routes() ->
         {~"/pipeline", ?MODULE, undefined},
         {~"/json/:count", ?MODULE, undefined},
         {~"/upload", ?MODULE, undefined},
+        {~"/async-db", ?MODULE, undefined},
         {~"/ws", ?MODULE, undefined}
     ].
 
@@ -26,6 +27,8 @@ handle_route(<<"/json/", _/binary>>, Req) ->
     json_endpoint(Req);
 handle_route(~"/upload", Req) ->
     upload_endpoint(Req);
+handle_route(~"/async-db", Req) ->
+    async_db_endpoint(Req);
 handle_route(~"/ws", Req) ->
     {{websocket, roadrunner_httparena_ws, undefined}, Req};
 handle_route(_, Req) ->
@@ -34,6 +37,40 @@ handle_route(_, Req) ->
 upload_endpoint(Req) ->
     {ok, Body, Req2} = roadrunner_req:read_body(Req),
     {roadrunner_resp:text(200, integer_to_binary(byte_size(Body))), Req2}.
+
+async_db_endpoint(Req) ->
+    Min = qs_int(~"min", Req, 10),
+    Max = qs_int(~"max", Req, 50),
+    Limit = clamp(qs_int(~"limit", Req, 50), 1, 50),
+    Sql = ~"""
+    SELECT id, name, category, price, quantity, active, tags,
+           rating_score, rating_count
+      FROM items
+     WHERE price BETWEEN $1 AND $2 LIMIT $3
+    """,
+    Items =
+        case roadrunner_httparena_db:query(Sql, [Min, Max, Limit]) of
+            {ok, _Cols, Rows} -> [row_to_json(R) || R <- Rows];
+            _ -> []
+        end,
+    Body = #{~"count" => length(Items), ~"items" => Items},
+    {roadrunner_resp:json(200, Body), Req}.
+
+row_to_json({Id, Name, Cat, Price, Qty, Active, TagsJsonb, RScore, RCount}) ->
+    #{
+        ~"id" => Id,
+        ~"name" => Name,
+        ~"category" => Cat,
+        ~"price" => Price,
+        ~"quantity" => Qty,
+        ~"active" => Active,
+        ~"tags" => json:decode(TagsJsonb),
+        ~"rating" => #{~"score" => RScore, ~"count" => RCount}
+    }.
+
+clamp(N, Lo, _Hi) when N < Lo -> Lo;
+clamp(N, _Lo, Hi) when N > Hi -> Hi;
+clamp(N, _Lo, _Hi) -> N.
 
 baseline11(Req) ->
     A = qs_int(~"a", Req, 0),

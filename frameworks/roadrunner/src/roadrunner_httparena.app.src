@@ -8,6 +8,8 @@
         stdlib,
         sasl,
         ssl,
+        epgsql,
+        pooler,
         roadrunner
     ]},
     {env, []},
