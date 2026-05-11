@@ -37,7 +37,7 @@ list(Req) ->
     CountSql = ~"SELECT COUNT(*) FROM items WHERE category = $1",
     Items =
         case roadrunner_httparena_db:query(ListSql, [Cat, Limit, Offset]) of
-            {ok, _, Rows} -> [row_to_json(R) || R <- Rows];
+            {ok, _, Rows} -> [roadrunner_httparena_items:row_to_json(R) || R <- Rows];
             _ -> []
         end,
     Total =
@@ -57,7 +57,7 @@ get(Req) ->
         [] ->
             case roadrunner_httparena_db:query(read_sql(), [Id]) of
                 {ok, _, [Row]} ->
-                    Item = row_to_json(Row),
+                    Item = roadrunner_httparena_items:row_to_json(Row),
                     ets:insert(?CACHE, {Id, Item}),
                     Resp = roadrunner_resp:json(200, Item),
                     {roadrunner_resp:add_header(Resp, ~"x-cache", ~"MISS"), Req};
@@ -121,18 +121,6 @@ read_sql() ->
       FROM items
      WHERE id = $1
     """.
-
-row_to_json({Id, Name, Cat, Price, Qty, Active, TagsJsonb, RScore, RCount}) ->
-    #{
-        ~"id" => Id,
-        ~"name" => Name,
-        ~"category" => Cat,
-        ~"price" => Price,
-        ~"quantity" => Qty,
-        ~"active" => Active,
-        ~"tags" => json:decode(TagsJsonb),
-        ~"rating" => #{~"score" => RScore, ~"count" => RCount}
-    }.
 
 id_from_path(Req) ->
     binary_to_integer(maps:get(~"id", roadrunner_req:bindings(Req))).

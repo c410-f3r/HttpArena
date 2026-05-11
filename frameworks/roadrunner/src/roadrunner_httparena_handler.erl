@@ -77,23 +77,11 @@ async_db_endpoint(Req) ->
     """,
     Items =
         case roadrunner_httparena_db:query(Sql, [Min, Max, Limit]) of
-            {ok, _Cols, Rows} -> [row_to_json(R) || R <- Rows];
+            {ok, _Cols, Rows} -> [roadrunner_httparena_items:row_to_json(R) || R <- Rows];
             _ -> []
         end,
     Body = #{~"count" => length(Items), ~"items" => Items},
     {roadrunner_resp:json(200, Body), Req}.
-
-row_to_json({Id, Name, Cat, Price, Qty, Active, TagsJsonb, RScore, RCount}) ->
-    #{
-        ~"id" => Id,
-        ~"name" => Name,
-        ~"category" => Cat,
-        ~"price" => Price,
-        ~"quantity" => Qty,
-        ~"active" => Active,
-        ~"tags" => json:decode(TagsJsonb),
-        ~"rating" => #{~"score" => RScore, ~"count" => RCount}
-    }.
 
 clamp(N, Lo, _Hi) when N < Lo -> Lo;
 clamp(N, _Lo, Hi) when N > Hi -> Hi;
