@@ -17,6 +17,7 @@
     "async-db",
     "api-4",
     "api-16",
+    "static",
     "baseline-h2",
     "echo-ws",
     "echo-ws-pipeline"
