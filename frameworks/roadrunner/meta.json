@@ -12,7 +12,9 @@
     "json",
     "json-comp",
     "json-tls",
-    "upload"
+    "upload",
+    "echo-ws",
+    "echo-ws-pipeline"
   ],
   "maintainers": ["williamthome"]
 }

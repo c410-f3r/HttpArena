@@ -10,7 +10,8 @@ routes() ->
         {~"/baseline11", ?MODULE, undefined},
         {~"/pipeline", ?MODULE, undefined},
         {~"/json/:count", ?MODULE, undefined},
-        {~"/upload", ?MODULE, undefined}
+        {~"/upload", ?MODULE, undefined},
+        {~"/ws", ?MODULE, undefined}
     ].
 
 -spec handle(roadrunner_req:request()) -> roadrunner_handler:result().
@@ -25,6 +26,8 @@ handle_route(<<"/json/", _/binary>>, Req) ->
     json_endpoint(Req);
 handle_route(~"/upload", Req) ->
     upload_endpoint(Req);
+handle_route(~"/ws", Req) ->
+    {{websocket, roadrunner_httparena_ws, undefined}, Req};
 handle_route(_, Req) ->
     {roadrunner_resp:not_found(), Req}.
 
