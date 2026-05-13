@@ -291,6 +291,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "trillium",
+    "language": "Rust",
+    "rps": 431816,
+    "avg_latency": "1.07ms",
+    "p99_latency": "2.50ms",
+    "cpu": "3013.7%",
+    "memory": "250MiB",
+    "connections": 512,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "2.89MB/s",
+    "reconnects": 0,
+    "status_2xx": 2159084,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "workerman-websocket",
     "language": "PHP",
     "rps": 3309973,

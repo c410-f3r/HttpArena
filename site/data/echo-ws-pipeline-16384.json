@@ -150,5 +150,24 @@
     "status_3xx": 0,
     "status_4xx": 0,
     "status_5xx": 0
+  },
+  {
+    "framework": "trillium",
+    "language": "Rust",
+    "rps": 4268474,
+    "avg_latency": "12.36ms",
+    "p99_latency": "56.20ms",
+    "cpu": "5996.5%",
+    "memory": "1.1GiB",
+    "connections": 16384,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 16,
+    "bandwidth": "28.73MB/s",
+    "reconnects": 0,
+    "status_2xx": 21342370,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
   }
 ]
