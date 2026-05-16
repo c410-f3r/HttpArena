@@ -271,6 +271,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "simplew-tuned",
+    "language": "C#",
+    "rps": 1970689,
+    "avg_latency": "259us",
+    "p99_latency": "1.17ms",
+    "cpu": "5954.7%",
+    "memory": "167MiB",
+    "connections": 512,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "13.15MB/s",
+    "reconnects": 0,
+    "status_2xx": 9853446,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "Swoole",
     "language": "PHP",
     "rps": 3056601,
