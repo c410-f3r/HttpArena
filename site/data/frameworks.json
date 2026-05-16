@@ -576,6 +576,13 @@
     "type": "production",
     "engine": "trillium-http"
   },
+  "typev": {
+    "dir": "typev",
+    "description": "TypeV bytecode VM running a Type-C HTTP server.",
+    "repo": "https://github.com/praisethemoon/type-project",
+    "type": "engine",
+    "engine": "io_uring"
+  },
   "ultimate-express": {
     "dir": "ultimate-express",
     "description": "ultimate-express (Express API on uWebSockets.js) with single-process threading.",
