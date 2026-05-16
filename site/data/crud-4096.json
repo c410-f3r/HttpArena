@@ -158,6 +158,26 @@
     "status_5xx": 0
   },
   {
+    "framework": "simplew-tuned",
+    "language": "C#",
+    "rps": 434314,
+    "avg_latency": "9.32ms",
+    "p99_latency": "35.20ms",
+    "cpu": "3882.4%",
+    "memory": "1.1GiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "159.16MB/s",
+    "input_bw": "37.28MB/s",
+    "reconnects": 30698,
+    "status_2xx": 6514721,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "trillium",
     "language": "Rust",
     "rps": 444786,

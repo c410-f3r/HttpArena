@@ -469,6 +469,13 @@
     "type": "production",
     "engine": "kestrel"
   },
+  "simplew-tuned": {
+    "dir": "simplew-tuned",
+    "description": "SimpleW is Modern Web Server for .NET. Designed for Simplicity. Built for Speed.",
+    "repo": "https://github.com/stratdev3/SimpleW",
+    "type": "tuned",
+    "engine": "simplew"
+  },
   "simplew": {
     "dir": "simplew",
     "description": "SimpleW is Modern Web Server for .NET. Designed for Simplicity. Built for Speed.",
