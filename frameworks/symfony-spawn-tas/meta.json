@@ -11,13 +11,13 @@
     "pipelined",
     "limited-conn",
     "json",
+    "json-comp",
+    "json-tls",
     "upload",
     "static",
+    "static-h2",
+    "baseline-h2",
     "async-db",
-    "api-4",
-    "api-16",
-    "baseline-h3",
-    "static-h3"
   ],
   "maintainers": [
     "YanGusik"

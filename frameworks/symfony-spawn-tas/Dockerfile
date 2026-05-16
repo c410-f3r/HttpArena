@@ -1,7 +1,17 @@
-FROM trueasync/php-true-async:0.7.0-alpha.3-php8.6-alpine
+FROM trueasync/php-true-async:0.7.0-alpha.14-php8.6-alpine
 
 RUN apk add --no-cache git openssh-client
 
+RUN printf '%s\n' \
+      'opcache.jit=1255' \
+      'opcache.jit_buffer_size=128M' \
+      'opcache.memory_consumption=256' \
+      'opcache.max_accelerated_files=10000' \
+      'opcache.validate_timestamps=0' \
+      'memory_limit=1024M' \
+    > /etc/php.d/99-arena.ini
+
+# Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
 WORKDIR /app
@@ -15,31 +25,8 @@ COPY . .
 RUN APP_ENV=prod APP_DEBUG=0 APP_SECRET=benchmark \
     DATABASE_URL=pgsql://bench:bench@localhost:5432/benchmark \
     DEFAULT_URI=http://localhost \
-    php bin/console cache:warmup
+    php bin/console cache:warmup || true
 
-RUN printf "opcache.enable=1\n\
-opcache.enable_cli=1\n\
-opcache.jit=1255\n\
-opcache.jit_buffer_size=128M\n\
-opcache.memory_consumption=256\n\
-opcache.max_accelerated_files=10000\n\
-opcache.validate_timestamps=0\n\
-memory_limit=2048M\n\
-post_max_size=32M\n\
-upload_max_filesize=32M\n\
-zlib.output_compression_level=6\n\
-zlib.output_compression=On\n" > /etc/php.d/99-benchmark.ini
+EXPOSE 8080 8443
 
-
-ENV GODEBUG=cgocheck=0
-ENV GOGC=1000
-ENV APP_ENV=prod
-ENV APP_DEBUG=0
-ENV APP_SECRET=benchmark
-ENV DATABASE_URL=pgsql://bench:bench@localhost:5432/benchmark
-ENV DEFAULT_URI=http://localhost
-ENV APP_RUNTIME='Spawn\Symfony\Runtime\TrueAsyncRuntime'
-
-EXPOSE 8080 8443/tcp 8443/udp
-
-CMD ["php", "public/index.php"]
+CMD ["php", "/app/public/index.php"]

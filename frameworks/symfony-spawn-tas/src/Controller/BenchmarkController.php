@@ -12,9 +12,8 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class BenchmarkController
 {
-    private static array $dataset = [];
-    private static array $staticFiles = [];
-    private static bool $dataLoaded = false;
+    private array $dataset = [];
+    private bool $dataLoaded = false;
 
     private const MIME_TYPES = [
         'css'   => 'text/css',
@@ -28,29 +27,15 @@ class BenchmarkController
 
     public function __construct(private readonly Connection $connection)
     {
-        if (self::$dataLoaded) {
+        if ($this->dataLoaded) {
             return;
         }
 
-        self::$dataset = json_decode(file_get_contents('/data/dataset.json'), true);
-
-        $dir = '/data/static';
-        if (is_dir($dir)) {
-            foreach (scandir($dir) as $file) {
-                if ($file === '.' || $file === '..') continue;
-                if (str_ends_with($file, '.br') || str_ends_with($file, '.gz')) continue;
-                $base = $dir . '/' . $file;
-                $ext  = pathinfo($file, PATHINFO_EXTENSION);
-                self::$staticFiles[$file] = [
-                    'data' => file_get_contents($base),
-                    'mime' => self::MIME_TYPES[$ext] ?? 'application/octet-stream',
-                    'br'   => file_exists($base . '.br') ? file_get_contents($base . '.br') : null,
-                    'gz'   => file_exists($base . '.gz') ? file_get_contents($base . '.gz') : null,
-                ];
-            }
+        $datasetPath = '/data/dataset.json';
+        if (is_readable($datasetPath)) {
+            $this->dataset = json_decode(file_get_contents($datasetPath), true) ?? [];
         }
-
-        self::$dataLoaded = true;
+        $this->dataLoaded = true;
     }
 
     #[Route('/baseline11', methods: ['GET', 'POST'])]
@@ -73,11 +58,11 @@ class BenchmarkController
     #[Route('/json/{count}', requirements: ['count' => '\d+'])]
     public function json(int $count, Request $request): Response
     {
-        $count = max(0, min($count, count(self::$dataset)));
+        $count = max(0, min($count, count($this->dataset)));
         $m = (int) ($request->query->get('m', 1) ?: 1);
         $items = [];
         for ($i = 0; $i < $count; $i++) {
-            $item          = self::$dataset[$i];
+            $item          = $this->dataset[$i];
             $item['total'] = $item['price'] * $item['quantity'] * $m;
             $items[]       = $item;
         }
@@ -132,27 +117,83 @@ class BenchmarkController
         }
     }
 
+    #[Route('/sqlite-db')]
+    public function sqliteDb(Request $request): Response
+    {
+        $min   = (int) ($request->query->get('min', 10));
+        $max   = (int) ($request->query->get('max', 50));
+        $limit = max(1, min(50, (int) ($request->query->get('limit', 50))));
+
+        $dbPath = $_ENV['SQLITE_DB_PATH'] ?? '/data/benchmark.db';
+
+        try {
+            $pdo = new \PDO('sqlite:' . $dbPath);
+            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+            $stmt = $pdo->prepare(
+                'SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN :min AND :max LIMIT :limit'
+            );
+            $stmt->bindValue(':min', $min, \PDO::PARAM_INT);
+            $stmt->bindValue(':max', $max, \PDO::PARAM_INT);
+            $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+            $stmt->execute();
+
+            $rows  = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            $items = array_map(static function (array $row): array {
+                $row['active'] = (bool) $row['active'];
+                $row['tags']   = json_decode($row['tags'], true);
+                $row['rating'] = [
+                    'score' => (int) $row['rating_score'],
+                    'count' => (int) $row['rating_count'],
+                ];
+                unset($row['rating_score'], $row['rating_count']);
+                return $row;
+            }, $rows);
+
+            return new Response(
+                json_encode(['items' => $items, 'count' => count($items)]),
+                200,
+                ['Content-Type' => 'application/json']
+            );
+        } catch (\Throwable) {
+            return new Response('{"items":[],"count":0}', 200, ['Content-Type' => 'application/json']);
+        }
+    }
+
+    /**
+     * Fallback static file handler — only reached when TrueAsync StaticHandler
+     * could not find the file (on_missing: next) or when running in dev mode.
+     */
     #[Route('/static/{file}', requirements: ['file' => '.+'])]
     public function static(string $file, Request $request): Response
     {
-        if (!isset(self::$staticFiles[$file])) {
+        $dir  = '/data/static';
+        $path = $dir . '/' . $file;
+
+        if (!is_file($path) || !str_starts_with(realpath($path), realpath($dir))) {
             return new Response('Not Found', 404, ['Content-Type' => 'text/plain']);
         }
 
-        $f       = self::$staticFiles[$file];
+        $ext  = pathinfo($file, PATHINFO_EXTENSION);
+        $mime = self::MIME_TYPES[$ext] ?? 'application/octet-stream';
+        $data = file_get_contents($path);
+
+        $headers = ['Content-Type' => $mime];
         $ae      = $request->headers->get('Accept-Encoding', '');
-        $headers = ['Content-Type' => $f['mime']];
 
-        if ($f['br'] !== null && str_contains($ae, 'br')) {
+        $brPath = $path . '.br';
+        $gzPath = $path . '.gz';
+
+        if (file_exists($brPath) && str_contains($ae, 'br')) {
             $headers['Content-Encoding'] = 'br';
-            return new Response($f['br'], 200, $headers);
+            return new Response(file_get_contents($brPath), 200, $headers);
         }
 
-        if ($f['gz'] !== null && str_contains($ae, 'gzip')) {
+        if (file_exists($gzPath) && str_contains($ae, 'gzip')) {
             $headers['Content-Encoding'] = 'gzip';
-            return new Response($f['gz'], 200, $headers);
+            return new Response(file_get_contents($gzPath), 200, $headers);
         }
 
-        return new Response($f['data'], 200, $headers);
+        return new Response($data, 200, $headers);
     }
 }
