@@ -1,0 +1,2 @@
+typev: loaded '/app/output.tvbc' (v15, 11 functions, entry=10)
+typev HttpArena server listening on :8080 (4 SO_REUSEPORT shards)
