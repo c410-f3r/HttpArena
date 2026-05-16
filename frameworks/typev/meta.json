@@ -1,7 +1,7 @@
 {
   "display_name": "typev",
   "language": "Type-C",
-  "type": "tuned",
+  "type": "engine",
   "engine": "io_uring",
   "description": "TypeV bytecode VM running a Type-C HTTP server.",
   "repo": "https://github.com/praisethemoon/type-project",
