@@ -1,23 +1,72 @@
-// HTTP/1.1 response formatting for the typev HttpArena server.
+// HTTP/1.1 response writers — append bytes into a caller-supplied buffer.
 //
-// Pure formatters: given the parsed facts of a request they produce the wire
-// response. No dependency on the parser module.
+// No per-request string allocation: the fixed response chunks are byte-encoded
+// once at module init, and integers are written as decimal digits straight
+// into the output buffer.
 
-// Pre-built response for the common case: a keep-alive /pipeline hit.
-let local const PIPE_KA: string = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok"
+// Fixed response chunks, byte-encoded once.
+let local const PIPE_KA: byte[] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok".bytes()
+let local const PIPE_CLOSE: byte[] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok".bytes()
+let local const HDR_PLAIN: byte[] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ".bytes()
+let local const CONN_KA: byte[] = "\r\nConnection: keep-alive\r\n\r\n".bytes()
+let local const CONN_CLOSE: byte[] = "\r\nConnection: close\r\n\r\n".bytes()
 
-// /pipeline -> body "ok"
-fn pipelineResponse(keepAlive: bool) -> string {
-    if keepAlive {
-        return PIPE_KA
+// Copy src into dst starting at pos; return the position after the copy.
+fn writeBytes(dst: byte[], pos: uint, src: byte[]) -> uint {
+    let n: uint = src.length
+    foreach i: uint in 0u, n {
+        dst[pos + i] = src[i]
     }
-    return "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
+    return pos + n
 }
 
-// /baseline11 -> body is the computed sum (text/plain)
-fn baselineResponse(result: int, keepAlive: bool) -> string {
-    let conn: string = if keepAlive => "keep-alive" else "close"
-    let body: string = "" + result
-    let blen: int = body.bytes().length as int
-    return "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + blen + "\r\nConnection: " + conn + "\r\n\r\n" + body
+// Decimal digit count of a non-negative integer.
+fn digitCount(n: int) -> uint {
+    if n <= 0 {
+        return 1u
+    }
+    let c: uint = 0u
+    let v: int = n
+    while v > 0 {
+        c = c + 1u
+        v = v / 10
+    }
+    return c
+}
+
+// Write n as decimal ASCII into dst at pos; return the position after.
+fn writeInt(dst: byte[], pos: uint, n: int) -> uint {
+    if n <= 0 {
+        dst[pos] = 48 as byte
+        return pos + 1u
+    }
+    let end: uint = pos + digitCount(n)
+    let v: int = n
+    let p: uint = end
+    while v > 0 {
+        p = p - 1u
+        dst[p] = ((v % 10) + 48) as byte
+        v = v / 10
+    }
+    return end
+}
+
+// /pipeline -> fixed "ok" response.
+fn writePipeline(dst: byte[], pos: uint, keepAlive: bool) -> uint {
+    if keepAlive {
+        return writeBytes(dst, pos, PIPE_KA)
+    }
+    return writeBytes(dst, pos, PIPE_CLOSE)
+}
+
+// /baseline11 -> text/plain body = the decimal of `result`.
+fn writeBaseline(dst: byte[], pos: uint, result: int, keepAlive: bool) -> uint {
+    let p: uint = writeBytes(dst, pos, HDR_PLAIN)
+    p = writeInt(dst, p, digitCount(result) as int)
+    if keepAlive {
+        p = writeBytes(dst, p, CONN_KA)
+    } else {
+        p = writeBytes(dst, p, CONN_CLOSE)
+    }
+    return writeInt(dst, p, result)
 }

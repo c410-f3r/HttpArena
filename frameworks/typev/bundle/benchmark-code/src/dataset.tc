@@ -1,22 +1,31 @@
-// Dataset loading + the JSON-processing profile response.
+// Dataset loading + the JSON-processing profile writer.
 //
 // The json profile serves GET /json/{count}?m=M from a fixed 50-item dataset
 // (a JSON array). loadDataset() reads that file once and splits it into its
-// item objects; jsonResponse() then emits the first `count` items per request
-// with total = price * quantity * m spliced in — serialized fresh each call,
-// no cached response.
+// item objects; writeJson() then emits the first `count` items per request
+// with total = price * quantity * m spliced in — written straight into the
+// output buffer, no intermediate strings.
 
 from std.fs import readText
+from response import writeBytes, writeInt, digitCount
 
 // One loaded dataset. prefixes[i] is item i's JSON text WITHOUT its closing
-// '}', so a per-request `,"total":N}` can be appended. prices/quantities feed
-// the total. n is the number of items loaded.
+// '}', as raw bytes — so writeJson copies bytes with no allocation. prices /
+// quantities feed the per-request total; n is the item count.
 type Dataset = struct {
-    prefixes: string[],
+    prefixes: byte[][],
     prices: int[],
     quantities: int[],
     n: int
 }
+
+// JSON structural literals, byte-encoded once at module init.
+let local const HDR_JSON: byte[] = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ".bytes()
+let local const J_CONN_KA: byte[] = "\r\nConnection: keep-alive\r\n\r\n".bytes()
+let local const J_CONN_CL: byte[] = "\r\nConnection: close\r\n\r\n".bytes()
+let local const J_OPEN: byte[] = "{\"items\":[".bytes()
+let local const J_TOTAL: byte[] = ",\"total\":".bytes()
+let local const J_COUNT: byte[] = "],\"count\":".bytes()
 
 // Within data[start..end), find `key` and return the decimal integer that
 // follows it (after an optional run of spaces). 0 if not found.
@@ -114,7 +123,8 @@ fn loadDataset(path: string) -> Dataset {
             }
         }
         let itemEnd: uint = p
-        ds.prefixes.push(txt.substring(itemStart, itemEnd - 1u))
+        // prefix = item bytes minus the trailing '}'
+        ds.prefixes.push(data.slice(itemStart, itemEnd - 1u))
         ds.prices.push(fieldInt(data, itemStart, itemEnd, priceKey))
         ds.quantities.push(fieldInt(data, itemStart, itemEnd, qtyKey))
         count = count + 1
@@ -123,20 +133,56 @@ fn loadDataset(path: string) -> Dataset {
     return ds
 }
 
-// Build the json-profile response: first `count` dataset items, each with
-// total = price * quantity * mult, plus the count field.
-fn jsonResponse(ds: Dataset, count: int, mult: int, keepAlive: bool) -> string {
-    let limit: int = if count > ds.n => ds.n else count
-    let items: string = ""
+// The dataset, loaded once at module initialization — shared by every
+// connection handler, so there is no per-connection file read. The container
+// mounts the dataset at /data/dataset.json.
+let const DATASET_PATH: string = "/data/dataset.json"
+let const DATASET: Dataset = loadDataset(DATASET_PATH)
+
+// /json/{count}?m=M -> {"items":[...first count items...],"count":N}
+// total = price * quantity * mult. Written straight into dst.
+fn writeJson(dst: byte[], pos: uint, count: int, mult: int, keepAlive: bool) -> uint {
+    let limit: int = if count > DATASET.n => DATASET.n else count
+
+    // pass 1: body length, no allocation
+    let bodyLen: uint = J_OPEN.length
     foreach i in 0, limit {
-        let total: int = ds.prices[i as uint] * ds.quantities[i as uint] * mult
         if i > 0 {
-            items = items + ","
+            bodyLen = bodyLen + 1u
         }
-        items = items + ds.prefixes[i as uint] + ",\"total\":" + total + "}"
+        bodyLen = bodyLen + DATASET.prefixes[i as uint].length
+        bodyLen = bodyLen + J_TOTAL.length
+        bodyLen = bodyLen + digitCount(DATASET.prices[i as uint] * DATASET.quantities[i as uint] * mult)
+        bodyLen = bodyLen + 1u
     }
-    let body: string = "{\"items\":[" + items + "],\"count\":" + limit + "}"
-    let blen: int = body.bytes().length as int
-    let conn: string = if keepAlive => "keep-alive" else "close"
-    return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + blen + "\r\nConnection: " + conn + "\r\n\r\n" + body
+    bodyLen = bodyLen + J_COUNT.length
+    bodyLen = bodyLen + digitCount(limit)
+    bodyLen = bodyLen + 1u
+
+    // headers
+    let p: uint = writeBytes(dst, pos, HDR_JSON)
+    p = writeInt(dst, p, bodyLen as int)
+    if keepAlive {
+        p = writeBytes(dst, p, J_CONN_KA)
+    } else {
+        p = writeBytes(dst, p, J_CONN_CL)
+    }
+
+    // pass 2: body
+    p = writeBytes(dst, p, J_OPEN)
+    foreach i in 0, limit {
+        if i > 0 {
+            dst[p] = 44 as byte
+            p = p + 1u
+        }
+        p = writeBytes(dst, p, DATASET.prefixes[i as uint])
+        p = writeBytes(dst, p, J_TOTAL)
+        p = writeInt(dst, p, DATASET.prices[i as uint] * DATASET.quantities[i as uint] * mult)
+        dst[p] = 125 as byte
+        p = p + 1u
+    }
+    p = writeBytes(dst, p, J_COUNT)
+    p = writeInt(dst, p, limit)
+    dst[p] = 125 as byte
+    return p + 1u
 }

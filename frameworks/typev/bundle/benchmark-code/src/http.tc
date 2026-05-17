@@ -28,6 +28,14 @@ type Chunk = struct {
     endPos: uint
 }
 
+// Header-matching patterns, byte-encoded once at module init — avoids a
+// per-call, per-request `.bytes()` allocation in the parser hot path.
+let local const HDR_CONTENT_LENGTH: byte[] = "content-length".bytes()
+let local const HDR_TRANSFER_ENCODING: byte[] = "transfer-encoding".bytes()
+let local const HDR_CONNECTION: byte[] = "connection".bytes()
+let local const VAL_CHUNKED: byte[] = "chunked".bytes()
+let local const VAL_CLOSE: byte[] = "close".bytes()
+
 // Parse a decimal integer from buf[start..end), ignoring non-digit bytes.
 local fn parseDigits(buf: byte[], start: uint, end: uint) -> int {
     let v: int = 0
@@ -44,8 +52,8 @@ local fn parseDigits(buf: byte[], start: uint, end: uint) -> int {
 
 // Case-insensitive match of `name` against the header name at buf[ls..),
 // requiring it to be immediately followed by ':'.
-local fn matchHeader(buf: byte[], ls: uint, le: uint, name: string) -> bool {
-    let nb = name.bytes()
+local fn matchHeader(buf: byte[], ls: uint, le: uint, name: byte[]) -> bool {
+    let const nb = name
     let nl: uint = nb.length
     if ls + nl >= le {
         return false
@@ -73,8 +81,8 @@ local fn headerNumber(buf: byte[], ls: uint, le: uint) -> int {
 }
 
 // Case-insensitive substring search for `lit` within buf[start..end).
-local fn containsCI(buf: byte[], start: uint, end: uint, lit: string) -> bool {
-    let lb = lit.bytes()
+local fn containsCI(buf: byte[], start: uint, end: uint, lit: byte[]) -> bool {
+    let const lb = lit
     let ll: uint = lb.length
     if ll == 0u {
         return true
@@ -219,14 +227,14 @@ fn parseRequest(buf: byte[], len: uint) -> Req {
         while le < he && (buf[le] as int) != 13 {
             le = le + 1u
         }
-        if matchHeader(buf, h, le, "content-length") {
+        if matchHeader(buf, h, le, HDR_CONTENT_LENGTH) {
             contentLen = headerNumber(buf, h, le)
-        } else if matchHeader(buf, h, le, "transfer-encoding") {
-            if containsCI(buf, h, le, "chunked") {
+        } else if matchHeader(buf, h, le, HDR_TRANSFER_ENCODING) {
+            if containsCI(buf, h, le, VAL_CHUNKED) {
                 chunked = true
             }
-        } else if matchHeader(buf, h, le, "connection") {
-            if containsCI(buf, h, le, "close") {
+        } else if matchHeader(buf, h, le, HDR_CONNECTION) {
+            if containsCI(buf, h, le, VAL_CLOSE) {
                 r.keepAlive = false
             }
         }

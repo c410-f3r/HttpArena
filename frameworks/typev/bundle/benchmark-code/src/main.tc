@@ -8,14 +8,14 @@
 from std.io import println
 from std.socket import tcp_listen, tcp_accept, tcp_read, tcp_write, tcp_close
 from http import parseRequest
-from response import pipelineResponse, baselineResponse
-from dataset import loadDataset, jsonResponse
+from response import writePipeline, writeBaseline
+from dataset import writeJson
 
 // Per-connection receive buffer capacity.
 let const BUFCAP: uint = 65536u
 
-// Dataset for the json profile — the container mounts it at /data/dataset.json.
-let const DATASET_PATH: string = "/data/dataset.json"
+// Per-connection output buffer — responses are written into it, then flushed.
+let const OBUFCAP: uint = 65536u
 
 // Serve one connection: read, parse every complete request in the buffer,
 // write the batched responses, compact the leftover, repeat.
@@ -24,11 +24,10 @@ fn handle_client(fd: int) -> void {
     buf.resize(BUFCAP)
     let tmp: byte[] = []
     tmp.resize(BUFCAP)
+    let obuf: byte[] = []
+    obuf.resize(OBUFCAP)
     let len: uint = 0u
     let running: bool = true
-
-    // Dataset for the json profile — loaded once per connection.
-    let ds = loadDataset(DATASET_PATH)
 
     while running {
         let got: int = 0
@@ -49,7 +48,7 @@ fn handle_client(fd: int) -> void {
             running = false
         } else {
             len = len + (got as uint)
-            let out: string = ""
+            let opos: uint = 0u
             let closeAfter: bool = false
             let parsing: bool = true
             while parsing {
@@ -57,12 +56,19 @@ fn handle_client(fd: int) -> void {
                 if !req.complete {
                     parsing = false
                 } else {
+                    if opos + 32768u > OBUFCAP {
+                        let fw = tcp_write(fd, obuf, opos)
+                        if fw < 0 {
+                            running = false
+                        }
+                        opos = 0u
+                    }
                     if req.isJson {
-                        out = out + jsonResponse(ds, req.jcount, req.jmult, req.keepAlive)
+                        opos = writeJson(obuf, opos, req.jcount, req.jmult, req.keepAlive)
                     } else if req.isBaseline {
-                        out = out + baselineResponse(req.result, req.keepAlive)
+                        opos = writeBaseline(obuf, opos, req.result, req.keepAlive)
                     } else {
-                        out = out + pipelineResponse(req.keepAlive)
+                        opos = writePipeline(obuf, opos, req.keepAlive)
                     }
                     if !req.keepAlive {
                         closeAfter = true
@@ -78,9 +84,8 @@ fn handle_client(fd: int) -> void {
                     }
                 }
             }
-            let ob = out.bytes()
-            if ob.length > 0u {
-                let w = tcp_write(fd, ob, ob.length)
+            if opos > 0u {
+                let w = tcp_write(fd, obuf, opos)
                 if w < 0 {
                     running = false
                 }
