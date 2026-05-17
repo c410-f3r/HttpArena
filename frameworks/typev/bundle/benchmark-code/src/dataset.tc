@@ -1,0 +1,142 @@
+// Dataset loading + the JSON-processing profile response.
+//
+// The json profile serves GET /json/{count}?m=M from a fixed 50-item dataset
+// (a JSON array). loadDataset() reads that file once and splits it into its
+// item objects; jsonResponse() then emits the first `count` items per request
+// with total = price * quantity * m spliced in — serialized fresh each call,
+// no cached response.
+
+from std.fs import readText
+
+// One loaded dataset. prefixes[i] is item i's JSON text WITHOUT its closing
+// '}', so a per-request `,"total":N}` can be appended. prices/quantities feed
+// the total. n is the number of items loaded.
+type Dataset = struct {
+    prefixes: string[],
+    prices: int[],
+    quantities: int[],
+    n: int
+}
+
+// Within data[start..end), find `key` and return the decimal integer that
+// follows it (after an optional run of spaces). 0 if not found.
+local fn fieldInt(data: byte[], start: uint, end: uint, key: byte[]) -> int {
+    let kl: uint = key.length
+    if kl == 0u || end < start + kl {
+        return 0
+    }
+    let limit: uint = end - kl
+    foreach i: uint in start, limit + 1u {
+        let hit: bool = true
+        foreach k: uint in 0u, kl {
+            if (data[i + k] as int) != (key[k] as int) {
+                hit = false
+                break
+            }
+        }
+        if hit {
+            let p: uint = i + kl
+            while p < end && (data[p] as int) == 32 {
+                p = p + 1u
+            }
+            let v: int = 0
+            while p < end {
+                let d: int = data[p] as int
+                if d < 48 || d > 57 {
+                    break
+                }
+                v = v * 10 + (d - 48)
+                p = p + 1u
+            }
+            return v
+        }
+    }
+    return 0
+}
+
+// Read the dataset file and split the top-level JSON array into its objects.
+fn loadDataset(path: string) -> Dataset {
+    let ds: Dataset = {prefixes: [], prices: [], quantities: [], n: 0}
+    let (txt, st) = readText(path)
+    if st < 0 {
+        return ds
+    }
+    let data: byte[] = txt.bytes()
+    let len: uint = data.length
+    let priceKey: byte[] = "\"price\":".bytes()
+    let qtyKey: byte[] = "\"quantity\":".bytes()
+
+    // skip to the opening '['
+    let p: uint = 0u
+    while p < len && (data[p] as int) != 91 {
+        p = p + 1u
+    }
+    p = p + 1u
+
+    let count: int = 0
+    while p < len {
+        // skip whitespace and commas between items
+        while p < len {
+            let c: int = data[p] as int
+            if c == 32 || c == 10 || c == 13 || c == 9 || c == 44 {
+                p = p + 1u
+            } else {
+                break
+            }
+        }
+        if p >= len || (data[p] as int) == 93 {
+            break
+        }
+        // data[p] is '{' — scan to the matching '}', string-aware
+        let itemStart: uint = p
+        let depth: int = 0
+        let inStr: bool = false
+        while p < len {
+            let c: int = data[p] as int
+            if inStr {
+                if c == 92 {
+                    p = p + 1u
+                } else if c == 34 {
+                    inStr = false
+                }
+            } else {
+                if c == 34 {
+                    inStr = true
+                } else if c == 123 {
+                    depth = depth + 1
+                } else if c == 125 {
+                    depth = depth - 1
+                }
+            }
+            p = p + 1u
+            if !inStr && depth == 0 {
+                break
+            }
+        }
+        let itemEnd: uint = p
+        ds.prefixes.push(txt.substring(itemStart, itemEnd - 1u))
+        ds.prices.push(fieldInt(data, itemStart, itemEnd, priceKey))
+        ds.quantities.push(fieldInt(data, itemStart, itemEnd, qtyKey))
+        count = count + 1
+    }
+    ds.n = count
+    return ds
+}
+
+// Build the json-profile response: first `count` dataset items, each with
+// total = price * quantity * mult, plus the count field.
+fn jsonResponse(ds: Dataset, count: int, mult: int, keepAlive: bool) -> string {
+    let limit: int = if count > ds.n => ds.n else count
+    let items: string = ""
+    foreach i in 0, limit {
+        let total: int = ds.prices[i as uint] * ds.quantities[i as uint] * mult
+        if i > 0 {
+            items = items + ","
+        }
+        items = items + ds.prefixes[i as uint] + ",\"total\":" + total + "}"
+    }
+    let body: string = "{\"items\":[" + items + "],\"count\":" + limit + "}"
+    let blen: int = body.bytes().length as int
+    let conn: string = if keepAlive => "keep-alive" else "close"
+    return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + blen + "\r\nConnection: " + conn + "\r\n\r\n" + body
+}

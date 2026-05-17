@@ -1,0 +1,23 @@
+// HTTP/1.1 response formatting for the typev HttpArena server.
+//
+// Pure formatters: given the parsed facts of a request they produce the wire
+// response. No dependency on the parser module.
+
+// Pre-built response for the common case: a keep-alive /pipeline hit.
+let local const PIPE_KA: string = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok"
+
+// /pipeline -> body "ok"
+fn pipelineResponse(keepAlive: bool) -> string {
+    if keepAlive {
+        return PIPE_KA
+    }
+    return "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
+}
+
+// /baseline11 -> body is the computed sum (text/plain)
+fn baselineResponse(result: int, keepAlive: bool) -> string {
+    let conn: string = if keepAlive => "keep-alive" else "close"
+    let body: string = "" + result
+    let blen: int = body.bytes().length as int
+    return "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + blen + "\r\nConnection: " + conn + "\r\n\r\n" + body
+}

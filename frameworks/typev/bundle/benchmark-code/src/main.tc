@@ -1,37 +1,108 @@
+// typev HttpArena server — HTTP/1.1, profiles: pipelined + baseline.
+//
+// A single incremental-parser server: each connection runs in its own
+// lightweight process, accumulating bytes across recv() calls so it survives
+// pipelined batches and TCP-fragmented requests. Parsing lives in http.tc,
+// response formatting in response.tc.
+
 from std.io import println
-from std.socket import tcp_listen, tcp_accept, tcp_read, tcp_write, tcp_close, count_http_terminators
+from std.socket import tcp_listen, tcp_accept, tcp_read, tcp_write, tcp_close
+from http import parseRequest
+from response import pipelineResponse, baselineResponse
+from dataset import loadDataset, jsonResponse
 
-let const RESPONSE: string = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok"
+// Per-connection receive buffer capacity.
+let const BUFCAP: uint = 65536u
 
-let const MAX_DEPTH: uint = 256u
+// Dataset for the json profile — the container mounts it at /data/dataset.json.
+let const DATASET_PATH: string = "/data/dataset.json"
 
-let const READ_BUF: uint = 262144u
-
-fn handle_client(client_fd: int) -> void {
+// Serve one connection: read, parse every complete request in the buffer,
+// write the batched responses, compact the leftover, repeat.
+fn handle_client(fd: int) -> void {
     let buf: byte[] = []
-    buf.resize(READ_BUF)
+    buf.resize(BUFCAP)
+    let tmp: byte[] = []
+    tmp.resize(BUFCAP)
+    let len: uint = 0u
+    let running: bool = true
 
-    let resp_len: uint = RESPONSE.bytes().length
-    let batch: byte[] = RESPONSE.repeat(MAX_DEPTH).bytes()
+    // Dataset for the json profile — loaded once per connection.
+    let ds = loadDataset(DATASET_PATH)
 
-    while true {
-        let n = tcp_read(client_fd, buf, READ_BUF)
-        if n <= 0 { break }
+    while running {
+        let got: int = 0
+        if len == 0u {
+            got = tcp_read(fd, buf, BUFCAP)
+        } else {
+            // leftover present — read into a scratch buffer, then append
+            got = tcp_read(fd, tmp, BUFCAP - len)
+            if got > 0 {
+                let g: uint = got as uint
+                foreach k: uint in 0u, g {
+                    buf[len + k] = tmp[k]
+                }
+            }
+        }
 
-        let count = count_http_terminators(buf, n as uint)
-        let reply: uint = if count == 0u => 1u else if count > MAX_DEPTH => MAX_DEPTH else count
-
-        let written = tcp_write(client_fd, batch, reply * resp_len)
-        if written < 0 { break }
+        if got <= 0 {
+            running = false
+        } else {
+            len = len + (got as uint)
+            let out: string = ""
+            let closeAfter: bool = false
+            let parsing: bool = true
+            while parsing {
+                let req = parseRequest(buf, len)
+                if !req.complete {
+                    parsing = false
+                } else {
+                    if req.isJson {
+                        out = out + jsonResponse(ds, req.jcount, req.jmult, req.keepAlive)
+                    } else if req.isBaseline {
+                        out = out + baselineResponse(req.result, req.keepAlive)
+                    } else {
+                        out = out + pipelineResponse(req.keepAlive)
+                    }
+                    if !req.keepAlive {
+                        closeAfter = true
+                    }
+                    // drop the consumed request, shift the leftover down
+                    let rem: uint = len - req.consumed
+                    foreach k: uint in 0u, rem {
+                        buf[k] = buf[req.consumed + k]
+                    }
+                    len = rem
+                    if closeAfter {
+                        parsing = false
+                    }
+                }
+            }
+            let ob = out.bytes()
+            if ob.length > 0u {
+                let w = tcp_write(fd, ob, ob.length)
+                if w < 0 {
+                    running = false
+                }
+            }
+            if closeAfter {
+                running = false
+            }
+            if len >= BUFCAP {
+                running = false
+            }
+        }
     }
 
-    tcp_close(client_fd)
+    tcp_close(fd)
 }
 
+// Accept loop — one of N SO_REUSEPORT shards.
 fn accept_loop(port: uint) -> void {
     let server = tcp_listen(port, 4096)
-    if server < 0 { return }
-
+    if server < 0 {
+        return
+    }
     while true {
         let client = tcp_accept(server)
         if client >= 0 {
@@ -43,7 +114,7 @@ fn accept_loop(port: uint) -> void {
 fn main() -> uint {
     let port: uint = 8080u
 
-    println("typev HttpArena server listening on :8080 (4 SO_REUSEPORT shards)")
+    println("typev HttpArena server listening on :8080 (pipelined + baseline)")
 
     foreach i in 0, 3, 1 {
         spawn accept_loop(port)

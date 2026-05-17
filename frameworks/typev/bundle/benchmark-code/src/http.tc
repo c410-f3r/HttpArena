@@ -1,0 +1,319 @@
+// HTTP/1.1 request parsing for the typev HttpArena server.
+//
+// parseRequest() reads exactly one request from the front of an accumulating
+// byte buffer. It returns complete=false when the request has not fully
+// arrived yet (TCP fragmentation, or a pipelined batch still in flight), so
+// the caller can recv() more bytes and retry. GET and POST are supported,
+// with both Content-Length and chunked transfer-encoding bodies.
+
+// A parsed request. `consumed` is the number of buffer bytes this request
+// occupies, so the caller can drop them and parse the next one.
+type Req = struct {
+    complete: bool,
+    consumed: uint,
+    isPipeline: bool,
+    isBaseline: bool,
+    isJson: bool,
+    isPost: bool,
+    keepAlive: bool,
+    result: int,
+    jcount: int,
+    jmult: int
+}
+
+// Result of decoding a chunked body.
+type Chunk = struct {
+    ok: bool,
+    value: int,
+    endPos: uint
+}
+
+// Parse a decimal integer from buf[start..end), ignoring non-digit bytes.
+local fn parseDigits(buf: byte[], start: uint, end: uint) -> int {
+    let v: int = 0
+    let p: uint = start
+    while p < end {
+        let d: int = buf[p] as int
+        if d >= 48 && d <= 57 {
+            v = v * 10 + (d - 48)
+        }
+        p = p + 1u
+    }
+    return v
+}
+
+// Case-insensitive match of `name` against the header name at buf[ls..),
+// requiring it to be immediately followed by ':'.
+local fn matchHeader(buf: byte[], ls: uint, le: uint, name: string) -> bool {
+    let nb = name.bytes()
+    let nl: uint = nb.length
+    if ls + nl >= le {
+        return false
+    }
+    foreach k: uint in 0u, nl {
+        let c: int = buf[ls + k] as int
+        if c >= 65 && c <= 90 {
+            c = c + 32
+        }
+        if c != (nb[k] as int) {
+            return false
+        }
+    }
+    return (buf[ls + nl] as int) == 58
+}
+
+// Integer value of a header line's value (the part after ':').
+local fn headerNumber(buf: byte[], ls: uint, le: uint) -> int {
+    let p: uint = ls
+    while p < le && (buf[p] as int) != 58 {
+        p = p + 1u
+    }
+    p = p + 1u
+    return parseDigits(buf, p, le)
+}
+
+// Case-insensitive substring search for `lit` within buf[start..end).
+local fn containsCI(buf: byte[], start: uint, end: uint, lit: string) -> bool {
+    let lb = lit.bytes()
+    let ll: uint = lb.length
+    if ll == 0u {
+        return true
+    }
+    if end < start + ll {
+        return false
+    }
+    let limit: uint = end - ll
+    foreach i: uint in start, limit + 1u {
+        let m: bool = true
+        foreach k: uint in 0u, ll {
+            let c: int = buf[i + k] as int
+            if c >= 65 && c <= 90 {
+                c = c + 32
+            }
+            if c != (lb[k] as int) {
+                m = false
+                break
+            }
+        }
+        if m {
+            return true
+        }
+    }
+    return false
+}
+
+// Decode a chunked body starting at buf[start], summing the decimal digits of
+// the decoded data. ok=false if the body has not fully arrived yet.
+local fn decodeChunked(buf: byte[], start: uint, len: uint) -> Chunk {
+    let res: Chunk = {ok: false, value: 0, endPos: 0u}
+    let p: uint = start
+    let acc: int = 0
+    while true {
+        if p >= len {
+            return res
+        }
+        let size: int = 0
+        let any: bool = false
+        while p < len {
+            let c: int = buf[p] as int
+            let hv: int = -1
+            if c >= 48 && c <= 57 {
+                hv = c - 48
+            } else if c >= 97 && c <= 102 {
+                hv = c - 87
+            } else if c >= 65 && c <= 70 {
+                hv = c - 55
+            }
+            if hv < 0 {
+                break
+            }
+            size = size * 16 + hv
+            any = true
+            p = p + 1u
+        }
+        if !any {
+            return res
+        }
+        if p + 1u >= len {
+            return res
+        }
+        if (buf[p] as int) != 13 || (buf[p + 1u] as int) != 10 {
+            return res
+        }
+        p = p + 2u
+        if size == 0 {
+            if p + 1u >= len {
+                return res
+            }
+            res.ok = true
+            res.value = acc
+            res.endPos = p + 2u
+            return res
+        }
+        let sz: uint = size as uint
+        if p + sz + 2u > len {
+            return res
+        }
+        foreach q: uint in p, p + sz {
+            let d: int = buf[q] as int
+            if d >= 48 && d <= 57 {
+                acc = acc * 10 + (d - 48)
+            }
+        }
+        p = p + sz + 2u
+    }
+    return res
+}
+
+// Parse one HTTP request from the front of buf[0..len).
+fn parseRequest(buf: byte[], len: uint) -> Req {
+    let r: Req = {complete: false, consumed: 0u, isPipeline: false, isBaseline: false, isJson: false, isPost: false, keepAlive: true, result: 0, jcount: 0, jmult: 0}
+    if len < 4u {
+        return r
+    }
+
+    // end of headers ("\r\n\r\n")
+    let headerEnd: int = -1
+    foreach i: uint in 0u, len - 3u {
+        if (buf[i] as int) == 13 && (buf[i + 1u] as int) == 10 && (buf[i + 2u] as int) == 13 && (buf[i + 3u] as int) == 10 {
+            headerEnd = i as int
+            break
+        }
+    }
+    if headerEnd < 0 {
+        return r
+    }
+    let he: uint = headerEnd as uint
+    let bodyStart: uint = he + 4u
+
+    // first space -> start of the request target ('/...')
+    let sp: uint = 0u
+    while sp < he && (buf[sp] as int) != 32 {
+        sp = sp + 1u
+    }
+    let pathStart: uint = sp + 1u
+
+    // method: POST is the 4-char method, GET the 3-char one — so the first
+    // space position equals the method length. Stored on the struct: a
+    // long-lived `let bool` holding a comparison miscompiles under -O.
+    r.isPost = sp == 4u
+
+    // route on the character after '/': 'p'(112)=pipeline, 'b'(98)=baseline
+    let rc: int = if pathStart + 1u < he => (buf[pathStart + 1u] as int) else 0
+    r.isPipeline = rc == 112
+    r.isBaseline = rc == 98
+    r.isJson = rc == 106
+
+    // end of request line (first CR)
+    let lineEnd: uint = pathStart
+    while lineEnd < he && (buf[lineEnd] as int) != 13 {
+        lineEnd = lineEnd + 1u
+    }
+
+    // header scan
+    let contentLen: int = -1
+    let chunked: bool = false
+    let h: uint = lineEnd + 2u
+    while h < he {
+        let le: uint = h
+        while le < he && (buf[le] as int) != 13 {
+            le = le + 1u
+        }
+        if matchHeader(buf, h, le, "content-length") {
+            contentLen = headerNumber(buf, h, le)
+        } else if matchHeader(buf, h, le, "transfer-encoding") {
+            if containsCI(buf, h, le, "chunked") {
+                chunked = true
+            }
+        } else if matchHeader(buf, h, le, "connection") {
+            if containsCI(buf, h, le, "close") {
+                r.keepAlive = false
+            }
+        }
+        h = le + 2u
+    }
+
+    // body
+    let bodyVal: int = 0
+    let consumed: uint = bodyStart
+    if r.isPost {
+        if chunked {
+            let dec = decodeChunked(buf, bodyStart, len)
+            if !dec.ok {
+                return r
+            }
+            bodyVal = dec.value
+            consumed = dec.endPos
+        } else {
+            let cl: uint = if contentLen > 0 => (contentLen as uint) else 0u
+            if len < bodyStart + cl {
+                return r
+            }
+            bodyVal = parseDigits(buf, bodyStart, bodyStart + cl)
+            consumed = bodyStart + cl
+        }
+    }
+
+    r.complete = true
+    r.consumed = consumed
+
+    if r.isBaseline {
+        // sum the first two digit-runs in the query (after '?')
+        let q: uint = pathStart
+        while q < lineEnd && (buf[q] as int) != 63 {
+            q = q + 1u
+        }
+        let sum: int = 0
+        let cnt: int = 0
+        let p: uint = q
+        while p < lineEnd && cnt < 2 {
+            let c: int = buf[p] as int
+            if c >= 48 && c <= 57 {
+                let v: int = 0
+                while p < lineEnd {
+                    let d: int = buf[p] as int
+                    if d < 48 || d > 57 {
+                        break
+                    }
+                    v = v * 10 + (d - 48)
+                    p = p + 1u
+                }
+                sum = sum + v
+                cnt = cnt + 1
+            } else {
+                p = p + 1u
+            }
+        }
+        r.result = sum + bodyVal
+    }
+
+    if r.isJson {
+        // /json/{count}?m=M — count and m are the first two digit-runs of the target
+        let cnt: int = 0
+        let p: uint = pathStart
+        while p < lineEnd && cnt < 2 {
+            let c: int = buf[p] as int
+            if c >= 48 && c <= 57 {
+                let v: int = 0
+                while p < lineEnd {
+                    let d: int = buf[p] as int
+                    if d < 48 || d > 57 {
+                        break
+                    }
+                    v = v * 10 + (d - 48)
+                    p = p + 1u
+                }
+                if cnt == 0 {
+                    r.jcount = v
+                } else {
+                    r.jmult = v
+                }
+                cnt = cnt + 1
+            } else {
+                p = p + 1u
+            }
+        }
+    }
+
+    return r
+}
