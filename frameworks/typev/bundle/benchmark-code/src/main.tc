@@ -15,6 +15,8 @@ from dataset import writeJson
 let const BUFCAP: uint = 65536u
 let const OBUFCAP: uint = 65536u
 
+let const PORT: uint = 8080u
+
 // Write all `len` bytes of buf to fd, looping over partial sends. tcp_write
 // has no offset arg, so a short send is followed by shifting the unsent tail
 // to the front of buf and retrying. false on socket error.
@@ -176,8 +178,8 @@ fn handle_client(fd: int) -> void {
 }
 
 // Accept loop — one of N SO_REUSEPORT shards.
-fn accept_loop(port: uint) -> void {
-    let server = tcp_listen(port, 4096)
+fn accept_loop() -> void {
+    let server = tcp_listen(PORT, 4096)
     if server < 0 {
         return
     }
@@ -190,15 +192,13 @@ fn accept_loop(port: uint) -> void {
 }
 
 fn main() -> uint {
-    let port: uint = 8080u
-
     println("typev HttpArena server listening on :8080")
 
     foreach i in 0, 3, 1 {
-        spawn accept_loop(port)
+        spawn accept_loop()
     }
 
-    let server = tcp_listen(port, 4096)
+    let server = tcp_listen(PORT, 4096)
     if server < 0 {
         println("Failed to start server")
         return 1u
