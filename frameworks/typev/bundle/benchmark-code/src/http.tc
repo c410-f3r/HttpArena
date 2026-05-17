@@ -1,13 +1,7 @@
-// HTTP/1.1 request parsing for the typev HttpArena server.
-//
-// parseRequest() reads exactly one request from the front of an accumulating
-// byte buffer. It returns complete=false when the request has not fully
-// arrived yet (TCP fragmentation, or a pipelined batch still in flight), so
-// the caller can recv() more bytes and retry. GET and POST are supported,
-// with both Content-Length and chunked transfer-encoding bodies.
+// HTTP/1.1 request parsing. parseRequest fills a caller-owned Req — created
+// once per connection and reused — so parsing allocates nothing per request.
 
-// A parsed request. `consumed` is the number of buffer bytes this request
-// occupies, so the caller can drop them and parse the next one.
+// A parsed request; `consumed` is its byte length in the buffer.
 type Req = struct {
     complete: bool,
     consumed: uint,
@@ -28,8 +22,18 @@ type Chunk = struct {
     endPos: uint
 }
 
-// Header-matching patterns, byte-encoded once at module init — avoids a
-// per-call, per-request `.bytes()` allocation in the parser hot path.
+// Allocate one Req / Chunk — a handler makes these once and reuses them.
+fn newReq() -> Req {
+    let r: Req = {complete: false, consumed: 0u, isPipeline: false, isBaseline: false, isJson: false, isPost: false, keepAlive: true, result: 0, jcount: 0, jmult: 0}
+    return r
+}
+
+fn newChunk() -> Chunk {
+    let c: Chunk = {ok: false, value: 0, endPos: 0u}
+    return c
+}
+
+// Header-matching patterns, byte-encoded once at module init.
 let local const HDR_CONTENT_LENGTH: byte[] = "content-length".bytes()
 let local const HDR_TRANSFER_ENCODING: byte[] = "transfer-encoding".bytes()
 let local const HDR_CONNECTION: byte[] = "connection".bytes()
@@ -50,8 +54,7 @@ local fn parseDigits(buf: byte[], start: uint, end: uint) -> int {
     return v
 }
 
-// Case-insensitive match of `name` against the header name at buf[ls..),
-// requiring it to be immediately followed by ':'.
+// Case-insensitive match of `name` against the header name at buf[ls..), `:`-terminated.
 local fn matchHeader(buf: byte[], ls: uint, le: uint, name: byte[]) -> bool {
     let const nb = name
     let nl: uint = nb.length
@@ -70,7 +73,7 @@ local fn matchHeader(buf: byte[], ls: uint, le: uint, name: byte[]) -> bool {
     return (buf[ls + nl] as int) == 58
 }
 
-// Integer value of a header line's value (the part after ':').
+// Integer value of a header line (the part after ':').
 local fn headerNumber(buf: byte[], ls: uint, le: uint) -> int {
     let p: uint = ls
     while p < le && (buf[p] as int) != 58 {
@@ -110,15 +113,16 @@ local fn containsCI(buf: byte[], start: uint, end: uint, lit: byte[]) -> bool {
     return false
 }
 
-// Decode a chunked body starting at buf[start], summing the decimal digits of
-// the decoded data. ok=false if the body has not fully arrived yet.
-local fn decodeChunked(buf: byte[], start: uint, len: uint) -> Chunk {
-    let res: Chunk = {ok: false, value: 0, endPos: 0u}
+// Decode a chunked body into `res` (reused); res.ok stays false if incomplete.
+local fn decodeChunked(buf: byte[], start: uint, len: uint, mut res: Chunk) -> void {
+    res.ok = false
+    res.value = 0
+    res.endPos = 0u
     let p: uint = start
     let acc: int = 0
     while true {
         if p >= len {
-            return res
+            return
         }
         let size: int = 0
         let any: bool = false
@@ -140,27 +144,27 @@ local fn decodeChunked(buf: byte[], start: uint, len: uint) -> Chunk {
             p = p + 1u
         }
         if !any {
-            return res
+            return
         }
         if p + 1u >= len {
-            return res
+            return
         }
         if (buf[p] as int) != 13 || (buf[p + 1u] as int) != 10 {
-            return res
+            return
         }
         p = p + 2u
         if size == 0 {
             if p + 1u >= len {
-                return res
+                return
             }
             res.ok = true
             res.value = acc
             res.endPos = p + 2u
-            return res
+            return
         }
         let sz: uint = size as uint
         if p + sz + 2u > len {
-            return res
+            return
         }
         foreach q: uint in p, p + sz {
             let d: int = buf[q] as int
@@ -170,14 +174,24 @@ local fn decodeChunked(buf: byte[], start: uint, len: uint) -> Chunk {
         }
         p = p + sz + 2u
     }
-    return res
+    return
 }
 
-// Parse one HTTP request from the front of buf[0..len).
-fn parseRequest(buf: byte[], len: uint) -> Req {
-    let r: Req = {complete: false, consumed: 0u, isPipeline: false, isBaseline: false, isJson: false, isPost: false, keepAlive: true, result: 0, jcount: 0, jmult: 0}
+// Parse one HTTP request from buf[0..len) into the reused `r` (`c` is chunked-
+// decode scratch); r.complete is left false if the request is incomplete.
+fn parseRequest(buf: byte[], len: uint, mut r: Req, mut c: Chunk) -> void {
+    r.complete = false
+    r.consumed = 0u
+    r.isPipeline = false
+    r.isBaseline = false
+    r.isJson = false
+    r.isPost = false
+    r.keepAlive = true
+    r.result = 0
+    r.jcount = 0
+    r.jmult = 0
     if len < 4u {
-        return r
+        return
     }
 
     // end of headers ("\r\n\r\n")
@@ -189,7 +203,7 @@ fn parseRequest(buf: byte[], len: uint) -> Req {
         }
     }
     if headerEnd < 0 {
-        return r
+        return
     }
     let he: uint = headerEnd as uint
     let bodyStart: uint = he + 4u
@@ -201,9 +215,8 @@ fn parseRequest(buf: byte[], len: uint) -> Req {
     }
     let pathStart: uint = sp + 1u
 
-    // method: POST is the 4-char method, GET the 3-char one — so the first
-    // space position equals the method length. Stored on the struct: a
-    // long-lived `let bool` holding a comparison miscompiles under -O.
+    // method length == first-space position: POST is 4, GET is 3. Stored on
+    // the struct — a long-lived `let bool` from a comparison miscompiles -O.
     r.isPost = sp == 4u
 
     // route on the character after '/': 'p'(112)=pipeline, 'b'(98)=baseline
@@ -246,16 +259,16 @@ fn parseRequest(buf: byte[], len: uint) -> Req {
     let consumed: uint = bodyStart
     if r.isPost {
         if chunked {
-            let dec = decodeChunked(buf, bodyStart, len)
-            if !dec.ok {
-                return r
+            decodeChunked(buf, bodyStart, len, c)
+            if !c.ok {
+                return
             }
-            bodyVal = dec.value
-            consumed = dec.endPos
+            bodyVal = c.value
+            consumed = c.endPos
         } else {
             let cl: uint = if contentLen > 0 => (contentLen as uint) else 0u
             if len < bodyStart + cl {
-                return r
+                return
             }
             bodyVal = parseDigits(buf, bodyStart, bodyStart + cl)
             consumed = bodyStart + cl
@@ -275,8 +288,8 @@ fn parseRequest(buf: byte[], len: uint) -> Req {
         let cnt: int = 0
         let p: uint = q
         while p < lineEnd && cnt < 2 {
-            let c: int = buf[p] as int
-            if c >= 48 && c <= 57 {
+            let c2: int = buf[p] as int
+            if c2 >= 48 && c2 <= 57 {
                 let v: int = 0
                 while p < lineEnd {
                     let d: int = buf[p] as int
@@ -296,12 +309,12 @@ fn parseRequest(buf: byte[], len: uint) -> Req {
     }
 
     if r.isJson {
-        // /json/{count}?m=M — count and m are the first two digit-runs of the target
+        // /json/{count}?m=M — count and m are the first two digit-runs
         let cnt: int = 0
         let p: uint = pathStart
         while p < lineEnd && cnt < 2 {
-            let c: int = buf[p] as int
-            if c >= 48 && c <= 57 {
+            let c3: int = buf[p] as int
+            if c3 >= 48 && c3 <= 57 {
                 let v: int = 0
                 while p < lineEnd {
                     let d: int = buf[p] as int
@@ -323,5 +336,5 @@ fn parseRequest(buf: byte[], len: uint) -> Req {
         }
     }
 
-    return r
+    return
 }

@@ -1,24 +1,62 @@
-// typev HttpArena server — HTTP/1.1, profiles: pipelined + baseline.
+// typev HttpArena server — HTTP/1.1: pipelined, baseline, limited-conn, json.
 //
-// A single incremental-parser server: each connection runs in its own
-// lightweight process, accumulating bytes across recv() calls so it survives
-// pipelined batches and TCP-fragmented requests. Parsing lives in http.tc,
-// response formatting in response.tc.
+// Each connection runs in its own process. /pipeline takes a zero-parse,
+// zero-alloc fast path (count fixed-length requests, blast canned responses
+// from a prebuilt batch); other routes use the http.tc parser with a
+// per-connection Req/Chunk reused so parsing also allocates nothing.
 
 from std.io import println
 from std.socket import tcp_listen, tcp_accept, tcp_read, tcp_write, tcp_close
-from http import parseRequest
-from response import writePipeline, writeBaseline
+from http import parseRequest, newReq, newChunk
+from response import writePipeline, writeBaseline, PIPE_BATCH, PIPE_BATCH_N, RESP_LEN
 from dataset import writeJson
 
-// Per-connection receive buffer capacity.
+// Per-connection receive / output buffer capacities.
 let const BUFCAP: uint = 65536u
-
-// Per-connection output buffer — responses are written into it, then flushed.
 let const OBUFCAP: uint = 65536u
 
-// Serve one connection: read, parse every complete request in the buffer,
-// write the batched responses, compact the leftover, repeat.
+// Write all `len` bytes of buf to fd, looping over partial sends. tcp_write
+// has no offset arg, so a short send is followed by shifting the unsent tail
+// to the front of buf and retrying. false on socket error.
+fn writeAll(fd: int, buf: byte[], len: uint) -> bool {
+    let remaining: uint = len
+    while remaining > 0u {
+        let w = tcp_write(fd, buf, remaining)
+        if w <= 0 {
+            return false
+        }
+        let n: uint = w as uint
+        if n >= remaining {
+            return true
+        }
+        let rest: uint = remaining - n
+        foreach k: uint in 0u, rest {
+            buf[k] = buf[n + k]
+        }
+        remaining = rest
+    }
+    return true
+}
+
+// Send `total` bytes straight out of the shared prebuilt PIPE_BATCH. A partial
+// send is finished via `scratch` — PIPE_BATCH is a const and must not shift.
+fn blastPipe(fd: int, scratch: byte[], total: uint) -> bool {
+    let w = tcp_write(fd, PIPE_BATCH, total)
+    if w < 0 {
+        return false
+    }
+    let sent: uint = w as uint
+    if sent >= total {
+        return true
+    }
+    let rest: uint = total - sent
+    foreach k: uint in 0u, rest {
+        scratch[k] = PIPE_BATCH[sent + k]
+    }
+    return writeAll(fd, scratch, rest)
+}
+
+// Serve one connection.
 fn handle_client(fd: int) -> void {
     let buf: byte[] = []
     buf.resize(BUFCAP)
@@ -26,75 +64,110 @@ fn handle_client(fd: int) -> void {
     tmp.resize(BUFCAP)
     let obuf: byte[] = []
     obuf.resize(OBUFCAP)
+    // Parse scratch — created once, reused for every request.
+    let req = newReq()
+    let chunk = newChunk()
     let len: uint = 0u
     let running: bool = true
+    // Pipeline fast path: armed on the first /pipeline request; reqLen is its
+    // byte length, and every later /pipeline request is byte-identical.
+    let pipeMode: bool = false
+    let reqLen: uint = 0u
 
     while running {
-        let got: int = 0
-        if len == 0u {
-            got = tcp_read(fd, buf, BUFCAP)
-        } else {
-            // leftover present — read into a scratch buffer, then append
-            got = tcp_read(fd, tmp, BUFCAP - len)
-            if got > 0 {
-                let g: uint = got as uint
-                foreach k: uint in 0u, g {
-                    buf[len + k] = tmp[k]
-                }
-            }
-        }
-
-        if got <= 0 {
-            running = false
-        } else {
-            len = len + (got as uint)
-            let opos: uint = 0u
-            let closeAfter: bool = false
-            let parsing: bool = true
-            while parsing {
-                let req = parseRequest(buf, len)
-                if !req.complete {
-                    parsing = false
-                } else {
-                    if opos + 32768u > OBUFCAP {
-                        let fw = tcp_write(fd, obuf, opos)
-                        if fw < 0 {
-                            running = false
-                        }
-                        opos = 0u
-                    }
-                    if req.isJson {
-                        opos = writeJson(obuf, opos, req.jcount, req.jmult, req.keepAlive)
-                    } else if req.isBaseline {
-                        opos = writeBaseline(obuf, opos, req.result, req.keepAlive)
+        if pipeMode {
+            // FAST PATH — drain the socket, count whole requests, blast canned
+            // responses. `len` carries a request split across the recv edge.
+            let got: int = tcp_read(fd, buf, BUFCAP)
+            if got <= 0 {
+                running = false
+            } else {
+                let total: uint = len + (got as uint)
+                let count: uint = total / reqLen
+                len = total - count * reqLen
+                let remaining: uint = count
+                while remaining > 0u {
+                    let n: uint = if remaining > PIPE_BATCH_N => PIPE_BATCH_N else remaining
+                    if !blastPipe(fd, obuf, n * RESP_LEN) {
+                        running = false
+                        remaining = 0u
                     } else {
-                        opos = writePipeline(obuf, opos, req.keepAlive)
-                    }
-                    if !req.keepAlive {
-                        closeAfter = true
-                    }
-                    // drop the consumed request, shift the leftover down
-                    let rem: uint = len - req.consumed
-                    foreach k: uint in 0u, rem {
-                        buf[k] = buf[req.consumed + k]
-                    }
-                    len = rem
-                    if closeAfter {
-                        parsing = false
+                        remaining = remaining - n
                     }
                 }
             }
-            if opos > 0u {
-                let w = tcp_write(fd, obuf, opos)
-                if w < 0 {
+        } else {
+            // GENERAL PATH — incremental parse for baseline / json /
+            // limited-conn, and a /pipeline connection's first batch.
+            let got: int = 0
+            if len == 0u {
+                got = tcp_read(fd, buf, BUFCAP)
+            } else {
+                // leftover present — read into scratch, then append
+                got = tcp_read(fd, tmp, BUFCAP - len)
+                if got > 0 {
+                    let g: uint = got as uint
+                    foreach k: uint in 0u, g {
+                        buf[len + k] = tmp[k]
+                    }
+                }
+            }
+
+            if got <= 0 {
+                running = false
+            } else {
+                len = len + (got as uint)
+                let opos: uint = 0u
+                let closeAfter: bool = false
+                let parsing: bool = true
+                while parsing {
+                    parseRequest(buf, len, req, chunk)
+                    if !req.complete {
+                        parsing = false
+                    } else {
+                        if opos + 32768u > OBUFCAP {
+                            if !writeAll(fd, obuf, opos) {
+                                running = false
+                            }
+                            opos = 0u
+                        }
+                        if req.isJson {
+                            opos = writeJson(obuf, opos, req.jcount, req.jmult, req.keepAlive)
+                        } else if req.isBaseline {
+                            opos = writeBaseline(obuf, opos, req.result, req.keepAlive)
+                        } else {
+                            opos = writePipeline(obuf, opos, req.keepAlive)
+                        }
+                        // arm the fast path on the first /pipeline request
+                        if !pipeMode && req.isPipeline && req.consumed > 0u {
+                            pipeMode = true
+                            reqLen = req.consumed
+                        }
+                        if !req.keepAlive {
+                            closeAfter = true
+                        }
+                        // drop the consumed request, shift the leftover down
+                        let rem: uint = len - req.consumed
+                        foreach k: uint in 0u, rem {
+                            buf[k] = buf[req.consumed + k]
+                        }
+                        len = rem
+                        if closeAfter {
+                            parsing = false
+                        }
+                    }
+                }
+                if opos > 0u {
+                    if !writeAll(fd, obuf, opos) {
+                        running = false
+                    }
+                }
+                if closeAfter {
                     running = false
                 }
-            }
-            if closeAfter {
-                running = false
-            }
-            if len >= BUFCAP {
-                running = false
+                if len >= BUFCAP {
+                    running = false
+                }
             }
         }
     }
@@ -119,7 +192,7 @@ fn accept_loop(port: uint) -> void {
 fn main() -> uint {
     let port: uint = 8080u
 
-    println("typev HttpArena server listening on :8080 (pipelined + baseline)")
+    println("typev HttpArena server listening on :8080")
 
     foreach i in 0, 3, 1 {
         spawn accept_loop(port)
