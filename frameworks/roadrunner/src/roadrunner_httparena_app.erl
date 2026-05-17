@@ -29,7 +29,10 @@ start(_StartType, _StartArgs) ->
         routes => Routes,
         middlewares => [roadrunner_compress],
         max_content_length => 26214400,
-        h2c => enabled,
+        %% h2c prior-knowledge: `[http2]` on a plain-TCP listener
+        %% serves h2 directly (client sends the h2 preface, no
+        %% `Upgrade: h2c` negotiation).
+        protocols => [http2],
         body_buffering => manual
     }),
     case tls_opts() of
@@ -44,13 +47,15 @@ start(_StartType, _StartArgs) ->
                 body_buffering => manual
             }),
             H2Port = application:get_env(roadrunner_httparena, h2_port, 8443),
-            H2TlsOpts = [{alpn_preferred_protocols, [~"h2", ~"http/1.1"]} | TlsOpts],
             {ok, _} = roadrunner:start_listener(httparena_h2, #{
                 port => H2Port,
                 routes => Routes,
                 middlewares => [roadrunner_compress],
                 max_content_length => 26214400,
-                tls => H2TlsOpts,
+                tls => TlsOpts,
+                %% Listener derives `alpn_preferred_protocols` from
+                %% this list — `h2` preferred, fall back to `http/1.1`.
+                protocols => [http2, http1],
                 body_buffering => manual
             });
         skip ->
