@@ -954,6 +954,26 @@
     "status_5xx": 0
   },
   {
+    "framework": "typev",
+    "language": "Type-C",
+    "rps": 46995,
+    "avg_latency": "23.89ms",
+    "p99_latency": "199.30ms",
+    "cpu": "885.0%",
+    "memory": "311MiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "248.84MB/s",
+    "input_bw": "2.24MB/s",
+    "reconnects": 289176,
+    "status_2xx": 234978,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "uvicorn",
     "language": "Python",
     "rps": 465616,
