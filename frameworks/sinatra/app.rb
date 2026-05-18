@@ -22,8 +22,6 @@ module Sinatra
 end
 
 class App < Sinatra::Base
-  SERVER_NAME = 'sinatra'.freeze
-
   configure do
     set :server, :puma
     set :logging, nil
@@ -128,12 +126,12 @@ class App < Sinatra::Base
   private
 
   def render_json(json)
-    headers 'server' => SERVER_NAME, 'content-type' => 'application/json'
+    headers 'content-type' => 'application/json'
     json
   end
 
   def render_plain(text)
-    headers 'server' => SERVER_NAME, 'content-type' => 'text/plain'
+    headers 'content-type' => 'text/plain'
     text
   end
 
