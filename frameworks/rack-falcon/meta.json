@@ -11,5 +11,5 @@
     "pipelined",
     "limited-conn"
   ],
-  "maintainers": []
+  "maintainers": ["p8"]
 }
