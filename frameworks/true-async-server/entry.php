@@ -61,7 +61,13 @@ $config = (new HttpServerConfig())
     // stay within RSS limits under concurrent 20 MiB POSTs (issue #26).
     ->setBodyStreamingEnabled(true)
     // Transparent gzip/brotli middleware — needed for the json-comp profile.
+    // Drop both levels to 1 to match Swoole's http_compression_level=1 default
+    // and the typical high-RPS arena workload. Encode CPU dominates byte-on-wire
+    // here; q=1 keeps ratio acceptable (br q=1 ≈ 1.5 KB vs q=4 ≈ 1.2 KB on the
+    // 6.7 KB /json/40 payload) at ~2× faster encode.
     ->setCompressionEnabled(true)
+    ->setCompressionLevel(1)
+    ->setBrotliLevel(1)
     // Built-in worker pool — HttpServer::start() spawns the pool itself.
     ->setWorkers($workers)
     // Run once per worker before its task loop. The class files contain
