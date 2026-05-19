@@ -236,8 +236,9 @@ extern socket from "stdsocket" = {
     fn count_http_terminators(buf: uint[], n: uint) -> uint
 
     /**
-     * SHA-1 of data[0..len) into the 20-byte `out` buffer. Native — keeps the
-     * 80-round hash off the bytecode path. Returns 0, or -1 if out < 20.
+     * WebSocket Sec-WebSocket-Accept = base64(SHA1(key + GUID)), written as
+     * 28 bytes into `out`. Native — the whole handshake digest in one call.
+     * Returns 0, or -1 if out < 28.
      */
-    fn socket_sha1(data: uint[], len: uint, out: uint[]) -> int
+    fn socket_ws_accept(key: uint[], start: uint, len: uint, out: uint[]) -> int
 }
