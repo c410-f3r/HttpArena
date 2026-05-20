@@ -27,7 +27,7 @@ Ultra-high-performance custom HTTP server for .NET 10 — built from scratch for
 
 ## Notes
 
-- HTTP/1.1 on port 8080, HTTP/1+2+3 on port 8443 (TCP **and** UDP for QUIC), h1+TLS on port 8081
+- HTTP/1.1 on port 8080, HTTP/1+2+3 on port 8443 (TCP **and** UDP for QUIC)
 - HTTP/3 via MsQuic (`libmsquic` installed in the runtime image); ALPN negotiation handles h2/h3 upgrade
 - TLS certs loaded from `$TLS_CERT` / `$TLS_KEY` (default `/certs/server.crt` + `/certs/server.key`)
 - Static files served from the `/data/static` volume mount at runtime; no files baked into the image
