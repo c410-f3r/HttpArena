@@ -536,6 +536,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "true-async-server",
+    "language": "PHP",
+    "rps": 785805,
+    "avg_latency": "5.26ms",
+    "p99_latency": "5.26ms",
+    "cpu": "6190.9%",
+    "memory": "732MiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "2.65GB",
+    "reconnects": 0,
+    "status_2xx": 4007366,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "uvicorn",
     "language": "Python",
     "rps": 336946,
