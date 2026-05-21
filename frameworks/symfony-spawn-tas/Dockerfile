@@ -1,4 +1,4 @@
-FROM trueasync/php-true-async:0.7.0-alpha.14-php8.6-alpine
+FROM trueasync/php-true-async:0.7.0-beta.5-php8.6-alpine
 
 RUN apk add --no-cache git openssh-client
 
