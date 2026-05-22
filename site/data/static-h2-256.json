@@ -431,6 +431,25 @@
     "status_5xx": 286846
   },
   {
+    "framework": "symfony-spawn-tas",
+    "language": "PHP",
+    "rps": 58177,
+    "avg_latency": "133.32ms",
+    "p99_latency": "133.32ms",
+    "cpu": "6579.6%",
+    "memory": "406MiB",
+    "connections": 256,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "916.47MB/s",
+    "reconnects": 0,
+    "status_2xx": 293213,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "trillium",
     "language": "Rust",
     "rps": 529,
