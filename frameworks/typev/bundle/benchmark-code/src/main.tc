@@ -99,12 +99,14 @@ fn drainUpload(fd: int, buf: byte[], bufcap: uint, bodyStart: uint, cl: uint, cu
 
 // Serve one connection.
 fn handle_client(fd: int) -> void {
+    // resizeRaw: these buffers are write-before-read (tcp_read fills, parser
+    // reads only up to the filled length), so skip the per-connection zero-fill.
     let buf: byte[] = []
-    buf.resize(BUFCAP)
+    buf.resizeRaw(BUFCAP)
     let tmp: byte[] = []
-    tmp.resize(BUFCAP)
+    tmp.resizeRaw(BUFCAP)
     let obuf: byte[] = []
-    obuf.resize(OBUFCAP)
+    obuf.resizeRaw(OBUFCAP)
     // Parse scratch — created once, reused for every request.
     let req = newReq()
     let chunk = newChunk()
