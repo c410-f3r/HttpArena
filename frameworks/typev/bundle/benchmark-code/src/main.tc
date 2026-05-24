@@ -280,9 +280,11 @@ fn main() -> uint {
     println("typev HttpArena server listening on :8080")
 
     // accept ONLY on spawned loops
-    foreach i in 0, 3, 1 {
+    let keepalive = spawn accept_loop()
+    foreach i in 0, 2, 1 {
         spawn accept_loop()
     }
+    let (_r, _s) = keepalive.await()
 
     return 0u
 }
