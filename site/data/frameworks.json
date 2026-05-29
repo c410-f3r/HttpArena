@@ -150,6 +150,13 @@
     "type": "production",
     "engine": "zerg"
   },
+  "effinitive": {
+    "dir": "effinitive",
+    "description": "Ultra-high-performance custom HTTP server for .NET 10 \u2014 built from scratch for maximum speed.",
+    "repo": "https://github.com/HBartosch/Effinitive",
+    "type": "production",
+    "engine": "effinitive"
+  },
   "elysia": {
     "dir": "elysia",
     "description": "An ergonomic framework for Humans",
@@ -212,6 +219,13 @@
     "repo": "https://github.com/true-async/php-async",
     "type": "tuned",
     "engine": "frankenphp"
+  },
+  "genhttp-11": {
+    "dir": "genhttp-11",
+    "description": "Lightweight, embeddable and modular C# web server.",
+    "repo": "https://github.com/Kaliumhexacyanoferrat/GenHTTP",
+    "type": "tuned",
+    "engine": "genhttp"
   },
   "genhttp-kestrel": {
     "dir": "genhttp-kestrel",
