@@ -12,6 +12,8 @@ import io.ktor.server.routing.*
 import io.ktor.utils.io.*
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -77,10 +79,16 @@ data class DbResponse(
 object AppData {
     val json = Json { ignoreUnknownKeys = true }
     var dataset: List<DatasetItem> = emptyList()
-    data class StaticEntry(val data: ByteArray, val br: ByteArray?, val gz: ByteArray?, val contentType: String)
+    data class StaticEntry(
+        val data: ByteArray,
+        val br: ByteArray?,
+        val gz: ByteArray?,
+        val contentType: String
+    )
     val staticFiles: MutableMap<String, StaticEntry> = mutableMapOf()
     var db: Connection? = null
     var pgPool: HikariDataSource? = null
+    val emptyDbResponse = "{\"items\":[],\"count\":0}".toByteArray()
 
     private val mimeTypes = mapOf(
         ".css" to "text/css",
@@ -159,68 +167,130 @@ fun main() {
         install(DefaultHeaders) {
             header("Server", "ktor")
         }
-        install(Compression)
+        install(Compression) {
+            gzip()
+        }
+        install(ContentNegotiation) {
+            json()
+        }
 
-        routing {
-            get("/pipeline") {
-                call.respondText("ok", ContentType.Text.Plain)
-            }
+        configureRouting()
+    }.start(wait = true)
+}
 
-            get("/baseline11") {
-                val sum = sumQueryParams(call)
+private fun Application.configureRouting() {
+    fun ApplicationCall.sumQueryParams(): Long =
+        request.queryParameters.entries().sumOf { (_, v) ->
+            v.sumOf { it.toLongOrNull() ?: 0L }
+        }
+
+    routing {
+        get("/pipeline") {
+            call.respondText("ok", ContentType.Text.Plain)
+        }
+
+        get("/baseline11") {
+            call.respondText(
+                call.sumQueryParams().toString(),
+                ContentType.Text.Plain
+            )
+        }
+
+        post("/baseline11") {
+            val sum = call.sumQueryParams()
+            val body = call.receiveText().trim().toLongOrNull() ?: run {
                 call.respondText(sum.toString(), ContentType.Text.Plain)
+                return@post
             }
+            call.respondText(
+                (sum + body).toString(),
+                ContentType.Text.Plain
+            )
+        }
 
-            post("/baseline11") {
-                var sum = sumQueryParams(call)
-                val body = call.receiveText().trim()
-                body.toLongOrNull()?.let { sum += it }
-                call.respondText(sum.toString(), ContentType.Text.Plain)
+        get("/baseline2") {
+            call.respondText(
+                call.sumQueryParams().toString(),
+                ContentType.Text.Plain
+            )
+        }
+
+        get("/json/{count}") {
+            if (AppData.dataset.isEmpty()) {
+                call.respondText("Dataset not loaded", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
+                return@get
             }
-
-            get("/baseline2") {
-                val sum = sumQueryParams(call)
-                call.respondText(sum.toString(), ContentType.Text.Plain)
+            var count = call.pathParameters["count"]?.toIntOrNull() ?: 0
+            if (count < 0) count = 0
+            if (count > AppData.dataset.size) count = AppData.dataset.size
+            val m = call.request.queryParameters["m"]?.toIntOrNull() ?: 1
+            val processed = AppData.dataset.take(count).map { d ->
+                ProcessedItem(
+                    id = d.id, name = d.name, category = d.category,
+                    price = d.price, quantity = d.quantity, active = d.active,
+                    tags = d.tags, rating = d.rating,
+                    total = d.price.toLong() * d.quantity * m
+                )
             }
+            call.respond(JsonResponse(items = processed, count = count))
+        }
 
-            get("/json/{count}") {
-                if (AppData.dataset.isEmpty()) {
-                    call.respondText("Dataset not loaded", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
-                    return@get
-                }
-                var count = call.parameters["count"]?.toIntOrNull() ?: 0
-                if (count < 0) count = 0
-                if (count > AppData.dataset.size) count = AppData.dataset.size
-                val m = call.request.queryParameters["m"]?.toIntOrNull() ?: 1
-                val processed = AppData.dataset.take(count).map { d ->
-                    ProcessedItem(
-                        id = d.id, name = d.name, category = d.category,
-                        price = d.price, quantity = d.quantity, active = d.active,
-                        tags = d.tags, rating = d.rating,
-                        total = d.price.toLong() * d.quantity * m
+        get("/db") {
+            val conn = AppData.db
+            if (conn == null) {
+                call.respondText("Database not available", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
+                return@get
+            }
+            val min = call.parameters["min"]?.toDoubleOrNull() ?: 10.0
+            val max = call.parameters["max"]?.toDoubleOrNull() ?: 50.0
+
+            val items = mutableListOf<DbItem>()
+            synchronized(conn) {
+                val stmt = conn.prepareStatement(
+                    "SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT 50"
+                )
+                stmt.setDouble(1, min)
+                stmt.setDouble(2, max)
+                val rs = stmt.executeQuery()
+                while (rs.next()) {
+                    val tags = AppData.json.decodeFromString<List<String>>(rs.getString(7))
+                    items.add(
+                        DbItem(
+                            id = rs.getInt(1),
+                            name = rs.getString(2),
+                            category = rs.getString(3),
+                            price = rs.getInt(4),
+                            quantity = rs.getInt(5),
+                            active = rs.getInt(6) == 1,
+                            tags = tags,
+                            rating = RatingInfo(score = rs.getInt(8), count = rs.getInt(9))
+                        )
                     )
                 }
-                val resp = JsonResponse(items = processed, count = count)
-                val body = AppData.json.encodeToString(JsonResponse.serializer(), resp).toByteArray()
-                call.respondBytes(body, ContentType.Application.Json)
+                rs.close()
+                stmt.close()
             }
+            call.respond(DbResponse(items = items, count = items.size))
+        }
 
-            get("/db") {
-                val conn = AppData.db
-                if (conn == null) {
-                    call.respondText("Database not available", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
-                    return@get
-                }
-                val min = call.parameters["min"]?.toDoubleOrNull() ?: 10.0
-                val max = call.parameters["max"]?.toDoubleOrNull() ?: 50.0
-
+        get("/async-db") {
+            val pool = AppData.pgPool
+            if (pool == null) {
+                call.respondBytes(AppData.emptyDbResponse, ContentType.Application.Json)
+                return@get
+            }
+            val min = call.request.queryParameters["min"]?.toIntOrNull() ?: 10
+            val max = call.request.queryParameters["max"]?.toIntOrNull() ?: 50
+            val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: 50).coerceIn(1, 50)
+            try {
                 val items = mutableListOf<DbItem>()
-                synchronized(conn) {
+                pool.connection.use { conn ->
                     val stmt = conn.prepareStatement(
-                        "SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT 50"
+                        "SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT ?"
                     )
-                    stmt.setDouble(1, min)
-                    stmt.setDouble(2, max)
+                    stmt.setInt(1, min)
+                    stmt.setInt(2, max)
+                    stmt.setInt(3, limit)
                     val rs = stmt.executeQuery()
                     while (rs.next()) {
                         val tags = AppData.json.decodeFromString<List<String>>(rs.getString(7))
@@ -231,7 +301,7 @@ fun main() {
                                 category = rs.getString(3),
                                 price = rs.getInt(4),
                                 quantity = rs.getInt(5),
-                                active = rs.getInt(6) == 1,
+                                active = rs.getBoolean(6),
                                 tags = tags,
                                 rating = RatingInfo(score = rs.getInt(8), count = rs.getInt(9))
                             )
@@ -243,96 +313,43 @@ fun main() {
                 val resp = DbResponse(items = items, count = items.size)
                 val body = AppData.json.encodeToString(DbResponse.serializer(), resp).toByteArray()
                 call.respondBytes(body, ContentType.Application.Json)
-            }
-
-            get("/async-db") {
-                val pool = AppData.pgPool
-                if (pool == null) {
-                    call.respondBytes("{\"items\":[],\"count\":0}".toByteArray(), ContentType.Application.Json)
-                    return@get
-                }
-                val min = call.request.queryParameters["min"]?.toIntOrNull() ?: 10
-                val max = call.request.queryParameters["max"]?.toIntOrNull() ?: 50
-                val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: 50).coerceIn(1, 50)
-                try {
-                    val items = mutableListOf<DbItem>()
-                    pool.connection.use { conn ->
-                        val stmt = conn.prepareStatement(
-                            "SELECT id, name, category, price, quantity, active, tags, rating_score, rating_count FROM items WHERE price BETWEEN ? AND ? LIMIT ?"
-                        )
-                        stmt.setInt(1, min)
-                        stmt.setInt(2, max)
-                        stmt.setInt(3, limit)
-                        val rs = stmt.executeQuery()
-                        while (rs.next()) {
-                            val tags = AppData.json.decodeFromString<List<String>>(rs.getString(7))
-                            items.add(
-                                DbItem(
-                                    id = rs.getInt(1),
-                                    name = rs.getString(2),
-                                    category = rs.getString(3),
-                                    price = rs.getInt(4),
-                                    quantity = rs.getInt(5),
-                                    active = rs.getBoolean(6),
-                                    tags = tags,
-                                    rating = RatingInfo(score = rs.getInt(8), count = rs.getInt(9))
-                                )
-                            )
-                        }
-                        rs.close()
-                        stmt.close()
-                    }
-                    val resp = DbResponse(items = items, count = items.size)
-                    val body = AppData.json.encodeToString(DbResponse.serializer(), resp).toByteArray()
-                    call.respondBytes(body, ContentType.Application.Json)
-                } catch (_: Exception) {
-                    call.respondBytes("{\"items\":[],\"count\":0}".toByteArray(), ContentType.Application.Json)
-                }
-            }
-
-            post("/upload") {
-                val channel = call.receiveChannel()
-                var totalBytes = 0L
-                val buf = ByteArray(65536)
-                while (!channel.isClosedForRead) {
-                    val read = channel.readAvailable(buf)
-                    if (read > 0) totalBytes += read
-                }
-                call.respondText(totalBytes.toString(), ContentType.Text.Plain)
-            }
-
-            get("/static/{filename}") {
-                val filename = call.parameters["filename"]
-                if (filename == null) {
-                    call.respond(HttpStatusCode.NotFound)
-                    return@get
-                }
-                val entry = AppData.staticFiles[filename]
-                if (entry == null) {
-                    call.respond(HttpStatusCode.NotFound)
-                    return@get
-                }
-                val ae = call.request.header(HttpHeaders.AcceptEncoding) ?: ""
-                if (entry.br != null && ae.contains("br")) {
-                    call.response.header(HttpHeaders.ContentEncoding, "br")
-                    call.respondBytes(entry.br, ContentType.parse(entry.contentType))
-                } else if (entry.gz != null && ae.contains("gzip")) {
-                    call.response.header(HttpHeaders.ContentEncoding, "gzip")
-                    call.respondBytes(entry.gz, ContentType.parse(entry.contentType))
-                } else {
-                    call.respondBytes(entry.data, ContentType.parse(entry.contentType))
-                }
+            } catch (_: Exception) {
+                call.respondBytes("{\"items\":[],\"count\":0}".toByteArray(), ContentType.Application.Json)
             }
         }
-    }.start(wait = true)
-}
 
-private fun sumQueryParams(call: ApplicationCall): Long {
-    var sum = 0L
-    call.parameters.names().forEach { name ->
-        call.parameters[name]?.toLongOrNull()?.let { sum += it }
+        post("/upload") {
+            val channel = call.receiveChannel()
+            var totalBytes = 0L
+            val buf = ByteArray(65536)
+            while (!channel.isClosedForRead) {
+                val read = channel.readAvailable(buf)
+                if (read > 0) totalBytes += read
+            }
+            call.respondText(totalBytes.toString(), ContentType.Text.Plain)
+        }
+
+        get("/static/{filename}") {
+            val filename = call.parameters["filename"]
+            if (filename == null) {
+                call.respond(HttpStatusCode.NotFound)
+                return@get
+            }
+            val entry = AppData.staticFiles[filename]
+            if (entry == null) {
+                call.respond(HttpStatusCode.NotFound)
+                return@get
+            }
+            val ae = call.request.header(HttpHeaders.AcceptEncoding) ?: ""
+            if (entry.br != null && ae.contains("br")) {
+                call.response.header(HttpHeaders.ContentEncoding, "br")
+                call.respondBytes(entry.br, ContentType.parse(entry.contentType))
+            } else if (entry.gz != null && ae.contains("gzip")) {
+                call.response.header(HttpHeaders.ContentEncoding, "gzip")
+                call.respondBytes(entry.gz, ContentType.parse(entry.contentType))
+            } else {
+                call.respondBytes(entry.data, ContentType.parse(entry.contentType))
+            }
+        }
     }
-    return sum
 }
-
-

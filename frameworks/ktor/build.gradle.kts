@@ -17,15 +17,16 @@ repositories {
 }
 
 dependencies {
-    implementation("io.ktor:ktor-server-core:3.4.1")
-    implementation("io.ktor:ktor-server-netty:3.4.1")
-    implementation("io.ktor:ktor-server-compression:3.4.1")
-    implementation("io.ktor:ktor-server-default-headers:3.4.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
-    implementation("org.xerial:sqlite-jdbc:3.47.2.0")
-    implementation("org.postgresql:postgresql:42.7.4")
-    implementation("com.zaxxer:HikariCP:6.2.1")
-    implementation("ch.qos.logback:logback-classic:1.5.15")
+    implementation(ktorLibs.server.core)
+    implementation(ktorLibs.server.netty)
+    implementation(ktorLibs.server.compression)
+    implementation(ktorLibs.server.defaultHeaders)
+    implementation(ktorLibs.server.contentNegotiation)
+    implementation(ktorLibs.serialization.kotlinx.json)
+    implementation(libs.xerial.sqlite.jdbc)
+    implementation(libs.postgresql)
+    implementation(libs.zaxxer.hikari.cp)
+    implementation(libs.logback.classic)
 }
 
 ktor {
