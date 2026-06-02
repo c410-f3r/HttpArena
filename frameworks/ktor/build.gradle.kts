@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.exposed.r2dbc)
     implementation(libs.exposed.json)
     implementation(libs.postgresql)
+    implementation(libs.r2dbc.pool)
     implementation(libs.logback.classic)
 }
 

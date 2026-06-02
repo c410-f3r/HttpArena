@@ -71,6 +71,7 @@ fun main() {
 }
 
 private fun Application.configureRouting(appData: AppData) {
+
     fun ApplicationCall.sumQueryParams(): Long =
         request.queryParameters.entries().sumOf { (_, v) ->
             v.sumOf { it.toLongOrNull() ?: 0L }

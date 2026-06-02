@@ -1,10 +1,18 @@
 package com.httparena
 
+import io.r2dbc.pool.ConnectionPool
+import io.r2dbc.pool.ConnectionPoolConfiguration
+import io.r2dbc.postgresql.PostgresqlConnectionConfiguration
+import io.r2dbc.postgresql.PostgresqlConnectionFactory
 import io.r2dbc.spi.ConnectionFactoryOptions
+import io.r2dbc.spi.IsolationLevel
+import io.r2dbc.spi.ValidationDepth
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.v1.core.vendors.PostgreSQLDialect
 import org.jetbrains.exposed.v1.r2dbc.R2dbcDatabase
+import org.jetbrains.exposed.v1.r2dbc.R2dbcDatabaseConfig
 import java.io.File
 import java.net.URI
 import java.security.KeyFactory
@@ -26,6 +34,7 @@ const val KEY_ALIAS = "server"
 val KEYSTORE_PASSWORD = CharArray(0)
 
 class AppData {
+    private val cpuCores = Runtime.getRuntime().availableProcessors()
     private val certFile = File(CERT_PATH)
     private val keyFile = File(KEY_PATH)
     private val datasetFile = File(System.getenv("DATASET_PATH") ?: "/data/dataset.json")
@@ -49,14 +58,33 @@ class AppData {
             val port = if (uri.port > 0) uri.port else 5432
             val database = uri.path.removePrefix("/")
             val userInfo = uri.userInfo.split(":")
-            R2dbcDatabase.connect {
-                setUrl("r2dbc:postgresql://$host:$port/$database")
-                connectionFactoryOptions {
-                    option(ConnectionFactoryOptions.DRIVER, "postgresql")
-                    option(ConnectionFactoryOptions.USER, userInfo[0])
-                    option(ConnectionFactoryOptions.PASSWORD, if (userInfo.size > 1) userInfo[1] else "")
+
+            val factory = PostgresqlConnectionFactory(
+                PostgresqlConnectionConfiguration.builder()
+                    .host(host)
+                    .port(port)
+                    .database(database)
+                    .username(userInfo[0])
+                    .password(if (userInfo.size > 1) userInfo[1] else "")
+                    .build()
+            )
+            val pool = ConnectionPool(
+                ConnectionPoolConfiguration.builder(factory)
+                    .initialSize(cpuCores * 2)
+                    .maxSize(cpuCores * 2)
+                    .validationQuery("")
+                    .validationDepth(ValidationDepth.LOCAL)
+                    .acquireRetry(0)
+                    .build()
+            )
+            R2dbcDatabase.connect(
+                connectionFactory = pool,
+                databaseConfig = R2dbcDatabaseConfig.Builder().apply {
+                    explicitDialect = PostgreSQLDialect()
+                    defaultR2dbcIsolationLevel = IsolationLevel.READ_COMMITTED
+                    defaultReadOnly = true
                 }
-            }
+            )
         }
     }?.getOrNull()
 
