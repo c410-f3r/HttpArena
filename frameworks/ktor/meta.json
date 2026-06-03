@@ -20,8 +20,12 @@
     "api-16",
     "baseline-h2",
     "static-h2",
+    "baseline-h2c",
+    "json-h2c",
     "echo-ws",
-    "echo-ws-pipeline"
+    "echo-ws-pipeline",
+    "crud",
+    "fortunes"
   ],
   "maintainers": [
     "bjhham"
