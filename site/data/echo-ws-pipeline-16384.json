@@ -152,6 +152,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "ktor",
+    "language": "Kotlin",
+    "rps": 9306794,
+    "avg_latency": "27.25ms",
+    "p99_latency": "71.30ms",
+    "cpu": "3438.3%",
+    "memory": "12.7GiB",
+    "connections": 16384,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 16,
+    "bandwidth": "62.67MB/s",
+    "reconnects": 0,
+    "status_2xx": 46533974,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "node-websocket",
     "language": "JS",
     "rps": 3564641,

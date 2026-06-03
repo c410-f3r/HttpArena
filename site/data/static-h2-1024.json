@@ -254,6 +254,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "ktor",
+    "language": "Kotlin",
+    "rps": 124001,
+    "avg_latency": "250.18ms",
+    "p99_latency": "250.18ms",
+    "cpu": "6237.9%",
+    "memory": "18.7GiB",
+    "connections": 1024,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "1.84GB/s",
+    "reconnects": 0,
+    "status_2xx": 629928,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "nginx",
     "language": "C",
     "rps": 782045,

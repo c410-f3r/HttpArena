@@ -480,6 +480,26 @@
     "status_5xx": 0
   },
   {
+    "framework": "ktor",
+    "language": "Kotlin",
+    "rps": 189186,
+    "avg_latency": "2.67ms",
+    "p99_latency": "17.00ms",
+    "cpu": "6266.8%",
+    "memory": "4.9GiB",
+    "connections": 512,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "259.41MB/s",
+    "input_bw": "14.07MB/s",
+    "reconnects": 37750,
+    "status_2xx": 945933,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "ngx-php",
     "language": "PHP",
     "rps": 510837,

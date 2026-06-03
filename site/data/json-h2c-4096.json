@@ -57,6 +57,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "ktor",
+    "language": "Kotlin",
+    "rps": 281753,
+    "avg_latency": "432.04ms",
+    "p99_latency": "432.04ms",
+    "cpu": "4484.6%",
+    "memory": "29.3GiB",
+    "connections": 4096,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "974.99MB/s",
+    "reconnects": 0,
+    "status_2xx": 1439759,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "quarkus-jvm",
     "language": "Java",
     "rps": 1039944,

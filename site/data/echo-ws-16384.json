@@ -251,6 +251,25 @@
     "status_5xx": 0
   },
   {
+    "framework": "ktor",
+    "language": "Kotlin",
+    "rps": 707025,
+    "avg_latency": "22.60ms",
+    "p99_latency": "48.20ms",
+    "cpu": "3347.2%",
+    "memory": "6.2GiB",
+    "connections": 16384,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "5.28MB/s",
+    "reconnects": 0,
+    "status_2xx": 3535129,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "lute",
     "language": "Luau",
     "rps": 2650618,
