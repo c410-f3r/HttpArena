@@ -1139,7 +1139,8 @@
     var chips=[];
     if(c.cpu) chips.push('<span class="chip"><b>'+(c.cores||'')+'</b> cores · '+esc(shortCpu(c.cpu))+'</span>');
     if(c.ram) chips.push('<span class="chip"><b>'+esc(c.ram)+'</b> RAM</span>');
-    if(c.os) chips.push('<span class="chip">'+esc(c.os)+'</span>');
+    if(c.kernel) chips.push('<span class="chip">Linux '+esc(c.kernel)+'</span>');
+    else if(c.os) chips.push('<span class="chip">'+esc(c.os)+'</span>');
     document.getElementById('hw').innerHTML=chips.join('');
   }
 
