@@ -121,6 +121,14 @@
     "type": "engine",
     "engine": "libev"
   },
+  "blackbull": {
+    "dir": "blackbull",
+    "description": "BlackBull \u2014 pure-Python async ASGI 3.0 framework supporting HTTP/1.1, HTTP/2, and WebSocket. ALPN negotiates HTTP/2 on the same listener that serves HTTP/1.1.",
+    "repo": "https://github.com/TOKUJI/BlackBull",
+    "type": "emerging",
+    "engine": "blackbull",
+    "mode": "standard"
+  },
   "bottle": {
     "dir": "bottle",
     "description": "Fast, simple and lightweight WSGI micro web-framework for Python",
@@ -353,6 +361,13 @@
     "type": "flagship",
     "engine": "n\u00edma",
     "mode": "tuned"
+  },
+  "hical": {
+    "dir": "hical",
+    "description": "Hical is a modern C++20/26 high-performance web framework built on Boost.Asio, featuring coroutine-based async I/O (boost::asio::awaitable<T>), three-tier PMR memory pools, zero-copy HTTP parsing via picohttpparser, and a self-developed WebSocket stack (RFC 6455 with permessage-deflate). SO_REUSEPORT multi-acceptor model on Linux. Dual-track C++26 reflection layer (P2996 / C++20 macro fallback).",
+    "repo": "https://github.com/Hical61/Hical",
+    "type": "engine",
+    "engine": "hical"
   },
   "hono-bun": {
     "dir": "hono-bun",

@@ -4,6 +4,7 @@
     "language": "C#",
     "rps": 228290,
     "avg_latency": "20.13ms",
+    "p99_latency": "20.13ms",
     "cpu": "5293.3%",
     "memory": "1.5GiB",
     "connections": 256,
