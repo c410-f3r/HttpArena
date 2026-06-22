@@ -540,6 +540,26 @@
     "status_5xx": 0
   },
   {
+    "framework": "ioxide",
+    "language": "C#",
+    "rps": 919548,
+    "avg_latency": "529us",
+    "p99_latency": "3.47ms",
+    "cpu": "5921.6%",
+    "memory": "633MiB",
+    "connections": 512,
+    "threads": 64,
+    "duration": "5s",
+    "pipeline": 1,
+    "bandwidth": "1.37GB/s",
+    "input_bw": "68.40MB/s",
+    "reconnects": 183911,
+    "status_2xx": 4597744,
+    "status_3xx": 0,
+    "status_4xx": 0,
+    "status_5xx": 0
+  },
+  {
     "framework": "ktor",
     "language": "Kotlin",
     "rps": 182888,
