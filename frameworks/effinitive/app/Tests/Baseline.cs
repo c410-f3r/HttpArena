@@ -1,4 +1,3 @@
-using System.Text;
 using EffinitiveFramework.Core;
 using EffinitiveFramework.Core.Http;
 
@@ -29,23 +28,18 @@ public class BaselineGetEndpoint : NoRequestEndpointBase<string>
     }
 }
 
-public class BaselinePostEndpoint : NoRequestEndpointBase<string>
+public class BaselinePostEndpoint : EndpointBase<string, string>
 {
     protected override string Method => "POST";
     protected override string Route => "/baseline11";
     protected override string ContentType => "text/plain";
 
-    public override ValueTask<string> HandleAsync(CancellationToken ct)
+    public override ValueTask<string> HandleAsync(string body, CancellationToken ct = default)
     {
         var query = HttpContext?.Query ?? QueryCollection.Empty;
         int a = query.GetInt("a");
         int b = query.GetInt("b");
-        int bodyVal = 0;
-        if (HttpContext?.Body.Length > 0)
-        {
-            var bodyStr = Encoding.UTF8.GetString(HttpContext.Body.Span).Trim();
-            int.TryParse(bodyStr, out bodyVal);
-        }
+        int.TryParse(body.Trim(), out var bodyVal);
         return ValueTask.FromResult((a + b + bodyVal).ToString());
     }
 }

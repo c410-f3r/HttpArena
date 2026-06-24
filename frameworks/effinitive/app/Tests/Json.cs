@@ -4,7 +4,9 @@ using EffinitiveFramework.Core.Http;
 
 namespace effinitive.Tests;
 
-public class JsonEndpoint : NoRequestEndpointBase<ResponseDto<ProcessedItem>>
+// Returns byte[] so SerializeResponse short-circuits into the pre-serialized path,
+// bypassing reflection-based JsonSerializerOptions entirely.
+public class JsonEndpoint : NoRequestEndpointBase<byte[]>
 {
     protected override string Method => "GET";
     protected override string Route => "/json/{count}";
@@ -24,7 +26,7 @@ public class JsonEndpoint : NoRequestEndpointBase<ResponseDto<ProcessedItem>>
         return [.. items];
     }
 
-    public override ValueTask<ResponseDto<ProcessedItem>> HandleAsync(CancellationToken ct)
+    public override ValueTask<byte[]> HandleAsync(CancellationToken ct)
     {
         var query = HttpContext?.Query ?? QueryCollection.Empty;
         int count = int.TryParse(HttpContext?.RouteValues?["count"]?.ToString(), out var c) ? c : AllItems.Length;
@@ -44,6 +46,8 @@ public class JsonEndpoint : NoRequestEndpointBase<ResponseDto<ProcessedItem>>
             };
         }
 
-        return ValueTask.FromResult(new ResponseDto<ProcessedItem>(processed, take));
+        var dto = new ResponseDto<ProcessedItem>(processed, take);
+        return ValueTask.FromResult(
+            JsonSerializer.SerializeToUtf8Bytes(dto, AppJsonContext.Default.ResponseDtoProcessedItem));
     }
 }

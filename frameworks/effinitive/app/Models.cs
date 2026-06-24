@@ -34,8 +34,8 @@ public sealed class ProcessedItem
     public double Price { get; set; }
     public int Quantity { get; set; }
     public bool Active { get; set; }
-    public List<string> Tags { get; set; } = [];
-    public RatingInfo Rating { get; set; } = new();
+    public List<string> Tags { get; set; } = null!;
+    public RatingInfo Rating { get; set; } = null!;
     public double Total { get; set; }
 }
 
@@ -44,7 +44,6 @@ public sealed class RatingInfo
     public double Score { get; set; }
     public int Count { get; set; }
 }
-
 
 [JsonSerializable(typeof(ResponseDto<ProcessedItem>))]
 [JsonSerializable(typeof(ResponseDto<DbResponseItemDto>))]
