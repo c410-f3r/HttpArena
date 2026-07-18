@@ -221,6 +221,14 @@
     "engine": "uvicorn",
     "mode": "standard"
   },
+  "fastendpoints": {
+    "dir": "fastendpoints",
+    "description": "FastEndpoints (REPR-pattern endpoint framework on ASP.NET Core) using .NET 10 with Kestrel.",
+    "repo": "https://github.com/FastEndpoints/FastEndpoints",
+    "type": "emerging",
+    "engine": "kestrel",
+    "mode": "standard"
+  },
   "fasthttp": {
     "dir": "fasthttp",
     "description": "fasthttp is a raw multi-threaded epoll HTTP server in V's standard library (non-blocking, SO_REUSEPORT, one worker per core). Handlers return raw response bytes. JSON is built in a single allocation without per-request reflection (precomputed prefixes); json-comp gzips on Accept-Encoding; async-db and all DB endpoints use the stdlib db.pg pooled Go-style DB (db.exec_param_many over a connection pool sized from DATABASE_MAX_CONN); crud uses an id-indexed in-memory cache slab (X-Cache MISS/HIT, invalidated on PUT); fortunes renders DB rows + a runtime row with HTML escaping sorted by message; static assets are preloaded into memory at startup with correct MIME types. Built on pinned V master cef604a26 with the default GC (Boehm). baseline is not subscribed: the fasthttp server parses each recv() in one shot and does not reassemble TCP-fragmented requests.",
