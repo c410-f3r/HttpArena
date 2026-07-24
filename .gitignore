@@ -2,6 +2,7 @@
 # the published per-framework result files and must stay tracked.
 /results/
 site/public/
+site/generated/
 site/resources/
 
 # Build artifacts
