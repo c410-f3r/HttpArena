@@ -646,6 +646,72 @@ def _sidebar(tree, curid):
                walk(tree["c"]) if tree.get("c") else ""))
 
 
+BOARD = ROOT / "site" / "leaderboard" / "index.html"
+
+# Selectors the doc pages share with the board. Everything else in the board's
+# stylesheet is leaderboard furniture - the table, the filters, its own nav -
+# and stays there.
+_SHARED_EXACT = {
+    ":root", "html", "body", "a", "*",
+    ".top", ".brand", ".brand-name", ".brand-name b", ".brand-name:hover",
+    ".icon-btn", ".icon-btn:hover", ".icon-btn svg", ".top-links",
+}
+_SHARED_PREFIX = (".doc-", ".type-rules", ".tr-sq")
+
+
+def _top_level_rules(css):
+    """Split a stylesheet into top-level rules, keeping @media blocks whole."""
+    out, buf, depth = [], "", 0
+    for ch in css:
+        buf += ch
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                out.append(buf.strip())
+                buf = ""
+    return out
+
+
+def _is_shared(rule):
+    sel = rule.split("{", 1)[0].strip()
+    if sel.startswith("@media"):
+        # the dark-mode preference block defines the same variables as :root
+        return "prefers-color-scheme" in sel
+    first = sel.split(",")[0].strip()
+    return first in _SHARED_EXACT or first.startswith(_SHARED_PREFIX)
+
+
+def board_chrome():
+    """Header markup and shared CSS, read out of the board at build time.
+
+    The board is the single source of truth for site chrome. Copying it by hand
+    is what let the doc pages drift twice - the type-rules widget lost the rules
+    that hide its inactive panels, and the header lost its icon buttons - so
+    this reads the real thing instead. Editing the board now updates the doc
+    pages automatically, and a structural change here fails the build loudly
+    rather than silently shipping a half-styled page.
+    """
+    html = BOARD.read_text(encoding="utf-8")
+    brand = re.search(r'<div class="brand">(.*?)</div>', html, re.S)
+    links = re.search(r'<div class="top-links">(.*?)</div>', html, re.S)
+    style = re.search(r"<style>(.*?)</style>", html, re.S)
+    if not (brand and links and style):
+        raise SystemExit(f"gen: cannot read site chrome from {BOARD.relative_to(ROOT)} - "
+                         "expected .brand, .top-links and a <style> block")
+    shared = [r for r in _top_level_rules(style.group(1)) if _is_shared(r)]
+    if len(shared) < 40:
+        raise SystemExit(f"gen: only {len(shared)} shared CSS rules found in "
+                         f"{BOARD.relative_to(ROOT)} - the selector list is stale")
+    # the board's brand link drives its in-page router; on a doc page it goes home
+    brand_html = brand.group(1).strip().replace('href="#" id="brandHome"', 'href="/"')
+    return brand_html, links.group(1).strip(), "\n".join(shared)
+
+
+# Resolved once at import: the board's chrome, shared by every generated page.
+_CHROME = board_chrome()
+
 _THEME_INIT = ("<script>try{var t=localStorage.getItem('lb-theme');"
                "if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>")
 _THEME_TOGGLE = ("<script>var b=document.getElementById('theme');if(b)b.onclick=function(){"
@@ -678,14 +744,15 @@ def _doc_page(did, title, body_html, tree, seo_title="", description=""):
             + '<meta property="og:url" content="' + url + '">'
             + '<link rel="stylesheet" href="/docs/docs.css">'
             + "</head>")
+    # Same markup and classes as the board's header, so crossing between /
+    # and /docs/ doesn't change the chrome. The board-only controls (type
+    # filters, round selector, hardware chips) are leaderboard state, not site
+    # chrome, so they aren't carried over; everything else is identical.
     header = ('<body><header class="top">'
-              '<a class="brand-name" href="/"><b>Http</b>Arena</a>'
+              '<div class="brand">' + _CHROME[0] + '</div>'
               '<a class="brand-sub" href="/docs/">Knowledge Base</a>'
-              '<div class="top-links">'
-              '<a href="https://timeline.http-arena.com" target="_blank" rel="noopener">Timeline</a>'
-              '<a href="https://github.com/MDA2AV/HttpArena" target="_blank" rel="noopener">GitHub</a>'
-              '<button id="theme" type="button" title="Toggle theme">◐</button>'
-              '</div></header>')
+              '<div class="top-links">' + _CHROME[1] + '</div>'
+              '</header>')
     body = ('<div class="docs-layout">'
             '<aside class="docs-sidebar">' + _sidebar(tree, did) + '</aside>'
             '<main class="doc-main"><article class="doc-wrap">'
@@ -696,21 +763,17 @@ def _doc_page(did, title, body_html, tree, seo_title="", description=""):
 
 
 def _docs_css():
-    return """:root{--bg:#f8f9fa;--panel:#fff;--panel-2:#f1f3f4;--line:#dadce0;--line-soft:#e8eaed;--text:#202124;--text-2:#5f6368;--muted:#80868b;--accent:#1a73e8;--accent-weak:#e8f0fe;--shadow:0 1px 2px 0 rgba(60,64,67,.1),0 2px 6px 2px rgba(60,64,67,.06);--header-bg:rgba(255,255,255,.82);--mono:"SF Mono",ui-monospace,"JetBrains Mono","Roboto Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif}
-html[data-theme="dark"]{--bg:#202124;--panel:#2a2b2e;--panel-2:#35363a;--line:#3c4043;--line-soft:#303134;--text:#e8eaed;--text-2:#9aa0a6;--muted:#80868b;--accent:#8ab4f8;--accent-weak:#283446;--shadow:0 1px 2px 0 rgba(0,0,0,.3),0 2px 6px 2px rgba(0,0,0,.25);--header-bg:rgba(32,33,36,.8)}
-@media (prefers-color-scheme:dark){html:not([data-theme="light"]){--bg:#202124;--panel:#2a2b2e;--panel-2:#35363a;--line:#3c4043;--line-soft:#303134;--text:#e8eaed;--text-2:#9aa0a6;--muted:#80868b;--accent:#8ab4f8;--accent-weak:#283446;--shadow:0 1px 2px 0 rgba(0,0,0,.3),0 2px 6px 2px rgba(0,0,0,.25);--header-bg:rgba(32,33,36,.8)}}
-*{box-sizing:border-box}html,body{margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-a{color:inherit;text-decoration:none}
-.top{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:.9rem;padding:.72rem 1.5rem;background:var(--header-bg);backdrop-filter:blur(14px) saturate(1.6);-webkit-backdrop-filter:blur(14px) saturate(1.6);border-bottom:1px solid var(--line)}
-.brand-name{font-weight:750;font-size:1.06rem;letter-spacing:-.02em;color:var(--text)}
-.brand-name b{color:var(--accent)}
-.brand-name:hover{opacity:.82}
+    """The board's shared chrome, plus the rules only these pages need.
+
+    Everything shared - theme variables, reset, header, doc body, cards and the
+    shortcode widgets - comes from the board itself, so the two can't diverge.
+    Only the standalone-page shell is defined here: the board has no two-column
+    docs layout and no sidebar of its own.
+    """
+    return _CHROME[2] + """
+/* ── standalone doc-page shell (not present on the board) ─────────────── */
 .brand-sub{color:var(--text-2);font-size:.9rem;padding-left:.7rem;border-left:1px solid var(--line)}
-.top-links{margin-left:auto;display:flex;align-items:center;gap:1rem}
-.top-links a{color:var(--text-2);font-size:.86rem}
-.top-links a:hover{color:var(--text)}
-#theme{background:none;border:0;color:var(--text-2);font-size:1.1rem;cursor:pointer;line-height:1;padding:0}
+.top-links{margin-left:auto}
 .docs-layout{display:flex;align-items:flex-start;gap:2rem;max-width:1200px;margin:0 auto;padding:1.5rem}
 .docs-sidebar{position:sticky;top:64px;flex:none;width:250px;max-height:calc(100vh - 84px);overflow-y:auto;font-size:.86rem}
 .ds-home{display:block;color:var(--muted);font-size:.8rem;margin-bottom:.9rem}
@@ -724,37 +787,12 @@ a{color:inherit;text-decoration:none}
 .docs-sidebar a.cur{background:var(--accent-weak);color:var(--accent);font-weight:650}
 .docs-sidebar details>summary{list-style:none;display:flex;align-items:center;gap:.2rem;cursor:pointer}
 .docs-sidebar details>summary::-webkit-details-marker{display:none}
-.docs-sidebar details>summary::before{content:"▸";flex:none;width:.8rem;font-size:.6rem;color:var(--muted);transition:transform .18s ease}
+.docs-sidebar details>summary::before{content:"\u25b8";flex:none;width:.8rem;font-size:.6rem;color:var(--muted);transition:transform .18s ease}
 .docs-sidebar details[open]>summary::before{transform:rotate(90deg)}
 .docs-sidebar details>summary>a{flex:1;min-width:0}
 .doc-main{flex:1;min-width:0;max-width:820px}
-.doc-title{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin:.1rem 0 1.2rem;color:var(--text)}
-.doc-body{font-size:.92rem;line-height:1.7;color:var(--text-2)}
-.doc-body>:first-child{margin-top:0}
-.doc-body h2{font-size:1.25rem;font-weight:700;color:var(--text);margin:2rem 0 .8rem;padding-bottom:.35rem;border-bottom:1px solid var(--line);letter-spacing:-.01em}
-.doc-body h3{font-size:1.06rem;font-weight:650;color:var(--text);margin:1.6rem 0 .55rem}
-.doc-body h4{font-size:.95rem;font-weight:650;color:var(--text);margin:1.3rem 0 .5rem}
-.doc-body p{margin:.7rem 0}
-.doc-body a{color:var(--accent);text-decoration:none}
-.doc-body a:hover{text-decoration:underline}
-.doc-body ul,.doc-body ol{margin:.7rem 0;padding-left:1.45rem}
-.doc-body li{margin:.3rem 0}
-.doc-body li>ul,.doc-body li>ol{margin:.25rem 0}
-.doc-body code{font-family:var(--mono);font-size:.84em;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:5px;padding:.08em .36em;color:var(--text)}
-.doc-body pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.9rem 1.1rem;overflow-x:auto;margin:1rem 0;line-height:1.55}
-.doc-body pre code{background:none;border:0;padding:0;font-size:.82rem;color:var(--text-2);white-space:pre}
-.doc-body blockquote{margin:1rem 0;padding:.2rem .9rem;border-left:3px solid var(--accent-weak);color:var(--muted)}
-.doc-body hr{border:0;border-top:1px solid var(--line);margin:1.6rem 0}
-.doc-body table{border-collapse:separate;border-spacing:0;width:100%;margin:1.1rem 0;font-size:.85rem;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.doc-body th{text-align:left;font-weight:650;color:var(--text);background:var(--panel-2);padding:.55rem .75rem;border-bottom:1px solid var(--line)}
-.doc-body td{padding:.5rem .75rem;border-bottom:1px solid var(--line-soft);vertical-align:top}
-.doc-body tr:last-child td{border-bottom:0}
-.doc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.7rem;margin:1.2rem 0}
-.doc-card{display:flex;flex-direction:column;gap:.3rem;padding:.85rem 1rem;border:1px solid var(--line);border-radius:10px;background:var(--panel);text-decoration:none;transition:border-color .12s,box-shadow .12s,transform .12s}
-.doc-card:hover{border-color:var(--accent);box-shadow:var(--shadow);transform:translateY(-1px)}
-.doc-card .dc-t{font-weight:650;color:var(--text);font-size:.9rem}
-.doc-card .dc-s{color:var(--muted);font-size:.8rem;line-height:1.5}
-@media (max-width:820px){.docs-layout{flex-direction:column;gap:1rem;padding:1rem}.docs-sidebar{position:static;width:100%;max-height:none;padding-bottom:.5rem;border-bottom:1px solid var(--line)}.doc-main{max-width:100%}}
+.doc-wrap{max-width:none}
+@media (max-width:820px){.docs-layout{flex-direction:column;gap:1rem;padding:1rem}.docs-sidebar{position:static;width:100%;max-height:none;padding-bottom:.5rem;border-bottom:1px solid var(--line)}.doc-main{max-width:100%}.brand{width:auto}}
 """
 
 
